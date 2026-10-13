@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Performance - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
+        <a class="navbar-brand text-primary fw-bold" th:href="@{/employee/dashboard}">LogSphere</a>
+        <a th:href="@{/employee/dashboard}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+    </nav>
+
+    <div class="container py-4">
+        <h4 class="mb-4">My Performance</h4>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header"><h6 class="mb-0">This Week's Score</h6></div>
+                    <div class="card-body text-center">
+                        <h2 class="text-primary" th:text="${weeklyRecord.compositeScore != null ? #numbers.formatDecimal(weeklyRecord.compositeScore, 1, 1) : 'N/A'}">-</h2>
+                        <p class="text-muted small mb-0" th:text="|${weeklyRecord.periodStart} - ${weeklyRecord.periodEnd}|">Period</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header"><h6 class="mb-0">Score Breakdown</h6></div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <small>Attendance</small>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar" th:style="|width: ${weeklyRecord.attendanceScore != null ? weeklyRecord.attendanceScore : 0}%|" role="progressbar"></div>
+                            </div>
+                            <small th:text="${weeklyRecord.attendanceScore != null ? #numbers.formatDecimal(weeklyRecord.attendanceScore, 1, 1) + '%' : '0%'}"></small>
+                        </div>
+                        <div class="mb-2">
+                            <small>Tasks</small>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" th:style="|width: ${weeklyRecord.taskScore != null ? weeklyRecord.taskScore : 0}%|" role="progressbar"></div>
+                            </div>
+                            <small th:text="|${weeklyRecord.tasksCompleted != null ? weeklyRecord.tasksCompleted : 0}/${weeklyRecord.tasksTotal != null ? weeklyRecord.tasksTotal : 0} (${weeklyRecord.taskScore != null ? #numbers.formatDecimal(weeklyRecord.taskScore, 1, 1) : 0}%)|"></small>
+                        </div>
+                        <div class="mb-2">
+                            <small>Goals</small>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-info" th:style="|width: ${weeklyRecord.goalScore != null ? weeklyRecord.goalScore : 0}%|" role="progressbar"></div>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <small>Issues</small>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-warning" th:style="|width: ${weeklyRecord.issueScore != null ? weeklyRecord.issueScore : 0}%|" role="progressbar"></div>
+                            </div>
+                            <small th:text="|${weeklyRecord.issuesCompleted != null ? weeklyRecord.issuesCompleted : 0}/${weeklyRecord.issuesTotal != null ? weeklyRecord.issuesTotal : 0}|"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Performance History (Last 12 Weeks)</h6></div>
+            <div class="card-body">
+                <div th:if="${performanceHistory == null || performanceHistory.isEmpty()}" class="text-muted text-center py-4">No history yet.</div>
+                <div class="table-responsive" th:if="${performanceHistory != null && !performanceHistory.isEmpty()}">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Period</th><th>Score</th><th>Tasks</th><th>Issues</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="r : ${performanceHistory}">
+                                <td th:text="|${r.periodStart} - ${r.periodEnd}|">-</td>
+                                <td th:text="${r.compositeScore != null ? #numbers.formatDecimal(r.compositeScore, 1, 1) : '-'}">-</td>
+                                <td th:text="|${r.tasksCompleted}/${r.tasksTotal}|">-</td>
+                                <td th:text="|${r.issuesCompleted}/${r.issuesTotal}|">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

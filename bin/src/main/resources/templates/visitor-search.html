@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Search Visitors - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            background: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+        }
+
+        .card-header h4 {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        /* Forms */
+        .form-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-control {
+            border: 1px solid #dee2e6;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+        }
+
+        .form-control:focus {
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+        }
+
+        /* Tables */
+        .table {
+            color: var(--text-primary);
+            vertical-align: middle;
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background-color: var(--brand-primary);
+            border-color: var(--brand-primary);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top mb-4">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1 text-primary fw-bold"><i class="fas fa-search me-2"></i>Search
+                Visitors</span>
+            <div>
+                <a th:href="@{/visitors/dashboard}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container px-4">
+        <!-- Search Form -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-filter me-2 text-primary"></i>Search Filters</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="get" action="/visitors/search" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Search by Name</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-secondary border-end-0"><i
+                                    class="fas fa-user"></i></span>
+                            <input type="text" name="name" class="form-control border-start-0"
+                                placeholder="Visitor name" th:value="${searchName}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Search by Date</label>
+                        <input type="date" name="date" class="form-control" th:value="${searchDate}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Search by Employee</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-secondary border-end-0"><i
+                                    class="fas fa-user-tie"></i></span>
+                            <input type="text" name="employeeName" class="form-control border-start-0"
+                                placeholder="Employee name" th:value="${searchEmployee}">
+                        </div>
+                    </div>
+                    <div class="col-12 mt-4 pt-3 border-top d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="fas fa-search me-1"></i> Search
+                        </button>
+                        <a th:href="@{/visitors/search}" class="btn btn-outline-secondary px-3">Clear Filters</a>
+                        <a th:href="@{/visitors/history}" class="btn btn-outline-info ms-auto">
+                            <i class="fas fa-history me-1"></i> View All History
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Search Results -->
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Search Results</h4>
+                <span class="badge bg-light text-secondary border" th:if="${!visitors.isEmpty()}"
+                    th:text="${visitors.size()} + ' found'"></span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Company</th>
+                                <th>Person to Meet</th>
+                                <th>Purpose</th>
+                                <th>Check-In</th>
+                                <th>Check-Out</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${visitors.isEmpty()}">
+                                <td colspan="9" class="text-center text-muted py-5">
+                                    <div class="py-3">
+                                        <i class="fas fa-search fs-1 text-light-emphasis mb-3"></i>
+                                        <p class="mb-0">No visitors found matching your criteria</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr th:each="visitor : ${visitors}">
+                                <td class="ps-4 fw-medium" th:text="${visitor.name}"></td>
+                                <td class="text-muted small" th:text="${visitor.email}"></td>
+                                <td class="text-muted small" th:text="${visitor.phone}"></td>
+                                <td th:text="${visitor.company}"></td>
+                                <td th:text="${visitor.personToMeet}"></td>
+                                <td class="text-secondary small" th:text="${visitor.purpose}"></td>
+                                <td th:text="${#temporals.format(visitor.checkInTime, 'MMM dd, HH:mm')}"></td>
+                                <td
+                                    th:text="${visitor.checkOutTime != null ? #temporals.format(visitor.checkOutTime, 'MMM dd, HH:mm') : '-'}">
+                                </td>
+                                <td>
+                                    <span th:if="${visitor.status == 'Registered'}"
+                                        class="badge bg-info-subtle text-info-emphasis">Registered</span>
+                                    <span th:if="${visitor.status == 'Checked In'}"
+                                        class="badge bg-success-subtle text-success">Checked In</span>
+                                    <span th:if="${visitor.status == 'Checked Out'}"
+                                        class="badge bg-secondary-subtle text-secondary">Checked Out</span>
+                                    <span th:if="${visitor.status == 'Pending Approval'}"
+                                        class="badge bg-warning-subtle text-warning-emphasis">Pending</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
+

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - View Candidate</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: #1a8cf0 !important;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+            background-color: #ffffff;
+        }
+
+        .card-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 1.25rem;
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .info-section {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .section-title {
+            color: #1a8cf0;
+            border-bottom: 2px solid #1a8cf0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .field-label {
+            color: #64748b;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+
+        .field-value {
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        .field-value a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+
+        .field-value a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body class="bg-light text-dark">
+    <nav class="navbar navbar-light bg-white p-3 border-bottom">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">LogSphere</span>
+            <div>
+                <a th:href="@{/hr/dashboard}" class="btn btn-outline-secondary btn-sm me-2">HR Dashboard</a>
+                <a th:href="@{/logout}" class="btn btn-outline-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h3 class="text-dark fw-bold mb-0">👤 Candidate Details</h3>
+                        <div>
+                            <a th:href="@{/hr/recruitment/candidate/edit/{id}(id=${candidate.id})}"
+                                class="btn btn-warning btn-sm text-dark fw-bold">✏️ Edit</a>
+                            <a th:href="@{/hr/dashboard}" class="btn btn-secondary btn-sm ms-2">Back</a>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div th:object="${candidate}">
+                            <!-- 👤 Basic Information -->
+                            <div class="info-section">
+                                <h4 class="section-title">👤 Basic Information</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Full Name</div>
+                                        <div class="field-value" th:text="*{name}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Email ID</div>
+                                        <div class="field-value" th:text="*{email}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Phone Number</div>
+                                        <div class="field-value" th:text="*{phone != null ? phone : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Gender</div>
+                                        <div class="field-value" th:text="*{gender != null ? gender : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Date of Birth</div>
+                                        <div class="field-value"
+                                            th:text="*{dateOfBirth != null ? #temporals.format(dateOfBirth, 'yyyy-MM-dd') : 'N/A'}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 💼 Job Information -->
+                            <div class="info-section">
+                                <h4 class="section-title">💼 Job Information</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Job Title</div>
+                                        <div class="field-value" th:text="*{jobTitle != null ? jobTitle : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Department</div>
+                                        <div class="field-value" th:text="*{department != null ? department : 'N/A'}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Employment Type</div>
+                                        <div class="field-value"
+                                            th:text="*{employmentType != null ? employmentType : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Status</div>
+                                        <span class="badge bg-success" th:if="*{status == 'SELECTED'}"
+                                            th:text="*{status}"></span>
+                                        <span class="badge bg-danger" th:if="*{status == 'REJECTED'}"
+                                            th:text="*{status}"></span>
+                                        <span class="badge bg-info" th:if="*{status == 'SHORTLISTED'}"
+                                            th:text="*{status}"></span>
+                                        <span class="badge bg-warning" th:if="*{status == 'INTERVIEW_SCHEDULED'}"
+                                            th:text="*{status}"></span>
+                                        <span class="badge bg-secondary"
+                                            th:if="*{status != 'SELECTED' and status != 'REJECTED' and status != 'SHORTLISTED' and status != 'INTERVIEW_SCHEDULED'}"
+                                            th:text="*{status}"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 🎓 Qualification Details -->
+                            <div class="info-section">
+                                <h4 class="section-title">🎓 Qualification Details</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Highest Qualification</div>
+                                        <div class="field-value"
+                                            th:text="*{highestQualification != null ? highestQualification : 'N/A'}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Specialization</div>
+                                        <div class="field-value"
+                                            th:text="*{specialization != null ? specialization : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">College/University</div>
+                                        <div class="field-value"
+                                            th:text="*{collegeUniversity != null ? collegeUniversity : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Year of Passing</div>
+                                        <div class="field-value"
+                                            th:text="*{yearOfPassing != null ? yearOfPassing : 'N/A'}"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 🧠 Skills & Experience -->
+                            <div class="info-section">
+                                <h4 class="section-title">🧠 Skills & Experience</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Primary Skills</div>
+                                        <div class="field-value"
+                                            th:text="*{primarySkills != null ? primarySkills : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Secondary Skills</div>
+                                        <div class="field-value"
+                                            th:text="*{secondarySkills != null ? secondarySkills : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Total Experience</div>
+                                        <div class="field-value"
+                                            th:text="*{totalExperience != null ? (totalExperience + ' years') : 'N/A'}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Relevant Experience</div>
+                                        <div class="field-value"
+                                            th:text="*{relevantExperience != null ? (relevantExperience + ' years') : 'N/A'}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 📄 Documents -->
+                            <div class="info-section">
+                                <h4 class="section-title">📄 Documents & Links</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Portfolio Link</div>
+                                        <span class="field-value" th:if="*{portfolioLink != null}">
+                                            <a th:href="*{portfolioLink}" target="_blank"
+                                                th:text="*{portfolioLink}"></a>
+                                        </span>
+                                        <span class="field-value" th:if="*{portfolioLink == null}">N/A</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 📅 Interview Details -->
+                            <div class="info-section">
+                                <h4 class="section-title">📅 Interview Details</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Interview Date</div>
+                                        <div class="field-value"
+                                            th:text="*{interviewDate != null ? #temporals.format(interviewDate, 'yyyy-MM-dd HH:mm') : 'N/A'}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Interview Time</div>
+                                        <div class="field-value"
+                                            th:text="*{interviewTime != null ? interviewTime : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Interviewer Name</div>
+                                        <div class="field-value"
+                                            th:text="*{interviewerName != null ? interviewerName : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="field-label">Interview Round</div>
+                                        <div class="field-value"
+                                            th:text="*{interviewRound != null ? interviewRound : 'N/A'}"></div>
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <div class="field-label">Interview Feedback</div>
+                                        <p class="field-value"
+                                            th:text="*{interviewFeedback != null ? interviewFeedback : 'N/A'}"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
+

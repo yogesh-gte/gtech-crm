@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Departments - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
+        <a class="navbar-brand text-primary fw-bold" th:href="@{/admin/dashboard}">LogSphere</a>
+        <div>
+            <a th:href="@{/admin/organization}" class="btn btn-outline-secondary btn-sm me-2">Back to Organization</a>
+            <a th:href="@{/admin/organization/departments/add}" class="btn btn-primary btn-sm">Add Department</a>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h4 class="mb-4">Departments</h4>
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" th:text="${error}"></div>
+
+        <div class="card">
+            <div class="card-body">
+                <div th:if="${departments.isEmpty()}" class="text-center text-muted py-5">
+                    No departments yet. <a th:href="@{/admin/organization/departments/add}">Add first department</a>
+                </div>
+                <div th:if="${!departments.isEmpty()}" class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Code</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="d : ${departments}">
+                                <td th:text="${d.name}">-</td>
+                                <td><span class="badge bg-secondary" th:text="${d.code != null ? d.code : '-'}">-</span></td>
+                                <td th:text="${d.description != null ? d.description : '-'}" class="text-muted small">-</td>
+                                <td>
+                                    <span class="badge bg-success" th:if="${d.isActive}">Active</span>
+                                    <span class="badge bg-secondary" th:unless="${d.isActive}">Inactive</span>
+                                </td>
+                                <td>
+                                    <a th:href="@{/admin/organization/departments/edit/{id}(id=${d.id})}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                    <form th:action="@{/admin/organization/departments/delete/{id}(id=${d.id})}" method="post" class="d-inline"
+                                          th:if="${d.isActive}" onsubmit="return confirm('Deactivate this department?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f7ff;
+            color: #333;
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e1e4e8;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .card-header {
+            background-color: transparent;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+
+        .table thead th {
+            font-weight: 600;
+            color: #6c757d;
+            border-bottom-width: 1px;
+            background-color: #f8f9fa;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .form-control,
+        .form-select {
+            border-color: #dee2e6;
+            padding: 0.6rem 0.8rem;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-light p-3 sticky-top">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 text-primary fw-bold">Employee Management</span>
+            <div>
+                <a th:href="@{/admin/dashboard}" id="dashboardLink" class="btn btn-outline-primary btn-sm">Back to
+                    Dashboard</a>
+            </div>
+        </div>
+    </nav>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const dashboardLink = document.getElementById('dashboardLink');
+            const referrer = document.referrer;
+            if (referrer) {
+                if (referrer.includes('/hr/')) {
+                    dashboardLink.href = '/hr/dashboard';
+                } else if (referrer.includes('/manager/')) {
+                    dashboardLink.href = '/manager/dashboard';
+                } else if (referrer.includes('/employee/')) {
+                    dashboardLink.href = '/employee/dashboard';
+                }
+            }
+        });
+    </script>
+
+    <div class="container-fluid px-4 mt-4">
+        <!-- Success/Error Messages -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm border-0" role="alert">
+            <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm border-0" role="alert">
+            <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row g-4">
+            <!-- Add Employee Form -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="text-primary mb-0">Add New Employee</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-4">Add employees who can access the attendance dashboard. They
+                            will login using their email and Employee ID.</p>
+                        <form th:action="@{/admin/employees/add}" th:object="${employee}" method="post">
+                            <div class="mb-3">
+                                <label class="form-label">Employee ID <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" th:field="*{employeeId}"
+                                    placeholder="e.g., EMP001" required>
+                                <small class="text-muted">Unique ID for employee login</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" th:field="*{name}" placeholder="Enter full name"
+                                    required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" th:field="*{email}" placeholder="Enter email"
+                                    required>
+                                <small class="text-muted">Used for employee login</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Department <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{department}" required>
+                                    <option value="">-- Select Department --</option>
+                                    <option th:each="dept : ${departments}" th:value="${dept}" th:text="${dept}">
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Designation</label>
+                                <select class="form-select" th:field="*{designation}">
+                                    <option value="">-- Select Designation --</option>
+                                    <option th:each="desig : ${designations}" th:value="${desig}" th:text="${desig}">
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Phone</label>
+                                <input type="tel" class="form-control" th:field="*{phone}"
+                                    placeholder="Enter phone number">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Scheduled Start</label>
+                                    <input type="time" class="form-control" th:field="*{scheduledStartTime}"
+                                        placeholder="e.g., 09:00">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Scheduled End</label>
+                                    <input type="time" class="form-control" th:field="*{scheduledEndTime}"
+                                        placeholder="e.g., 17:00">
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label">Face Image (for attendance)</label>
+                                <div class="border rounded p-3 bg-light text-center">
+                                    <video id="video" width="100%" height="240" autoplay
+                                        style="display:none; border-radius: 8px;"></video>
+                                    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+                                    <div id="facePreview" class="mb-2"></div>
+                                    <div class="btn-group w-100">
+                                        <button type="button" class="btn btn-outline-primary" onclick="startCamera()">📷
+                                            capture Face</button>
+                                        <button type="button" class="btn btn-outline-danger" onclick="stopCamera()"
+                                            style="display:none;" id="stopBtn">Stop</button>
+                                    </div>
+                                    <input type="hidden" id="faceImageInput" name="faceImage" th:field="*{faceImage}">
+                                    <small class="text-muted d-block mt-2">Click 'Capture Face' to take a photo for face
+                                        recognition attendance</small>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Add Employee</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employee List -->
+            <div class="col-md-8 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="text-primary mb-0">All Employees</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th class="ps-4">Employee ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Department</th>
+                                        <th>Status</th>
+                                        <th class="text-end pe-4">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${employees.isEmpty()}">
+                                        <td colspan="6" class="text-center text-muted py-5">
+                                            <div class="fs-1 mb-2">👥</div>
+                                            No employees added yet
+                                        </td>
+                                    </tr>
+                                    <tr th:each="emp : ${employees}">
+                                        <td class="ps-4 fw-medium" th:text="${emp.employeeId}"></td>
+                                        <td>
+                                            <div class="fw-medium text-dark" th:text="${emp.name}"></div>
+                                        </td>
+                                        <td class="text-muted" th:text="${emp.email}"></td>
+                                        <td><span class="badge bg-light text-dark border"
+                                                th:text="${emp.department}"></span></td>
+                                        <td>
+                                            <span th:if="${emp.status == 'IN'}"
+                                                class="badge bg-success-subtle text-success border border-success-subtle">IN</span>
+                                            <span th:if="${emp.status == 'OUT'}"
+                                                class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">OUT</span>
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <a th:href="@{/admin/employees/edit/{id}(id=${emp.id})}"
+                                                class="btn btn-sm btn-outline-primary me-1">Edit</a>
+                                            <span th:if="${emp.faceImage != null && !emp.faceImage.isEmpty()}"
+                                                class="badge bg-success me-1" title="Face Registered">👤</span>
+                                            <span th:if="${emp.faceImage == null || emp.faceImage.isEmpty()}"
+                                                class="badge bg-warning me-1" title="No Face Registered">⚠️</span>
+                                            <a th:href="@{/admin/employees/delete/{id}(id=${emp.id})}"
+                                                class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('Are you sure you want to delete this employee?')"
+                                                title="Delete">🗑️</a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let stream = null;
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const facePreview = document.getElementById('facePreview');
+        const faceImageInput = document.getElementById('faceImageInput');
+        const stopBtn = document.getElementById('stopBtn');
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: 320,
+                        height: 240,
+                        facingMode: 'user'
+                    }
+                });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                document.querySelector('button[onclick="startCamera()"]').style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+
+                // Add capture button
+                if (!document.getElementById('captureBtn')) {
+                    const captureBtn = document.createElement('button');
+                    captureBtn.id = 'captureBtn';
+                    captureBtn.type = 'button';
+                    captureBtn.className = 'btn btn-success w-100 mt-2';
+                    captureBtn.textContent = '📸 Capture Photo';
+                    captureBtn.onclick = captureFace;
+                    facePreview.parentNode.insertBefore(captureBtn, facePreview.nextSibling);
+                }
+            } catch (err) {
+                alert('Error accessing camera: ' + err.message);
+                console.error('Camera error:', err);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.style.display = 'none';
+                document.querySelector('button[onclick="startCamera()"]').style.display = 'inline-block';
+                stopBtn.style.display = 'none';
+                const captureBtn = document.getElementById('captureBtn');
+                if (captureBtn) captureBtn.remove();
+            }
+        }
+
+        function captureFace() {
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, 320, 240);
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+            // Store base64 image
+            faceImageInput.value = imageData;
+
+            // Show preview
+            facePreview.innerHTML = '<img src="' + imageData + '" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">';
+
+            // Stop camera after capture
+            stopCamera();
+
+            alert('Face captured successfully! You can capture again if needed.');
+        }
+    </script>
+</body>
+
+</html>
+

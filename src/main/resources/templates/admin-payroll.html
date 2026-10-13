@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Admin Payroll</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --sidebar-bg: #e3f2fd;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --accent-blue: #0d6efd;
+            --border-color: #dcdfe6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            min-height: 100vh;
+            background: var(--sidebar-bg);
+            color: var(--text-primary);
+            border-right: 1px solid var(--border-color);
+            width: 260px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .sidebar h3 {
+            color: var(--accent-blue);
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            padding-left: 10px;
+        }
+
+        .sidebar .nav-link {
+            color: #4a5568;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar .nav-link:hover {
+            background: rgba(13, 110, 253, 0.08);
+            color: var(--accent-blue);
+        }
+
+        .sidebar .nav-link.active {
+            background: #ffffff;
+            color: var(--accent-blue);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            padding: 2rem;
+        }
+
+        /* Cards */
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            margin-bottom: 24px;
+        }
+
+        .stat-card.border-success {
+            border-left: 4px solid #198754 !important;
+        }
+
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+        }
+
+        .card-header h5 {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        /* Table */
+        .table {
+            color: var(--text-primary);
+            vertical-align: middle;
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .text-success {
+            color: #198754 !important;
+        }
+
+        .badge {
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h3>LogSphere</h3>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/}">
+                    <span>🏠</span> Home
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/admin/dashboard}">
+                    <span>📊</span> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/visitors/dashboard}">
+                    <span>👥</span> All Visitors
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/meetings/list}">
+                    <span>🗓️</span> All Meetings
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/reports}">
+                    <span>📈</span> View Reports
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/meetings/create}">
+                    <span>📅</span> Create Meeting
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/admin/employees}">
+                    <span>👨‍💼</span> Manage Employees
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" th:href="@{/admin/payroll}">
+                    <span>💰</span> Payroll
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/employee/logs}">
+                    <span>📋</span> Employee Logs
+                </a>
+            </li>
+            <li class="nav-item mt-5 pt-3 border-top">
+                <a class="nav-link text-danger" th:href="@{/logout}">
+                    <span>🚪</span> Logout
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <!-- Processed Stats Card -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm h-100 border-success">
+                    <div class="card-body p-4">
+                        <h6 class="text-secondary mb-2" style="font-size: 0.9rem;">Processed</h6>
+                        <h2 class="text-success fw-bold mb-0" th:text="${processedCount}">0</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payroll History Table -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0">Payroll History</h5>
+                <button id="addPayrollBtn" class="btn btn-primary btn-sm px-3 fw-medium" data-bs-toggle="modal"
+                    data-bs-target="#addPayrollModal">+ Add</button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Employee</th>
+                                <th>Period</th>
+                                <th>Net Salary</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${payrolls.isEmpty()}">
+                                <td colspan="5" class="text-center text-muted py-4">No payroll records found</td>
+                            </tr>
+                            <tr th:each="payroll : ${payrolls}">
+                                <td class="ps-4 fw-bold text-dark" th:text="${payroll.employee.name}"></td>
+                                <td class="text-secondary">
+                                    <span th:text="${#temporals.format(payroll.payPeriodStart, 'MMM d')}"></span> -
+                                    <span th:text="${#temporals.format(payroll.payPeriodEnd, 'MMM d')}"></span>
+                                </td>
+                                <td class="fw-bold text-success"
+                                    th:text="${'₹' + #numbers.formatDecimal(payroll.netPay, 0, 0)}"></td>
+                                <td>
+                                    <span
+                                        th:if="${payroll.payrollStatus.name() == 'APPROVED' or payroll.payrollStatus.name() == 'PAID'}"
+                                        class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">PROCESSED</span>
+                                    <span th:if="${payroll.payrollStatus.name() == 'GENERATED'}"
+                                        class="badge bg-light text-dark border px-2 py-1">PENDING</span>
+                                    <span
+                                        th:if="${payroll.payrollStatus.name() != 'APPROVED' and payroll.payrollStatus.name() != 'PAID' and payroll.payrollStatus.name() != 'GENERATED'}"
+                                        class="badge bg-light text-dark border px-2 py-1"
+                                        th:text="${payroll.payrollStatus}"></span>
+                                </td>
+                                <td>
+                                    <a href="#" class="btn btn-outline-success btn-sm px-3"
+                                        style="border-radius: 4px;">Payslip</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Payroll Modal -->
+    <div class="modal fade" id="addPayrollModal" tabindex="-1" aria-labelledby="addPayrollModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addPayrollModalLabel">Add Payroll</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addPayrollForm">
+                        <div class="mb-3">
+                            <label for="employeeSelect" class="form-label">Employee</label>
+                            <select class="form-select" id="employeeSelect" required>
+                                <option value="" selected disabled>Select Employee</option>
+                                <!-- Options will be populated via JS -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeeName" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="employeeName" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeeEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="employeeEmail" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeeId" class="form-label">Employee ID</label>
+                            <input type="text" class="form-control" id="employeeId" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="baseSalary" class="form-label">Base Salary</label>
+                            <input type="number" class="form-control" id="baseSalary" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="savePayrollBtn">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        // Get context path and API endpoints from Thymeleaf
+        const contextPath = /*[[@{/}]]*/ '';
+        const adminApiEmployeesUrl = /*[[@{/admin/api/employees}]]*/ '/admin/api/employees';
+        const adminPayrollSaveUrl = /*[[@{/admin/payroll/save}]]*/ '/admin/payroll/save';
+        /*]]>*/
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const employeeSelect = document.getElementById('employeeSelect');
+            const employeeName = document.getElementById('employeeName');
+            const employeeEmail = document.getElementById('employeeEmail');
+            const employeeId = document.getElementById('employeeId');
+            const savePayrollBtn = document.getElementById('savePayrollBtn');
+
+            // Load employees when modal is opened
+            const addPayrollModal = document.getElementById('addPayrollModal');
+            addPayrollModal.addEventListener('show.bs.modal', function () {
+                fetch(adminApiEmployeesUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Fetched employees:', data);
+                        employeeSelect.innerHTML = '<option value="" selected disabled>Select Employee</option>';
+                        if (data && data.length > 0) {
+                            data.forEach(emp => {
+                                if (emp && emp.id && emp.name) {
+                                    const option = document.createElement('option');
+                                    option.value = emp.id;
+                                    option.text = emp.name + (emp.employeeId ? ' (' + emp.employeeId + ')' : '');
+                                    employeeSelect.appendChild(option);
+                                }
+                            });
+                            console.log('Loaded ' + employeeSelect.options.length + ' employees');
+                        } else {
+                            console.warn('No employees returned from API');
+                            const option = document.createElement('option');
+                            option.text = 'No employees available';
+                            option.disabled = true;
+                            employeeSelect.appendChild(option);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching employees:', error);
+                        employeeSelect.innerHTML = '<option value="" selected disabled>Error loading employees</option>';
+                    });
+
+                // Reset form fields
+                document.getElementById('addPayrollForm').reset();
+                employeeName.value = '';
+                employeeEmail.value = '';
+                employeeId.value = '';
+                document.getElementById('baseSalary').value = '';
+            });
+
+            // Fetch employee details on selection
+            employeeSelect.addEventListener('change', function () {
+                const empId = this.value;
+                const baseSalaryInput = document.getElementById('baseSalary');
+                if (empId) {
+                    // First get employee details
+                    const employeeApiUrl = contextPath.endsWith('/')
+                        ? contextPath + 'admin/api/employees/' + empId
+                        : contextPath + '/admin/api/employees/' + empId;
+                    fetch(employeeApiUrl)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data) {
+                                employeeName.value = data.name || '';
+                                employeeEmail.value = data.email || '';
+                                employeeId.value = data.employeeId || '';
+
+                                // Try to fetch base salary from payroll table first
+                                const payrollApiUrl = contextPath.endsWith('/')
+                                    ? contextPath + 'admin/api/payroll/base-salary/' + empId
+                                    : contextPath + '/admin/api/payroll/base-salary/' + empId;
+                                fetch(payrollApiUrl)
+                                    .then(response => response.json())
+                                    .then(payrollData => {
+                                        console.log('Payroll data:', payrollData);
+                                        if (payrollData && payrollData.success && payrollData.baseSalary && payrollData.baseSalary > 0) {
+                                            baseSalaryInput.value = payrollData.baseSalary;
+                                            // Admin should be able to edit the base salary
+                                            baseSalaryInput.removeAttribute('readonly');
+                                            baseSalaryInput.readOnly = false;
+                                            baseSalaryInput.classList.remove('bg-light');
+                                        } else if (data.salary && data.salary > 0) {
+                                            // Fallback to employee's salary field
+                                            baseSalaryInput.value = data.salary;
+                                            baseSalaryInput.removeAttribute('readonly');
+                                            baseSalaryInput.readOnly = false;
+                                            baseSalaryInput.classList.remove('bg-light');
+                                        } else {
+                                            baseSalaryInput.value = '';
+                                            baseSalaryInput.removeAttribute('readonly');
+                                            baseSalaryInput.readOnly = false;
+                                            baseSalaryInput.classList.remove('bg-light');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error fetching payroll data:', error);
+                                        // Fallback to employee salary
+                                        if (data.salary && data.salary > 0) {
+                                            baseSalaryInput.value = data.salary;
+                                        } else {
+                                            baseSalaryInput.value = '';
+                                        }
+                                        baseSalaryInput.removeAttribute('readonly');
+                                        baseSalaryInput.readOnly = false;
+                                        baseSalaryInput.classList.remove('bg-light');
+                                    });
+                            }
+                        })
+                        .catch(error => console.error('Error fetching employee details:', error));
+                } else {
+                    // Reset fields when no employee selected
+                    employeeName.value = '';
+                    employeeEmail.value = '';
+                    employeeId.value = '';
+                    baseSalaryInput.value = '';
+                    baseSalaryInput.removeAttribute('readonly');
+                    baseSalaryInput.readOnly = false;
+                    baseSalaryInput.classList.remove('bg-light');
+                }
+            });
+
+            // Save Payroll
+            savePayrollBtn.addEventListener('click', function () {
+                const empId = employeeSelect.value;
+                const salary = document.getElementById('baseSalary').value;
+
+                if (!empId || !salary) {
+                    alert('Please fill in all required fields.');
+                    return;
+                }
+
+                const params = new URLSearchParams();
+                params.append('employeeId', empId);
+                params.append('baseSalary', salary);
+
+                fetch(adminPayrollSaveUrl, {
+                    method: 'POST',
+                    body: params
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Payroll saved successfully!');
+                            location.reload(); // Reload to show the new entry
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error saving payroll:', error);
+                        alert('An error occurred while saving.');
+                    });
+            });
+        });
+    </script>
+</body>
+
+</html>

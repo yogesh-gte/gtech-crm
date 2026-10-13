@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Employee Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            color: var(--brand-primary);
+            font-weight: 700;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            color: var(--brand-primary);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            background: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+        }
+
+        .card-header h4 {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .stat-card {
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+        /* Buttons */
+        .btn-check-in {
+            background-color: #198754;
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+
+        /* Tables */
+        .table {
+            color: var(--text-primary);
+            vertical-align: middle;
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge {
+            font-size: 1.1rem;
+            padding: 8px 16px;
+            border-radius: 50px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top mb-4">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1"><i class="fas fa-cube me-2"></i>LogSphere</span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+
+                    <li class="nav-item"><a th:href="@{/employee/tasks}" class="nav-link"><i
+                                class="fas fa-tasks me-1"></i> My
+                            Tasks</a></li>
+                    <li class="nav-item"><a th:href="@{/employee/qrcode}" class="nav-link"><i
+                                class="fas fa-qrcode me-1"></i>
+                            My QR</a></li>
+                    <li class="nav-item"><a th:href="@{/employee/attendance/history}" class="nav-link">Attendance</a>
+                    </li>
+                    <li class="nav-item"><a th:href="@{/employee/leave/apply}" class="nav-link">Apply Leave</a></li>
+                    <li class="nav-item"><a th:href="@{/employee/leave/history}" class="nav-link">Leave History</a></li>
+                    <li class="nav-item"><a th:href="@{/meetings/create}" class="nav-link">Create Meeting</a></li>
+                    <li class="nav-item"><a th:href="@{/employee/suggestion/submit}" class="nav-link">Suggestion</a>
+                    </li>
+
+                    <li class="nav-item position-relative">
+                        <a th:href="@{/employee/approvals}" class="nav-link">
+                            Approvals
+                            <span th:if="${pendingCount > 0}"
+                                class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle badge-sm"
+                                th:text="${pendingCount}"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item ms-lg-3">
+                        <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h2 class="fw-bold mb-4 text-dark">Welcome, <span th:text="${employee.name}"
+                class="text-primary">Employee</span></h2>
+
+        <!-- Success/Error Messages -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-check-circle me-2"></i> <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i> <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${warning}" class="alert alert-warning alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i> <span th:text="${warning}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${info}" class="alert alert-info alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-info-circle me-2"></i> <span th:text="${info}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card stat-card h-100 border-top border-4 border-warning">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-2 text-warning fs-4"><i class="fas fa-tachometer-alt"></i></div>
+                        <h5 class="text-secondary small text-uppercase fw-bold">Effort Score</h5>
+                        <h2 class="text-dark fw-bold mb-1"
+                            th:text="${employee.effortScore != null ? #numbers.formatDecimal(employee.effortScore, 1, 1) : '100.0'}">
+                            100.0</h2>
+                        <small class="badge bg-warning bg-opacity-10 text-warning"
+                            th:if="${employee.consistentDays != null && employee.consistentDays > 0}">
+                            <span th:text="${employee.consistentDays}"></span> days consistent
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card stat-card h-100 border-top border-4 border-info">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-2 text-info fs-4"><i class="fas fa-calendar-alt"></i></div>
+                        <h5 class="text-secondary small text-uppercase fw-bold">Leave Balance</h5>
+                        <h2 class="text-dark fw-bold mb-1" th:text="${leaveBalance != null ? leaveBalance : 0}">0</h2>
+                        <small class="text-secondary">Days Remaining</small>
+                        <div class="mt-3 d-flex gap-2 justify-content-center">
+
+                            <a th:href="@{/employee/leave/apply}"
+                                class="btn btn-outline-primary btn-sm flex-fill">Apply</a>
+                            <a th:href="@{/employee/leave/history}"
+                                class="btn btn-outline-secondary btn-sm flex-fill">History</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Today's Status -->
+            <div class="col-lg-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4 class="mb-0 text-primary"><i class="fas fa-user-clock me-2"></i>Today's Status</h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="text-center mb-4">
+                            <span th:if="${employee.status == 'IN'}"
+                                class="badge bg-success bg-opacity-10 text-success bg-opacity-25 status-badge border border-success">
+                                <i class="fas fa-check-circle me-1"></i> CLOCKED IN
+                            </span>
+                            <span th:if="${employee.status == 'OUT'}"
+                                class="badge bg-secondary bg-opacity-10 text-secondary status-badge border border-secondary">
+                                <i class="fas fa-circle me-1"></i> CLOCKED OUT
+                            </span>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-sm-6">
+                                <div class="p-3 bg-light rounded text-center">
+                                    <small class="text-secondary d-block">Employee ID</small>
+                                    <span class="fw-bold text-dark" th:text="${employee.employeeId}"></span>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="p-3 bg-light rounded text-center">
+                                    <small class="text-secondary d-block">Department</small>
+                                    <span class="fw-bold text-dark" th:text="${employee.department}"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Display Clock-In Status -->
+                        <div th:if="${checkInStatusDisplay != null}" class="alert alert-light border shadow-sm mb-3">
+                            <strong class="text-dark mb-2 d-block small text-uppercase">Clock-In Analysis</strong>
+                            <div class="d-flex align-items-center gap-2">
+                                <span th:if="${checkInStatusDisplay == 'Late Clock In'}"
+                                    class="badge bg-warning text-dark px-3 py-2"><i
+                                        class="fas fa-exclamation-triangle me-1"></i> Late</span>
+                                <span th:if="${checkInStatusDisplay == 'Early Clock In'}"
+                                    class="badge bg-info text-white px-3 py-2"><i class="fas fa-clock me-1"></i>
+                                    Early</span>
+                                <span th:if="${checkInStatusDisplay == 'On Time Clock In'}"
+                                    class="badge bg-success text-white px-3 py-2"><i class="fas fa-check me-1"></i> On
+                                    Time</span>
+                            </div>
+                            <p class="text-secondary mt-2 mb-0 small"
+                                th:if="${todayAttendance != null && todayAttendance.checkInTime != null}">
+                                Clocked in: <span class="fw-medium text-dark"
+                                    th:text="${#temporals.format(todayAttendance.checkInTime, 'HH:mm:ss')}"></span>
+                                <span th:if="${employee.scheduledStartTime != null}"> (Scheduled: <span
+                                        th:text="${employee.scheduledStartTime}"></span>)</span>
+                            </p>
+                        </div>
+
+                        <!-- Display Clock-Out Status -->
+                        <div th:if="${checkOutStatusDisplay != null}" class="alert alert-light border shadow-sm mb-3">
+                            <strong class="text-dark mb-2 d-block small text-uppercase">Clock-Out Analysis</strong>
+                            <div class="d-flex align-items-center gap-2">
+                                <span th:if="${checkOutStatusDisplay == 'Late Clock Out'}"
+                                    class="badge bg-warning text-dark px-3 py-2">Late</span>
+                                <span th:if="${checkOutStatusDisplay == 'Early Clock Out'}"
+                                    class="badge bg-danger text-white px-3 py-2">Early</span>
+                                <span th:if="${checkOutStatusDisplay == 'On Time Clock Out'}"
+                                    class="badge bg-success text-white px-3 py-2">On Time</span>
+                            </div>
+                            <p class="text-secondary mt-2 mb-0 small"
+                                th:if="${todayAttendance != null && todayAttendance.checkOutTime != null}">
+                                Clocked out: <span class="fw-medium text-dark"
+                                    th:text="${#temporals.format(todayAttendance.checkOutTime, 'HH:mm:ss')}"></span>
+                                <span th:if="${employee.scheduledEndTime != null}"> (Scheduled: <span
+                                        th:text="${employee.scheduledEndTime}"></span>)</span>
+                            </p>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded mt-3">
+                            <span class="text-secondary fw-medium">Total Hours Today</span>
+                            <span class="badge bg-primary fs-6 px-3"
+                                th:if="${todayAttendance != null && todayAttendance.totalHours != null}"
+                                th:text="${#numbers.formatDecimal(todayAttendance.totalHours, 1, 1)} + ' hrs'"></span>
+                            <span class="text-muted small" th:if="${todayAttendance == null}">Not started</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clock In/Out Actions -->
+            <div class="col-lg-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4 class="mb-0 text-primary"><i class="fas fa-stopwatch me-2"></i>Clock In/Out</h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <div th:if="${employee.scheduledStartTime != null}" class="mb-4 text-center">
+                            <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">
+                                <i class="far fa-calendar me-1"></i> Shift: <span class="text-dark fw-bold"
+                                    th:text="${employee.scheduledStartTime} + ' - ' + ${employee.scheduledEndTime}"></span>
+                            </span>
+                        </div>
+
+                        <div th:if="${employee.status == 'OUT'}">
+                            <!-- Face Recognition Status -->
+                            <div th:if="${employee.faceImage != null && !employee.faceImage.isEmpty()}"
+                                class="alert alert-success d-flex align-items-center p-3 mb-4">
+                                <i class="fas fa-smile-beam fs-4 me-3"></i>
+                                <div>
+                                    <strong>Face Registered</strong>
+                                    <div class="small">Ready for secure clock-in</div>
+                                </div>
+                            </div>
+                            <div th:if="${employee.faceImage == null || employee.faceImage.isEmpty()}"
+                                class="alert alert-warning d-flex align-items-center p-3 mb-4">
+                                <i class="fas fa-user-slash fs-4 me-3"></i>
+                                <div>
+                                    <strong>Face Not Registered</strong>
+
+                                    <div class="small"><a th:href="@{/employee/face-capture}"
+                                            class="alert-link">Register face</a> to enable clock-in.</div>
+                                </div>
+                            </div>
+
+                            <!-- Work Mode Selector -->
+                            <div class="mb-4">
+                                <label class="form-label text-secondary fw-bold small text-uppercase">Select Work
+                                    Mode</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="workMode" id="office" value="OFFICE"
+                                        th:checked="${employee.workMode == 'OFFICE' || employee.workMode == null}">
+                                    <label class="btn btn-outline-primary" for="office"><i
+                                            class="fas fa-building me-1"></i> Office</label>
+
+                                    <input type="radio" class="btn-check" name="workMode" id="wfh"
+                                        value="WORK_FROM_HOME" th:checked="${employee.workMode == 'WORK_FROM_HOME'}">
+                                    <label class="btn btn-outline-primary" for="wfh"><i class="fas fa-home me-1"></i>
+                                        WFH</label>
+
+                                    <input type="radio" class="btn-check" name="workMode" id="onsite" value="ON_SITE"
+                                        th:checked="${employee.workMode == 'ON_SITE'}">
+                                    <label class="btn btn-outline-primary" for="onsite"><i class="fas fa-car me-1"></i>
+                                        On-Site</label>
+                                </div>
+                            </div>
+
+                            <!-- Face Recognition Camera Section -->
+                            <div class="mb-3" th:if="${employee.faceImage != null && !employee.faceImage.isEmpty()}">
+                                <div id="checkinInstructions" class="text-center mb-2">
+                                    <p class="text-secondary small mb-0">Camera required for verification upon clock-in
+                                    </p>
+                                </div>
+                                <video id="checkinVideo" width="100%" height="240" autoplay
+                                    style="display:none; border-radius: 8px; border: 2px solid #0d6efd;"></video>
+                                <canvas id="checkinCanvas" width="320" height="240" style="display:none;"></canvas>
+                                <div id="checkinPreview" class="text-center mb-2"></div>
+                                <div id="checkinStatus" class="text-center mb-2"></div>
+                            </div>
+
+                            <form id="clockInForm"
+                                th:if="${employee.faceImage != null && !employee.faceImage.isEmpty()}">
+                                <input type="hidden" name="workMode" id="workModeInput" value="OFFICE">
+                                <input type="hidden" id="checkinFaceImage" name="faceImage">
+                                <button type="button" class="btn btn-primary btn-lg w-100 mb-2 shadow-sm py-3"
+                                    id="startCameraBtn" onclick="startFaceCheckIn()">
+                                    <i class="fas fa-camera me-2"></i> Start Camera & Clock In
+                                </button>
+                                <button type="button" class="btn btn-success btn-lg w-100 mb-2 shadow-sm py-3"
+                                    id="captureFaceBtn" onclick="captureAndCheckIn()" style="display:none;">
+                                    <i class="fas fa-check-circle me-2"></i> Capture & Verify
+                                </button>
+                            </form>
+                        </div>
+
+                        <div th:if="${employee.status == 'IN'}">
+                            <div class="mb-4 text-center">
+                                <span class="text-secondary small">Current Mode:</span>
+                                <span class="badge bg-info-subtle text-info-emphasis ms-2"
+                                    th:text="${employee.workMode}"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <video id="checkoutVideo" width="100%" height="240" autoplay
+                                    style="display:none; border-radius: 8px;"></video>
+                                <canvas id="checkoutCanvas" width="320" height="240" style="display:none;"></canvas>
+                                <div id="checkoutPreview" class="text-center mb-2"></div>
+                            </div>
+
+                            <form id="clockOutForm">
+                                <input type="hidden" id="checkoutFaceImage" name="faceImage">
+                                <button type="button" class="btn btn-danger btn-lg w-100 mb-3 shadow-sm py-3"
+                                    onclick="startFaceCheckOut()">
+                                    <i class="fas fa-sign-out-alt me-2"></i> Clock Out
+                                </button>
+                            </form>
+
+                            <div class="text-center text-secondary small bg-light p-3 rounded">
+                                <div class="mb-1">Started at: <span class="fw-bold text-dark"
+                                        th:text="${employee.currentCheckIn != null ? #temporals.format(employee.currentCheckIn, 'HH:mm') : 'N/A'}"></span>
+                                </div>
+                                <div>Duration: <span class="fw-bold text-primary"
+                                        th:text="${employee.totalHoursToday != null ? #numbers.formatDecimal(employee.totalHoursToday, 1, 1) + 'h' : '0h'}"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leave Requests and Activity Summary Row -->
+        <div class="row g-4 mt-2">
+            <!-- Leave Requests -->
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0 text-dark"><i class="fas fa-calendar-check me-2 text-primary"></i>My Leave
+                            Requests</h4>
+                        <a th:href="@{/employee/leave/apply}" class="btn btn-primary btn-sm rounded-pill px-3"><i
+                                class="fas fa-plus me-1"></i> Apply</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded text-center border">
+                                    <h6 class="text-secondary small text-uppercase">Pending</h6>
+                                    <h3 class="text-warning mb-0"
+                                        th:text="${pendingLeaves != null ? pendingLeaves.size() : 0}">0</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded text-center border">
+                                    <h6 class="text-secondary small text-uppercase">Approved</h6>
+                                    <h3 class="text-success mb-0"
+                                        th:text="${approvedLeaves != null ? approvedLeaves.size() : 0}">0</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded text-center border">
+                                    <h6 class="text-secondary small text-uppercase">Balance</h6>
+                                    <h3 class="text-primary mb-0" th:text="${leaveBalance != null ? leaveBalance : 0}">0
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Leave Type</th>
+                                        <th>Date Range</th>
+                                        <th>Days</th>
+                                        <th>Status</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${leaveRequests == null || leaveRequests.isEmpty()}">
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            No recent leave requests
+                                        </td>
+                                    </tr>
+                                    <tr th:each="leave : ${leaveRequests}">
+                                        <td><span class="badge bg-light text-dark border"
+                                                th:text="${leave.leaveType}"></span></td>
+                                        <td>
+                                            <span th:text="${#temporals.format(leave.startDate, 'MMM dd')}"></span> -
+                                            <span th:text="${#temporals.format(leave.endDate, 'MMM dd')}"></span>
+                                        </td>
+                                        <td th:text="${leave.numberOfDays}"></td>
+                                        <td>
+                                            <span class="badge"
+                                                th:classappend="${leave.status == 'APPROVED' ? 'bg-success-subtle text-success' : (leave.status == 'REJECTED' ? 'bg-danger-subtle text-danger' : 'bg-warning-subtle text-warning-emphasis')}"
+                                                th:text="${leave.status}"></span>
+                                        </td>
+                                        <td class="text-secondary small"
+                                            th:text="${leave.reason != null ? leave.reason : '-'}"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Summary Removed -->
+            <!-- My Badges -->
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4 class="mb-0 text-dark"><i class="fas fa-trophy me-2 text-warning"></i>My Badges</h4>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${myBadges == null || myBadges.isEmpty()}" class="text-center text-secondary py-3">
+                            <p>No badges awarded yet. Keep up the good work!</p>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2" th:if="${myBadges != null && !myBadges.isEmpty()}">
+                            <div th:each="badge : ${myBadges}"
+                                class="border rounded p-3 text-center bg-light flex-fill">
+                                <div class="fs-1 mb-2">🏅</div>
+                                <h6 class="fw-bold text-dark mb-1" th:text="${badge.badgeName}">Badge</h6>
+                                <p class="small text-secondary mb-0" th:text="${badge.appreciationNote}">Note</p>
+                                <small class="text-muted d-block mt-1"
+                                    th:text="${#temporals.format(badge.awardedDate, 'MMM dd')}"></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team Rules -->
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4 class="mb-0 text-dark"><i class="fas fa-gavel me-2 text-info"></i>Team Rules</h4>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${activeRules == null || activeRules.isEmpty()}"
+                            class="text-center text-secondary py-3">
+                            <p>No active team rules.</p>
+                        </div>
+                        <ul class="list-group list-group-flush"
+                            th:if="${activeRules != null && !activeRules.isEmpty()}">
+                            <li th:each="rule : ${activeRules}"
+                                class="list-group-item px-0 py-2 border-0 border-bottom bg-transparent">
+                                <div class="d-flex">
+                                    <i class="fas fa-info-circle text-primary mt-1 me-2"></i>
+                                    <div>
+                                        <strong class="text-dark d-block" th:text="${rule.ruleName}">Rule</strong>
+                                        <small class="text-secondary" th:text="${rule.description}">Desc</small>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Suggestion Box -->
+            <div class="col-md-12">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4 class="mb-0 text-dark"><i class="fas fa-lightbulb me-2 text-warning"></i>Suggestion Box</h4>
+                    </div>
+                    <div class="card-body text-center d-flex flex-column justify-content-center">
+                        <p class="text-secondary">Have an idea to improve the workplace? We'd love to hear it!</p>
+                        <div class="d-flex gap-2 justify-content-center">
+                            <a th:href="@{/employee/suggestion/submit}" class="btn btn-warning text-white"><i
+                                    class="fas fa-paper-plane me-1"></i> Submit</a>
+                            <a th:href="@{/employee/suggestion/my-suggestions}"
+                                class="btn btn-outline-secondary">History</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        // ... (Keeping the exact same script for camera/logic functionality) ...
+        let checkInStream = null;
+        let checkOutStream = null;
+
+        // Update work mode input when radio button changes
+        document.querySelectorAll('input[name="workMode"]').forEach(radio => {
+            radio.addEventListener('change', function () {
+                const workModeInput = document.getElementById('workModeInput');
+                if (workModeInput) {
+                    workModeInput.value = this.value;
+                }
+            });
+        });
+
+        function startFaceCheckIn() {
+            const video = document.getElementById('checkinVideo');
+            const instructions = document.getElementById('checkinInstructions');
+            const startBtn = document.getElementById('startCameraBtn');
+            const captureBtn = document.getElementById('captureFaceBtn');
+            const statusDiv = document.getElementById('checkinStatus');
+
+            navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480, facingMode: 'user' }
+            }).then(stream => {
+                checkInStream = stream;
+                video.srcObject = stream;
+                video.style.display = 'block';
+
+                if (instructions) instructions.style.display = 'none';
+                if (startBtn) startBtn.style.display = 'none';
+                if (captureBtn) captureBtn.style.display = 'block';
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div class="alert alert-info py-2 small mb-0">Camera Active. Position face and capture.</div>';
+                }
+            }).catch(err => {
+                alert('Error accessing camera: ' + err.message);
+                console.error('Camera error:', err);
+            });
+        }
+
+        function captureAndCheckIn() {
+            const video = document.getElementById('checkinVideo');
+            const canvas = document.getElementById('checkinCanvas');
+            const statusDiv = document.getElementById('checkinStatus');
+            const faceInput = document.getElementById('checkinFaceImage');
+            const workMode = document.getElementById('workModeInput').value;
+            const captureBtn = document.getElementById('captureFaceBtn');
+
+            if (!checkInStream) {
+                alert('Please start the camera first');
+                return;
+            }
+
+            // Capture image
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, 640, 480);
+            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+            faceInput.value = imageData;
+
+            // Stop camera
+            checkInStream.getTracks().forEach(track => track.stop());
+            checkInStream = null;
+            video.style.display = 'none';
+            if (captureBtn) captureBtn.style.display = 'none';
+
+            // Show processing status
+            if (statusDiv) {
+                statusDiv.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="fas fa-spinner fa-spin me-2"></i>Verifying & Clocking In...</div>';
+            }
+
+            // Submit to server
+            fetch(/*[[@{/employee/checkin-face}]]*/ '/employee/checkin-face', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `faceImage=${encodeURIComponent(imageData)}&workMode=${workMode}`
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.text().then(data => {
+                            let statusClass = 'alert-success';
+                            let statusText = 'Success!';
+
+                            if (data.includes('Late clock in')) {
+                                statusClass = 'alert-warning';
+                                statusText = 'Clocked In (Late)';
+                            } else if (data.includes('Early clock in')) {
+                                statusClass = 'alert-info';
+                                statusText = 'Clocked In (Early)';
+                            }
+
+                            if (statusDiv) {
+                                statusDiv.innerHTML = `<div class="alert ${statusClass} py-2 mb-0"><strong>${statusText}</strong><br>${data}</div>`;
+                            }
+                            setTimeout(() => {
+                                location.reload();
+                            }, 2000);
+                        });
+                    } else {
+                        return response.text().then(data => {
+                            if (statusDiv) {
+                                statusDiv.innerHTML = '<div class="alert alert-danger py-2 mb-0"><strong>Failed</strong><br>' + data + '</div>';
+                            } else {
+                                alert('Error: ' + data);
+                            }
+                            const startBtn = document.getElementById('startCameraBtn');
+                            if (startBtn) startBtn.style.display = 'block';
+                        });
+                    }
+                })
+                .catch(error => {
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<div class="alert alert-danger py-2 mb-0"><strong>Error</strong><br>' + error + '</div>';
+                    }
+                    const startBtn = document.getElementById('startCameraBtn');
+                    if (startBtn) startBtn.style.display = 'block';
+                });
+        }
+
+        function startFaceCheckOut() {
+            const video = document.getElementById('checkoutVideo');
+            const canvas = document.getElementById('checkoutCanvas');
+            const faceInput = document.getElementById('checkoutFaceImage');
+
+            navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480, facingMode: 'user' }
+            }).then(stream => {
+                checkOutStream = stream;
+                video.srcObject = stream;
+                video.style.display = 'block';
+
+                setTimeout(() => {
+                    const context = canvas.getContext('2d');
+                    context.drawImage(video, 0, 0, 640, 480);
+                    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+                    faceInput.value = imageData;
+
+                    stream.getTracks().forEach(track => track.stop());
+                    video.style.display = 'none';
+
+                    fetch(/*[[@{/employee/checkout-face}]]*/ '/employee/checkout-face', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `faceImage=${encodeURIComponent(imageData)}`
+                    })
+                        .then(response => {
+                            if (response.ok) {
+                                location.reload();
+                            } else {
+                                return response.text().then(data => alert('Error: ' + data));
+                            }
+                        })
+                        .catch(error => alert('Error: ' + error));
+                }, 2000);
+            }).catch(err => {
+                alert('Error accessing camera: ' + err.message);
+            });
+        }
+
+
+    </script>
+</body>
+
+</html>

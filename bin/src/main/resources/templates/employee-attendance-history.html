@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>My Attendance History - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            background: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+        }
+
+        .card-header h4 {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .table {
+            color: var(--text-primary);
+            vertical-align: middle;
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top mb-4">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1 fw-bold text-primary"><i class="fas fa-history me-2"></i>Attendance
+                History</span>
+            <div>
+                <a th:href="@{/employee/dashboard}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container px-4 pb-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body text-center py-4">
+                <div class="mb-2">
+                    <span
+                        class="avatar-circle bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center"
+                        style="width: 50px; height: 50px; font-size: 1.2rem;">
+                        <i class="fas fa-user"></i>
+                    </span>
+                </div>
+                <h4 class="fw-bold mb-1" th:text="${employee.name}"></h4>
+                <p class="text-secondary mb-3" th:text="'Employee ID: ' + ${employee.employeeId}"></p>
+                <div class="d-inline-flex align-items-center bg-light rounded-pill px-4 py-2 border">
+                    <span class="text-secondary me-2">Total Hours Worked:</span>
+                    <span class="fw-bold text-primary"
+                        th:text="${#numbers.formatDecimal(totalHours, 1, 1)} + ' hours'"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-calendar-alt me-2 text-primary"></i>Attendance Records</h4>
+                <div class="text-muted small">
+                    <i class="fas fa-list me-1"></i> Full History
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Date</th>
+                                <th>Clock In</th>
+                                <th>Clock Out</th>
+                                <th>Work Mode</th>
+                                <th>Total Hours</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${attendanceHistory.isEmpty()}">
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    <i class="far fa-calendar-times fs-4 d-block mb-2 text-secondary"></i>
+                                    No attendance records found
+                                </td>
+                            </tr>
+                            <tr th:each="att : ${attendanceHistory}">
+                                <td class="ps-4 fw-medium"
+                                    th:text="${#temporals.format(att.attendanceDate, 'yyyy-MM-dd (EEEE)')}"></td>
+                                <td class="text-success"
+                                    th:text="${att.checkInTime != null ? #temporals.format(att.checkInTime, 'HH:mm:ss') : '-'}">
+                                </td>
+                                <td class="text-danger"
+                                    th:text="${att.checkOutTime != null ? #temporals.format(att.checkOutTime, 'HH:mm:ss') : '-'}">
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border"
+                                        th:text="${att.workMode != null ? att.workMode : 'N/A'}"></span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold text-dark"
+                                        th:text="${att.totalHours != null ? #numbers.formatDecimal(att.totalHours, 1, 1) + 'h' : '-'}"></span>
+                                </td>
+                                <td>
+                                    <span th:if="${att.status == 'PRESENT'}"
+                                        class="badge bg-success-subtle text-success">Present</span>
+                                    <span th:if="${att.status == 'ABSENT'}"
+                                        class="badge bg-danger-subtle text-danger">Absent</span>
+                                    <span th:if="${att.status == 'HALF_DAY'}"
+                                        class="badge bg-warning-subtle text-warning-emphasis">Half Day</span>
+                                    <span th:if="${att.status == 'LEAVE'}"
+                                        class="badge bg-info-subtle text-info-emphasis">Leave</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
+

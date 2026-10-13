@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Edit Team Rule</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f7ff;
+            color: #333;
+        }
+
+        .form-section {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            color: #1a8cf0;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        .form-label {
+            color: #4a5568 !important;
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .form-control,
+        .form-select {
+            background-color: #ffffff !important;
+            border: 1px solid #dcdfe6;
+            color: #0f1b2d !important;
+            padding: 10px 14px;
+            border-radius: 8px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #1a8cf0;
+            box-shadow: 0 0 0 0.2rem rgba(26, 140, 240, 0.15);
+        }
+    </style>
+</head>
+
+<body class="bg-light text-dark">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm py-3">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 fw-bold text-primary">LogSphere</span>
+            <div>
+                <a th:href="@{/manager/dashboard}" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="fas fa-arrow-left me-1"></i> Dashboard
+                </a>
+                <a th:href="@{/logout}" class="btn btn-outline-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0 rounded-4 bg-white">
+                    <div class="card-header bg-white border-bottom py-3">
+                        <h3 class="text-dark mb-0 fw-bold">🔧 Edit Team Rule</h3>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Success/Error Messages -->
+                        <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm"
+                            role="alert">
+                            <span th:text="${success}"></span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm"
+                            role="alert">
+                            <span th:text="${error}"></span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+
+                        <form th:action="@{/manager/rule/update/{id}(id=${rule.id})}" method="post">
+                            <div class="form-section shadow-sm">
+                                <h5 class="section-title">Rule Details</h5>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="ruleName" class="form-label">Rule Name <span
+                                                class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="ruleName" name="ruleName" required
+                                            th:value="${rule.ruleName}">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="ruleType" class="form-label">Rule Type <span
+                                                class="text-danger">*</span></label>
+                                        <select class="form-select" id="ruleType" name="ruleType" required>
+                                            <option value="">Select Rule Type</option>
+                                            <option value="BREAK_RULE" th:selected="${rule.ruleType == 'BREAK_RULE'}">
+                                                Break Rule</option>
+                                            <option value="PRODUCTIVITY_THRESHOLD"
+                                                th:selected="${rule.ruleType == 'PRODUCTIVITY_THRESHOLD'}">Productivity
+                                                Threshold</option>
+                                            <option value="TASK_PRIORITY"
+                                                th:selected="${rule.ruleType == 'TASK_PRIORITY'}">Task Priority</option>
+                                            <option value="SLA_TIMELINE"
+                                                th:selected="${rule.ruleType == 'SLA_TIMELINE'}">SLA Timeline</option>
+                                            <option value="WORK_HOURS" th:selected="${rule.ruleType == 'WORK_HOURS'}">
+                                                Work Hours</option>
+                                            <option value="OTHER" th:selected="${rule.ruleType == 'OTHER'}">Other
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description <span
+                                            class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="description" name="description" rows="4" required
+                                        th:text="${rule.description}"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="value" class="form-label">Value (Optional)</label>
+                                    <input type="text" class="form-control" id="value" name="value"
+                                        th:value="${rule.ruleValue}"
+                                        placeholder="e.g., 15 minutes, 80%, High, 24 hours">
+                                    <small class="text-muted">Enter the rule value (e.g., time duration, percentage,
+                                        threshold)</small>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="isActive" name="isActive"
+                                            value="true" th:checked="${rule.isActive != null && rule.isActive}">
+                                        <label class="form-check-label text-dark fw-medium" for="isActive">
+                                            Active
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                <a th:href="@{/manager/dashboard}" class="btn btn-light border px-4">Cancel</a>
+                                <button type="submit" class="btn btn-primary px-4 shadow-sm">✅ Update Rule</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
+

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Reception Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 1rem 1.5rem;
+        }
+
+        .navbar-brand {
+            color: var(--brand-primary);
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .stat-card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s;
+            height: 100%;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+        }
+
+        .card-header h4 {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        /* Forms */
+        .form-control {
+            border: 1px solid #dee2e6;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+        }
+
+        .form-control:focus {
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+        }
+
+        /* Tables */
+        .table {
+            color: var(--text-primary);
+            vertical-align: middle;
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* Buttons */
+        .btn-check-in {
+            background-color: #198754;
+            border: none;
+            padding: 10px 0;
+            font-weight: 600;
+        }
+
+        .btn-check-in:hover {
+            background-color: #157347;
+        }
+
+        .badge {
+            font-weight: 500;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1"><i class="fas fa-id-card me-2"></i>LogSphere</span>
+            <div class="d-flex gap-2">
+                <a th:href="@{/admin/dashboard}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Admin Dashboard
+                </a>
+                <a th:href="@{/}" class="btn btn-light btn-sm text-secondary">Home</a>
+                <a th:href="@{/login}" class="btn btn-primary btn-sm">Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <!-- Success Message -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i> <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold mb-0 text-dark">Reception Dashboard</h2>
+            <div class="d-flex gap-2">
+                <a th:href="@{/visitors/search}" class="btn btn-outline-primary">
+                    <i class="fas fa-search me-1"></i> Search Visitors
+                </a>
+                <a th:href="@{/visitors/history}" class="btn btn-outline-secondary">
+                    <i class="fas fa-history me-1"></i> View Full History
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card stat-card border-top border-4 border-warning">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-2">
+                            <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3 py-2">
+                                <i class="fas fa-users mb-1"></i>
+                            </span>
+                        </div>
+                        <h5 class="text-secondary small text-uppercase fw-bold">Total Visitors</h5>
+                        <h2 class="text-dark fw-bold mb-0" th:text="${totalVisitors}">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card border-top border-4 border-success">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-2">
+                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2">
+                                <i class="fas fa-door-open mb-1"></i>
+                            </span>
+                        </div>
+                        <h5 class="text-secondary small text-uppercase fw-bold">Currently In</h5>
+                        <h2 class="text-success fw-bold mb-0" th:text="${currentlyIn}">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card border-top border-4 border-info">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-2">
+                            <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-3 py-2">
+                                <i class="fas fa-check-double mb-1"></i>
+                            </span>
+                        </div>
+                        <h5 class="text-secondary small text-uppercase fw-bold">Checked Out Today</h5>
+                        <h2 class="text-info fw-bold mb-0" th:text="${totalCheckedOut}">0</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Check-In Registered Visitor Section -->
+        <div class="row mb-4">
+            <div class="col-md-8 mx-auto">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4 class="text-primary mb-0"><i class="fas fa-user-check me-2"></i>Check-In Registered Visitor
+                        </h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Error Message -->
+                        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i> <span th:text="${error}"></span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+
+                        <p class="text-secondary mb-4">Enter the visitor's Aadhar or PAN card number provided during
+                            registration.</p>
+
+                        <form th:action="@{/visitors/checkin}" method="post">
+                            <div class="mb-3">
+                                <label class="form-label fw-medium text-secondary">Aadhar Card Number</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-secondary border-end-0"><i
+                                            class="fas fa-id-card"></i></span>
+                                    <input type="text" class="form-control border-start-0 ps-0" name="aadharNumber"
+                                        placeholder="Enter 12-digit Aadhar number" pattern="[0-9]{12}" maxlength="12">
+                                </div>
+                            </div>
+
+                            <div class="text-center my-3 position-relative">
+                                <hr class="text-muted">
+                                <span
+                                    class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small fw-bold">OR</span>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-medium text-secondary">PAN Card Number</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-secondary border-end-0"><i
+                                            class="fas fa-credit-card"></i></span>
+                                    <input type="text" class="form-control border-start-0 ps-0 text-uppercase"
+                                        name="panCardNumber" placeholder="ABCDE1234F" pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}"
+                                        maxlength="10">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow-sm"
+                                onclick="return validateCheckIn()">
+                                <i class="fas fa-sign-in-alt me-2"></i> Check-In Visitor
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Currently Checked In Visitors -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0 text-dark"><i class="fas fa-walking me-2 text-success"></i>Currently Checked In Visitors
+                </h4>
+                <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 rounded-pill"
+                    th:text="${currentlyIn} + ' Active'">0 Active</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Company</th>
+                                <th>Person to Meet</th>
+                                <th>Purpose</th>
+                                <th>Check-In Time</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${checkedInVisitors.isEmpty()}">
+                                <td colspan="8" class="text-center text-muted py-5">
+                                    <i class="fas fa-info-circle me-2 mb-2 fs-4 d-block text-secondary"></i>
+                                    No visitors currently checked in
+                                </td>
+                            </tr>
+                            <tr th:each="visitor : ${checkedInVisitors}">
+                                <td class="ps-4 fw-medium" th:text="${visitor.name}"></td>
+                                <td th:text="${visitor.email}"></td>
+                                <td th:text="${visitor.phone}"></td>
+                                <td th:text="${visitor.company}"></td>
+                                <td th:text="${visitor.personToMeet}"></td>
+                                <td th:text="${visitor.purpose}"></td>
+                                <td class="text-muted" th:text="${#temporals.format(visitor.checkInTime, 'HH:mm')}">
+                                </td>
+                                <td class="text-end pe-4">
+                                    <form th:action="@{/visitors/checkout/{id}(id=${visitor.id})}" method="post"
+                                        style="display: inline;">
+                                        <button type="submit" class="btn btn-danger btn-sm shadow-sm" title="Check Out">
+                                            <i class="fas fa-sign-out-alt"></i> Checkout
+                                        </button>
+                                    </form>
+                                    <form th:action="@{/visitors/delete/{id}(id=${visitor.id})}" method="get"
+                                        style="display: inline;"
+                                        onsubmit="return confirm('Are you sure you want to delete this visitor record?');">
+                                        <button type="submit" class="btn btn-light text-danger btn-sm border ms-1"
+                                            title="Delete">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Visitors History -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0 text-dark">All Visitors History</h4>
+                <a th:href="@{/visitors/history}" class="btn btn-link text-decoration-none btn-sm">View Full History <i
+                        class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Name</th>
+                                <th>Company</th>
+                                <th>Person to Meet</th>
+                                <th>Purpose</th>
+                                <th>Check-In</th>
+                                <th>Check-Out</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${allVisitors.isEmpty()}">
+                                <td colspan="8" class="text-center text-muted py-5">No visitor records found</td>
+                            </tr>
+                            <tr th:each="visitor : ${allVisitors}">
+                                <td class="ps-4 fw-medium" th:text="${visitor.name}"></td>
+                                <td th:text="${visitor.company}"></td>
+                                <td th:text="${visitor.personToMeet}"></td>
+                                <td class="text-secondary small" th:text="${visitor.purpose}"></td>
+                                <td th:text="${#temporals.format(visitor.checkInTime, 'MMM dd, HH:mm')}"></td>
+                                <td
+                                    th:text="${visitor.checkOutTime != null ? #temporals.format(visitor.checkOutTime, 'HH:mm') : '-'}">
+                                </td>
+                                <td>
+                                    <span th:if="${visitor.status == 'Registered'}"
+                                        class="badge bg-info-subtle text-info-emphasis">Registered</span>
+                                    <span th:if="${visitor.status == 'Checked In'}"
+                                        class="badge bg-success-subtle text-success">Checked In</span>
+                                    <span th:if="${visitor.status == 'Checked Out'}"
+                                        class="badge bg-secondary-subtle text-secondary">Checked Out</span>
+                                    <span th:if="${visitor.status == 'Pending Approval'}"
+                                        class="badge bg-warning-subtle text-warning-emphasis">Pending</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <form th:if="${visitor.status == 'Checked In'}"
+                                        th:action="@{/visitors/checkout/{id}(id=${visitor.id})}" method="post"
+                                        style="display: inline;">
+                                        <button type="submit"
+                                            class="btn btn-outline-danger btn-sm py-0 px-2">Out</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-uppercase PAN card input
+        document.querySelector('input[name="panCardNumber"]')?.addEventListener('input', function (e) {
+            this.value = this.value.toUpperCase();
+        });
+
+        // Validate check-in form
+        function validateCheckIn() {
+            const aadharNumber = document.querySelector('input[name="aadharNumber"]')?.value.trim();
+            const panCardNumber = document.querySelector('input[name="panCardNumber"]')?.value.trim();
+
+            if ((!aadharNumber || aadharNumber.length === 0) && (!panCardNumber || panCardNumber.length === 0)) {
+                alert('Please provide either Aadhar number or PAN card number.');
+                return false;
+            }
+
+            // Validate Aadhar format (12 digits)
+            if (aadharNumber && aadharNumber.length !== 12) {
+                alert('Aadhar number must be exactly 12 digits.');
+                return false;
+            }
+
+            // Validate PAN format (5 letters, 4 digits, 1 letter)
+            if (panCardNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panCardNumber)) {
+                alert('PAN card number must be in format: ABCDE1234F (5 letters, 4 digits, 1 letter).');
+                return false;
+            }
+
+            return true;
+        }
+    </script>
+</body>
+
+</html>
+

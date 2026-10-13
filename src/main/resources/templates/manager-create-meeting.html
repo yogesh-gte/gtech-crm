@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Create Team Meeting</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f7ff;
+            color: #333;
+        }
+
+        .main-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 6rem 1rem 2rem 1rem;
+            /* Extra top padding as requested */
+        }
+
+        .form-section {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            color: #1a8cf0;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        .form-label {
+            color: #4a5568 !important;
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .form-control,
+        .form-select {
+            background-color: #ffffff !important;
+            border: 1px solid #dcdfe6;
+            color: #0f1b2d !important;
+            padding: 10px 14px;
+            border-radius: 8px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #1a8cf0;
+            box-shadow: 0 0 0 0.2rem rgba(26, 140, 240, 0.15);
+        }
+    </style>
+</head>
+
+<body class="bg-light text-dark">
+    <!-- Sidebar Removed as per request -->
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center">
+                <h2 class="fw-bold mb-0 text-primary">Create Team Meeting</h2>
+            </div>
+            <div>
+                <a th:href="@{/manager/dashboard}" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="fas fa-arrow-left me-1"></i> Dashboard
+                </a>
+                <a th:href="@{/logout}" class="btn btn-outline-danger btn-sm">Logout</a>
+            </div>
+        </div>
+
+        <div class="container-fluid px-0 pb-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card shadow-sm border-0 rounded-4 bg-white">
+                        <div class="card-header bg-white border-bottom py-3">
+                            <h3 class="text-dark mb-0 fw-bold">📅 Meeting Details</h3>
+                        </div>
+                        <div class="card-body p-4">
+                            <!-- Success/Error Messages -->
+                            <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm"
+                                role="alert">
+                                <span th:text="${success}"></span>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm"
+                                role="alert">
+                                <span th:text="${error}"></span>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+
+                            <form th:action="@{/manager/meetings/create}" method="post">
+                                <div class="form-section shadow-sm">
+                                    <h5 class="section-title">General Info</h5>
+                                    <div class="mb-3">
+                                        <label for="title" class="form-label">Meeting Title <span
+                                                class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="title" name="title" required
+                                            placeholder="e.g., Weekly Stand-up">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="description" class="form-label">Description (Optional)</label>
+                                        <textarea class="form-control" id="description" name="description" rows="3"
+                                            placeholder="Enter meeting agenda..."></textarea>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="meetingType" class="form-label">Meeting Type</label>
+                                            <select class="form-select" id="meetingType" name="meetingType">
+                                                <option value="In-Person">In-Person</option>
+                                                <option value="Online">Online</option>
+                                                <option value="Hybrid">Hybrid</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-section shadow-sm">
+                                    <h5 class="section-title">Schedule</h5>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label for="date" class="form-label">Date <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="date" class="form-control" id="date" name="date" required>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label for="startTime" class="form-label">Start Time <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="time" class="form-control" id="startTime" name="startTime"
+                                                required>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label for="endTime" class="form-label">End Time (Optional)</label>
+                                            <input type="time" class="form-control" id="endTime" name="endTime">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-section shadow-sm">
+                                    <h5 class="section-title">Attendees</h5>
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="addEveryone"
+                                            name="addEveryone" value="true">
+                                        <label class="form-check-label" for="addEveryone">Invite All Active
+                                            Employees</label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Select Attendees</label>
+                                        <div class="card p-3" style="max-height: 200px; overflow-y: auto;">
+                                            <div class="form-check" th:each="emp : ${employees}">
+                                                <input class="form-check-input employee-checkbox" type="checkbox"
+                                                    name="employeeIds" th:value="${emp.id}" th:id="${'emp_' + emp.id}">
+                                                <label class="form-check-label" th:for="${'emp_' + emp.id}"
+                                                    th:text="${emp.name + ' (' + emp.department + ')'}">
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                    <a th:href="@{/manager/dashboard}" class="btn btn-light border px-4">Cancel</a>
+                                    <button type="submit" class="btn btn-primary px-4 shadow-sm">✅ Schedule
+                                        Meeting</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Toggle Employee Select based on "Add Everyone"
+        const addEveryoneCheckbox = document.getElementById('addEveryone');
+        const employeeCheckboxes = document.querySelectorAll('.employee-checkbox');
+
+        addEveryoneCheckbox.addEventListener('change', function () {
+            const isChecked = this.checked;
+            employeeCheckboxes.forEach(checkbox => {
+                checkbox.disabled = isChecked;
+                if (isChecked) checkbox.checked = false;
+            });
+        });
+    </script>
+</body>
+
+</html>

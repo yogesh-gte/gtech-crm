@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Create Meeting - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            background: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.5rem;
+        }
+
+        .card-header h4 {
+            color: var(--brand-primary);
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .form-label {
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control,
+        .form-select {
+            border: 1px solid #dee2e6;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            color: var(--text-primary);
+            background-color: #ffffff;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--brand-primary);
+            border-color: var(--brand-primary);
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top mb-5">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1 fw-bold text-primary"><i class="fas fa-calendar-plus me-2"></i>Create
+                Meeting</span>
+            <div>
+                <a th:href="@{${redirectUrl}}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <div class="row justify-content-center">
+            <div class="col-md-9 col-lg-7">
+                <div class="card shadow-sm">
+                    <div class="card-header text-center">
+                        <h4 class="mb-0">Schedule New Meeting</h4>
+                        <p class="text-secondary small mt-2 mb-0">Fill in the details to schedule a meeting with a
+                            visitor or internal team.</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <form th:action="@{/meetings/create}" th:object="${meeting}" method="post">
+                            <div class="mb-4">
+                                <label class="form-label">Meeting Title <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" th:field="*{title}"
+                                    placeholder="e.g., Project Kickoff, Client Review" required>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" th:field="*{description}" rows="3"
+                                    placeholder="Brief agenda or purpose of the meeting..."></textarea>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <label class="form-label">Organizer (Employee)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-secondary border-end-0"><i
+                                                class="fas fa-user-tie"></i></span>
+                                        <select class="form-select border-start-0" name="organizerId">
+                                            <option value="">Select Employee</option>
+                                            <option th:each="emp : ${employees}" th:value="${emp.id}"
+                                                th:text="${emp.name}"></option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6" id="visitorContainer">
+                                    <label class="form-label">Visitor (Optional)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-secondary border-end-0"><i
+                                                class="fas fa-user-friends"></i></span>
+                                        <select class="form-select border-start-0" name="visitorId">
+                                            <option value="">Select Visitor</option>
+                                            <option th:each="visitor : ${visitors}" th:value="${visitor.id}"
+                                                th:text="${visitor.name + ' - ' + visitor.company}"></option>
+                                        </select>
+                                    </div>
+                                    <small class="text-muted d-block mt-1 ps-1" style="font-size: 0.75rem;">Only shows
+                                        registered/approved visitors.</small>
+                                </div>
+                                <div class="col-md-6 d-none" id="participantsContainer">
+                                    <label class="form-label">Participants</label>
+
+                                    <!-- Invite Everyone Toggle -->
+                                    <div class="form-check form-switch p-2 bg-light rounded border mb-2">
+                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="inviteEveryone"
+                                            name="inviteEveryone">
+                                        <label class="form-check-label fw-medium" for="inviteEveryone"
+                                            id="inviteEveryoneLabel">
+                                            Invite Everyone
+                                        </label>
+                                    </div>
+
+                                    <!-- Specific Employee Selection (Hidden if Invite Everyone is checked) -->
+                                    <!-- Specific Employee Selection (Hidden if Invite Everyone is checked) -->
+                                    <div id="employeeSelectionContainer">
+                                        <div class="dropdown">
+                                            <button
+                                                class="form-select text-start w-100 d-flex justify-content-between align-items-center"
+                                                type="button" id="participantsDropdown" data-bs-toggle="dropdown"
+                                                aria-expanded="false"
+                                                style="background-position: right 0.75rem center;">
+                                                <span id="participantsDropdownText">Select Employees</span>
+                                            </button>
+                                            <ul class="dropdown-menu w-100 p-2 shadow-sm border-0"
+                                                aria-labelledby="participantsDropdown"
+                                                style="max-height: 250px; overflow-y: auto;">
+                                                <li class="px-2 pb-2 border-bottom mb-2">
+                                                    <input type="text" class="form-control form-control-sm mb-2"
+                                                        id="employeeSearchInput" placeholder="Search employees...">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox"
+                                                            id="selectAllEmployees">
+                                                        <label class="form-check-label small fw-bold"
+                                                            for="selectAllEmployees">
+                                                            Select All
+                                                        </label>
+                                                    </div>
+                                                </li>
+                                                <li th:each="emp : ${employees}">
+                                                    <div class="form-check dropdown-item px-2 rounded">
+                                                        <input class="form-check-input employee-checkbox me-2"
+                                                            type="checkbox" name="attendeeIds" th:value="${emp.id}"
+                                                            th:id="${'emp-' + emp.id}">
+                                                        <label class="form-check-label w-100 cursor-pointer"
+                                                            th:for="${'emp-' + emp.id}" style="cursor: pointer;">
+                                                            <span th:text="${emp.name}">Employee Name</span>
+                                                            <small class="text-secondary ms-1"
+                                                                th:text="${'(' + emp.department + ')'}"></small>
+                                                        </label>
+                                                    </div>
+                                                </li>
+                                                <li th:if="${employees.isEmpty()}">
+                                                    <span class="dropdown-item text-muted">No employees available</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <small class="text-muted d-block mt-1 ps-1" style="font-size: 0.75rem;">
+                                        Select "Invite Everyone" to notify all, or pick specific employees.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <label class="form-label">Start Time <span class="text-danger">*</span></label>
+                                    <input type="datetime-local" class="form-control" th:field="*{startTime}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">End Time</label>
+                                    <input type="datetime-local" class="form-control" th:field="*{endTime}">
+                                </div>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <label class="form-label">Location</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-secondary border-end-0"><i
+                                                class="fas fa-map-marker-alt"></i></span>
+                                        <input type="text" class="form-control border-start-0" th:field="*{location}"
+                                            placeholder="Room 304 / Online">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Meeting Type</label>
+                                    <select class="form-select" th:field="*{meetingType}" id="meetingType">
+                                        <option value="">Select Type</option>
+                                        <option value="INTERNAL">Internal</option>
+                                        <option value="EXTERNAL">External</option>
+                                        <option value="CLIENT">Client Meeting</option>
+                                        <option value="HR">HR Meeting</option>
+                                        <option value="MANAGER">Manager Meeting</option>
+                                    </select>
+                                </div>
+                            </div>
+
+
+                    </div>
+
+                    <div class="d-grid gap-2 mt-5">
+                        <button type="submit" class="btn btn-primary btn-lg shadow-sm">
+                            <i class="fas fa-check-circle me-2"></i> Create Meeting
+                        </button>
+                        <a th:href="@{${redirectUrl}}" class="btn btn-light text-secondary">Cancel</a>
+                    </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const meetingTypeSelect = document.getElementById('meetingType');
+            const inviteEveryoneLabel = document.getElementById('inviteEveryoneLabel');
+
+            const visitorContainer = document.getElementById('visitorContainer');
+            const participantsContainer = document.getElementById('participantsContainer');
+
+            function updateUI() {
+                const type = meetingTypeSelect.value;
+                if (type === 'HR') {
+                    inviteEveryoneLabel.textContent = 'Invite Everyone (All HRs)';
+                    visitorContainer.classList.add('d-none');
+                    participantsContainer.classList.remove('d-none');
+                } else if (type === 'MANAGER') {
+                    inviteEveryoneLabel.textContent = 'Invite Everyone (All Managers)';
+                    visitorContainer.classList.add('d-none');
+                    participantsContainer.classList.remove('d-none');
+                } else if (type === 'INTERNAL') {
+                    inviteEveryoneLabel.textContent = 'Invite Everyone (All Employees)';
+                    visitorContainer.classList.add('d-none');
+                    participantsContainer.classList.remove('d-none');
+                } else {
+                    // EXTERNAL, CLIENT, VISITOR, or empty
+                    inviteEveryoneLabel.textContent = 'Notify Visitor';
+                    visitorContainer.classList.remove('d-none');
+                    participantsContainer.classList.add('d-none');
+                }
+            }
+
+            meetingTypeSelect.addEventListener('change', updateUI);
+
+            // Handle Invite Everyone toggle
+            const inviteEveryoneCheckbox = document.getElementById('inviteEveryone');
+            const employeeCheckboxes = document.querySelectorAll('.employee-checkbox');
+            const employeeSelectionContainer = document.getElementById('employeeSelectionContainer');
+            const participantsDropdownBtn = document.getElementById('participantsDropdown');
+            const participantsDropdownText = document.getElementById('participantsDropdownText');
+            const employeeSearchInput = document.getElementById('employeeSearchInput');
+
+            const selectAllCheckbox = document.getElementById('selectAllEmployees');
+
+            function updateDropdownText() {
+                const checkedCount = document.querySelectorAll('.employee-checkbox:checked').length;
+                if (checkedCount === 0) {
+                    participantsDropdownText.textContent = 'Select Employees';
+                } else {
+                    participantsDropdownText.textContent = checkedCount + ' selected';
+                }
+
+                // Update Select All state based on individual checkboxes
+                if (selectAllCheckbox) {
+                    const totalCheckboxes = employeeCheckboxes.length;
+                    selectAllCheckbox.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+                    selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < totalCheckboxes;
+                }
+            }
+
+            // Handle Select All
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function () {
+                    const isChecked = this.checked;
+                    employeeCheckboxes.forEach(cb => {
+                        // Only change if visible (search filter might hide some, simplified here to all)
+                        // For better UX with search, usually we only select visible. 
+                        // But for simplicity, we select all.
+                        if (cb.closest('li').style.display !== 'none') {
+                            cb.checked = isChecked;
+                        }
+                    });
+                    updateDropdownText();
+                });
+            }
+
+            inviteEveryoneCheckbox.addEventListener('change', function () {
+                if (this.checked) {
+                    employeeSelectionContainer.style.opacity = '0.5';
+                    employeeSelectionContainer.style.pointerEvents = 'none';
+                    employeeCheckboxes.forEach(cb => {
+                        cb.checked = false;
+                    });
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.checked = false;
+                        selectAllCheckbox.indeterminate = false;
+                    }
+                    updateDropdownText();
+                } else {
+                    employeeSelectionContainer.style.opacity = '1';
+                    employeeSelectionContainer.style.pointerEvents = 'auto';
+                }
+            });
+
+            // Monitor checkboxes for text update
+            employeeCheckboxes.forEach(cb => {
+                cb.addEventListener('change', updateDropdownText);
+            });
+
+            // Prevent dropdown from closing when clicking inside
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                });
+            });
+
+            // Search functionality
+            if (employeeSearchInput) {
+                employeeSearchInput.addEventListener('input', function () {
+                    const filter = this.value.toLowerCase();
+                    const items = document.querySelectorAll('.dropdown-menu li:not(:first-child)'); // Skip search input li
+
+                    items.forEach(item => {
+                        const label = item.querySelector('label');
+                        if (label) {
+                            const text = label.textContent.toLowerCase();
+                            if (text.includes(filter)) {
+                                item.style.display = '';
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        }
+                    });
+                });
+            }
+
+            // Initial state check
+            if (inviteEveryoneCheckbox.checked) {
+                employeeSelectionContainer.style.opacity = '0.5';
+                employeeSelectionContainer.style.pointerEvents = 'none';
+            }
+            // Initial text update (in case of cached values)
+            updateDropdownText();
+
+            // Run on load
+            updateUI();
+        });
+    </script>
+</body>
+
+</html>

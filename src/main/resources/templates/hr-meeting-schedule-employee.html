@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Schedule Employee Meeting - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f7ff;
+            color: #333;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .employee-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow">
+                    <div class="card-header bg-white py-3 border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0 fw-bold text-primary">Schedule Employee Meeting</h4>
+                            <a th:href="@{/hr/dashboard}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <form th:action="@{/hr/meeting/create}" th:object="${meeting}" method="post" id="meetingForm">
+                            <input type="hidden" name="targetType" value="EMPLOYEE">
+
+                            <!-- Basic Meeting Details -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Title</label>
+                                <input type="text" class="form-control" th:field="*{title}" required
+                                    placeholder="Meeting Title">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Description</label>
+                                <textarea class="form-control" th:field="*{description}" rows="3"
+                                    placeholder="Description/Agenda"></textarea>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Start Time</label>
+                                    <input type="datetime-local" class="form-control" th:field="*{startTime}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">End Time</label>
+                                    <input type="datetime-local" class="form-control" th:field="*{endTime}">
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Location</label>
+                                <input type="text" class="form-control" th:field="*{location}"
+                                    placeholder="Conference Room / Link">
+                            </div>
+
+                            <hr>
+
+                            <!-- Participants Section -->
+                            <div class="mb-4">
+                                <label class="form-label fw-bold d-block">Attendees</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="isEveryone" value="true" id="allOption"
+                                        checked onchange="toggleSelection(false)">
+                                    <label class="btn btn-outline-primary" for="allOption">Everyone</label>
+
+                                    <input type="radio" class="btn-check" name="isEveryone" value="false"
+                                        id="partOption" onchange="toggleSelection(true)">
+                                    <label class="btn btn-outline-primary" for="partOption">Particular Employees</label>
+                                </div>
+                            </div>
+
+                            <!-- Specific Employee Selection Trigger -->
+                            <div id="particularSelection" style="display: none;"
+                                class="mb-4 p-3 bg-light rounded border">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-medium">Select Participants</span>
+                                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
+                                        data-bs-target="#employeeListModal">
+                                        <i class="fas fa-plus me-1"></i> Add / Edit List
+                                    </button>
+                                </div>
+                                <div class="small text-muted" id="selectionSummary">No employees selected.</div>
+                            </div>
+
+                            <!-- Employee List Modal (Placed INSIDE form to submit selection) -->
+                            <div class="modal fade" id="employeeListModal" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Select Employees</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body employee-list-container">
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                                <input type="text" class="form-control"
+                                                    placeholder="Search employees..."
+                                                    onkeyup="filterList(this, 'empItem')">
+                                            </div>
+                                            <div class="list-group">
+                                                <label class="list-group-item d-flex align-items-center gap-2 empItem"
+                                                    th:each="emp : ${employees}">
+                                                    <input class="form-check-input flex-shrink-0" type="checkbox"
+                                                        name="employeeIds" th:value="${emp.id}"
+                                                        onchange="updateSummary()">
+                                                    <span>
+                                                        <strong th:text="${emp.name}">Name</strong>
+                                                        <span class="text-muted small ms-2"
+                                                            th:text="${'(' + emp.department + ')'}">Dept</span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-primary"
+                                                data-bs-dismiss="modal">Done</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-success w-100 py-2 fw-bold mt-2">Schedule
+                                Meeting</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleSelection(show) {
+            document.getElementById('particularSelection').style.display = show ? 'block' : 'none';
+        }
+
+        function updateSummary() {
+            const checkboxes = document.querySelectorAll('input[name="employeeIds"]:checked');
+            const count = checkboxes.length;
+            const summaryDiv = document.getElementById('selectionSummary');
+            if (count === 0) {
+                summaryDiv.textContent = "No employees selected.";
+            } else {
+                summaryDiv.textContent = count + " employee(s) selected.";
+            }
+        }
+
+        function filterList(input, className) {
+            const filter = input.value.toLowerCase();
+            const items = document.getElementsByClassName(className);
+            for (let i = 0; i < items.length; i++) {
+                const text = items[i].innerText.toLowerCase();
+                if (text.includes(filter)) {
+                    items[i].classList.remove('d-none');
+                    items[i].classList.add('d-flex');
+                } else {
+                    items[i].classList.add('d-none');
+                    items[i].classList.remove('d-flex');
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

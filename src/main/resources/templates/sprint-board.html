@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprint Board - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        .sprint-column { min-height: 200px; background: #f8f9fa; border-radius: 8px; }
+        .sprint-card { background: white; border-radius: 6px; padding: 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .sprint-card small { font-size: 0.75rem; color: #6c757d; }
+    </style>
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
+        <a class="navbar-brand text-primary fw-bold" th:href="@{/sprints}">LogSphere</a>
+        <div>
+            <a th:href="@{/sprints}" class="btn btn-outline-secondary btn-sm me-2">All Sprints</a>
+            <form th:if="${sprint.status == 'PLANNING'}" th:action="@{/sprints/start/{id}(id=${sprint.id})}" method="post" class="d-inline">
+                <button type="submit" class="btn btn-success btn-sm me-2">Start Sprint</button>
+            </form>
+            <form th:if="${sprint.status == 'ACTIVE'}" th:action="@{/sprints/close/{id}(id=${sprint.id})}" method="post" class="d-inline">
+                <button type="submit" class="btn btn-warning btn-sm">Close Sprint</button>
+            </form>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <h4 class="mb-4">
+            <span th:text="${sprint.name}">Sprint</span>
+            <span class="badge ms-2" th:classappend="${sprint.status == 'ACTIVE'} ? 'bg-success' : (${sprint.status == 'CLOSED'} ? 'bg-dark' : 'bg-secondary')" th:text="${sprint.status}"></span>
+            <small class="text-muted ms-2" th:text="${sprint.startDate} + ' - ' + ${sprint.endDate}"></small>
+        </h4>
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+        <div class="row g-3">
+            <div class="col-md-2">
+                <div class="sprint-column p-3">
+                    <h6 class="mb-3">Backlog</h6>
+                    <div th:each="i : ${backlog}" class="sprint-card">
+                        <a th:href="@{/issues/view/{id}(id=${i.id})}" class="text-decoration-none text-dark">
+                            <strong th:text="${i.issueKey}">-</strong>
+                            <span th:text="${i.title}">-</span>
+                        </a>
+                        <form th:action="@{/sprints/add-issue}" method="post" class="mt-2">
+                            <input type="hidden" name="sprintId" th:value="${sprint.id}">
+                            <input type="hidden" name="issueId" th:value="${i.id}">
+                            <button type="submit" class="btn btn-sm btn-outline-success">+ Add</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="sprint-column p-3">
+                    <h6 class="mb-3">To Do</h6>
+                    <div th:each="i : ${openList}" class="sprint-card">
+                        <a th:href="@{/issues/view/{id}(id=${i.id})}" class="text-decoration-none text-dark">
+                            <strong th:text="${i.issueKey}">-</strong>
+                            <span th:text="${i.title}">-</span>
+                        </a>
+                        <small th:text="${i.assignee != null ? i.assignee.name : 'Unassigned'}"></small>
+                        <form th:action="@{/sprints/remove-issue}" method="post" class="mt-1">
+                            <input type="hidden" name="sprintId" th:value="${sprint.id}">
+                            <input type="hidden" name="issueId" th:value="${i.id}">
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 small">Remove</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="sprint-column p-3">
+                    <h6 class="mb-3">In Progress</h6>
+                    <div th:each="i : ${inProgressList}" class="sprint-card">
+                        <a th:href="@{/issues/view/{id}(id=${i.id})}" class="text-decoration-none text-dark">
+                            <strong th:text="${i.issueKey}">-</strong>
+                            <span th:text="${i.title}">-</span>
+                        </a>
+                        <small th:text="${i.assignee != null ? i.assignee.name : '-'}"></small>
+                        <form th:action="@{/sprints/remove-issue}" method="post" class="mt-1">
+                            <input type="hidden" name="sprintId" th:value="${sprint.id}">
+                            <input type="hidden" name="issueId" th:value="${i.id}">
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 small">Remove</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="sprint-column p-3">
+                    <h6 class="mb-3">In Review</h6>
+                    <div th:each="i : ${inReviewList}" class="sprint-card">
+                        <a th:href="@{/issues/view/{id}(id=${i.id})}" class="text-decoration-none text-dark">
+                            <strong th:text="${i.issueKey}">-</strong>
+                            <span th:text="${i.title}">-</span>
+                        </a>
+                        <small th:text="${i.assignee != null ? i.assignee.name : '-'}"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="sprint-column p-3">
+                    <h6 class="mb-3">Testing</h6>
+                    <div th:each="i : ${testingList}" class="sprint-card">
+                        <a th:href="@{/issues/view/{id}(id=${i.id})}" class="text-decoration-none text-dark">
+                            <strong th:text="${i.issueKey}">-</strong>
+                            <span th:text="${i.title}">-</span>
+                        </a>
+                        <small th:text="${i.assignee != null ? i.assignee.name : '-'}"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="sprint-column p-3">
+                    <h6 class="mb-3">Done</h6>
+                    <div th:each="i : ${doneList}" class="sprint-card">
+                        <a th:href="@{/issues/view/{id}(id=${i.id})}" class="text-decoration-none text-dark">
+                            <strong th:text="${i.issueKey}">-</strong>
+                            <span th:text="${i.title}">-</span>
+                        </a>
+                        <small th:text="${i.assignee != null ? i.assignee.name : '-'}"></small>
+                    </div>
+                    <div th:each="i : ${closedList}" class="sprint-card">
+                        <a th:href="@{/issues/view/{id}(id=${i.id})}" class="text-decoration-none text-muted">
+                            <strong th:text="${i.issueKey}">-</strong>
+                            <span th:text="${i.title}">-</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
+        <a class="navbar-brand text-primary fw-bold" th:href="@{/issues}">LogSphere</a>
+        <div>
+            <a th:href="@{/issues/edit/{id}(id=${issue.id})}" class="btn btn-sm btn-outline-primary me-2" th:if="${canUpdateStatus}">Edit</a>
+            <a th:href="@{/issues}" class="btn btn-sm btn-outline-secondary">Back to Issues</a>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" th:text="${error}"></div>
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <span class="badge bg-secondary me-2" th:text="${issue.issueKey}">-</span>
+                    <span class="badge bg-danger" th:if="${issue.issueType == 'BUG'}">Bug</span>
+                    <span class="badge bg-primary" th:if="${issue.issueType == 'STORY'}">Story</span>
+                    <span class="badge bg-info" th:if="${issue.issueType == 'TASK'}">Task</span>
+                    <span class="badge bg-dark" th:if="${issue.issueType == 'EPIC'}">Epic</span>
+                    <span class="badge bg-secondary" th:if="${issue.issueType == 'SUBTASK'}">Subtask</span>
+                    <span th:text="${issue.title}" class="ms-2"></span>
+                </h5>
+                <span class="badge" th:classappend="${issue.status == 'DONE' or issue.status == 'CLOSED'} ? 'bg-success' : 'bg-warning'" th:text="${issue.status}"></span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6"><strong>Project:</strong> <span th:text="${issue.project != null ? issue.project.name : '-'}"></span></div>
+                    <div class="col-md-6"><strong>Assignee:</strong> <span th:text="${issue.assignee != null ? issue.assignee.name : '-'}"></span></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><strong>Reporter:</strong> <span th:text="${issue.reporter != null ? issue.reporter.name : '-'}"></span></div>
+                    <div class="col-md-6"><strong>Priority:</strong> <span th:text="${issue.priority}"></span></div>
+                </div>
+                <div class="row mb-3" th:if="${issue.issueType == 'BUG'}">
+                    <div class="col-md-6" th:if="${issue.severity != null}"><strong>Severity:</strong> <span th:text="${issue.severity}"></span></div>
+                    <div class="col-md-6" th:if="${issue.environment != null}"><strong>Environment:</strong> <span th:text="${issue.environment}"></span></div>
+                    <div class="col-md-6" th:if="${issue.resolution != null}"><strong>Resolution:</strong> <span th:text="${issue.resolution}"></span></div>
+                </div>
+                <div class="mb-3" th:if="${issue.description != null and !issue.description.isEmpty()}">
+                    <strong>Description:</strong>
+                    <p class="mt-1 mb-0" th:text="${issue.description}"></p>
+                </div>
+                <div class="mb-3" th:if="${issue.issueType == 'BUG' and issue.stepsToReproduce != null}">
+                    <strong>Steps to Reproduce:</strong>
+                    <p class="mt-1 mb-0" th:text="${issue.stepsToReproduce}"></p>
+                </div>
+                <div class="mb-3" th:if="${canUpdateStatus}">
+                    <strong>Update Status:</strong>
+                    <form th:action="@{/issues/status}" method="post" class="d-inline">
+                        <input type="hidden" name="issueId" th:value="${issue.id}">
+                        <select name="status" class="form-select form-select-sm d-inline-block w-auto">
+                            <option value="TRIAGE" th:selected="${issue.status == 'TRIAGE'}">TRIAGE</option>
+                            <option value="OPEN" th:selected="${issue.status == 'OPEN'}">OPEN</option>
+                            <option value="IN_PROGRESS" th:selected="${issue.status == 'IN_PROGRESS'}">IN_PROGRESS</option>
+                            <option value="IN_REVIEW" th:selected="${issue.status == 'IN_REVIEW'}">IN_REVIEW</option>
+                            <option value="TESTING" th:selected="${issue.status == 'TESTING'}">TESTING</option>
+                            <option value="DONE" th:selected="${issue.status == 'DONE'}">DONE</option>
+                            <option value="CLOSED" th:selected="${issue.status == 'CLOSED'}">CLOSED</option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary ms-1">Update</button>
+                    </form>
+                </div>
+                <div class="mb-0" th:if="${!canUpdateStatus}">
+                    <small class="text-muted">Only assignee, reporter, or Admin/Manager/HR can update status.</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4" th:if="${attachments != null and !attachments.isEmpty()}">
+            <div class="card-header"><h6 class="mb-0">Attachments</h6></div>
+            <div class="card-body">
+                <div th:each="a : ${attachments}" class="mb-2">
+                    <a th:href="@{${a.filePath}}" target="_blank" th:text="${a.fileName}">file</a>
+                    <small class="text-muted ms-2" th:text="${a.uploadedBy + ' - ' + a.uploadedAt}"></small>
+                </div>
+                <form th:if="${canUpdateStatus}" th:action="@{/issues/attachment}" method="post" enctype="multipart/form-data" class="mt-2">
+                    <input type="hidden" name="issueId" th:value="${issue.id}">
+                    <input type="file" name="file" class="form-control form-control-sm d-inline-block w-auto">
+                    <button type="submit" class="btn btn-sm btn-outline-primary ms-1">Upload</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4" th:if="${!activities.isEmpty()}">
+            <div class="card-header"><h6 class="mb-0">Activity / Audit Log</h6></div>
+            <div class="card-body">
+                <div th:each="a : ${activities}" class="small border-bottom pb-2 mb-2">
+                    <strong th:text="${a.changedByName}"></strong>
+                    <span class="badge bg-secondary ms-1" th:text="${a.changedByRole}"></span>
+                    <span th:if="${a.activityType == 'STATUS_CHANGE'}">
+                        changed status from <strong th:text="${a.oldValue}"></strong> to <strong th:text="${a.newValue}"></strong>
+                    </span>
+                    <span th:if="${a.activityType == 'ASSIGNEE_CHANGE'}">
+                        changed assignee from <strong th:text="${a.oldValue != null ? a.oldValue : 'None'}"></strong> to <strong th:text="${a.newValue != null ? a.newValue : 'None'}"></strong>
+                    </span>
+                    <span th:if="${a.activityType == 'CREATED'}">created this issue</span>
+                    <span th:if="${a.activityType == 'COMMENT_ADDED'}">added a comment</span>
+                    <small class="text-muted ms-2" th:text="${a.createdAt}"></small>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Comments</h6></div>
+            <div class="card-body">
+                <form th:action="@{/issues/comment}" method="post" class="mb-4">
+                    <input type="hidden" name="issueId" th:value="${issue.id}">
+                    <div class="mb-2">
+                        <textarea name="content" class="form-control" rows="2" placeholder="Add a comment..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary">Add Comment</button>
+                </form>
+                <div th:if="${comments.isEmpty()}" class="text-muted">No comments yet.</div>
+                <div th:each="c : ${comments}" class="border-bottom pb-3 mb-3">
+                    <strong th:text="${c.authorName}"></strong>
+                    <span class="badge bg-light text-dark ms-1" th:text="${c.authorRole}"></span>
+                    <small class="text-muted ms-2" th:text="${c.createdAt}"></small>
+                    <p class="mt-1 mb-0" th:text="${c.content}"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

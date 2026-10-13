@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Visitor Registration</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: #1a8cf0 !important;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+            background-color: #ffffff;
+        }
+
+        .card-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 1.25rem;
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .form-label {
+            color: #4b5563;
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control,
+        .form-select {
+            border-color: #e2e8f0;
+            color: #1f2937;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #1a8cf0;
+            box-shadow: 0 0 0 3px rgba(26, 140, 240, 0.1);
+        }
+
+        .form-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+
+<body class="bg-light text-dark">
+    <nav class="navbar navbar-light bg-white p-3 border-bottom">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">LogSphere <span class="text-secondary fw-normal fs-6">| Visitor
+                    Registration</span></span>
+            <div>
+                <a th:href="@{/}" class="btn btn-outline-secondary me-3 btn-sm">Home</a>
+                <a th:href="@{/login}" class="btn btn-primary btn-sm">Admin Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <!-- Success/Error Messages -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row">
+            <!-- Visitor Registration Form -->
+            <div class="col-lg-8 mx-auto mb-5 form-wrapper">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4 class="text-dark fw-bold mb-0">Register New Visitor</h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <form th:action="@{/reception/register}" th:object="${visitor}" method="post">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" th:field="*{name}"
+                                        placeholder="Enter visitor name" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Phone Number <span class="text-danger">*</span></label>
+                                    <input type="tel" class="form-control" th:field="*{phone}"
+                                        placeholder="Enter phone number" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" th:field="*{email}" placeholder="Enter email"
+                                    required>
+                            </div>
+
+                            <div class="card bg-light border-0 mb-3">
+                                <div class="card-body">
+                                    <h6 class="text-dark fw-bold mb-3">Identification</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">Select ID Type <span
+                                                class="text-danger">*</span></label>
+                                        <select class="form-select" id="idType" onchange="toggleIdFields()" required>
+                                            <option value="">Select ID Type</option>
+                                            <option value="aadhar">Aadhar Card Number</option>
+                                            <option value="pan">PAN Card Number</option>
+                                        </select>
+                                    </div>
+                                    <div id="aadharField" style="display: none;" class="mb-3">
+                                        <label class="form-label">Aadhar Card Number <span
+                                                class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="aadharNumber" name="aadharNumber"
+                                            th:field="*{aadharNumber}" placeholder="Enter 12-digit Aadhar number"
+                                            pattern="[0-9]{12}" maxlength="12">
+                                        <small class="text-muted">12-digit Aadhar number</small>
+                                    </div>
+                                    <div id="panField" style="display: none;" class="mb-3">
+                                        <label class="form-label">PAN Card Number <span
+                                                class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="panCardNumber" name="panCardNumber"
+                                            th:field="*{panCardNumber}" placeholder="Enter PAN card number"
+                                            pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}" maxlength="10"
+                                            style="text-transform: uppercase;">
+                                        <small class="text-muted">10-character PAN number (Format: ABCDE1234F)</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Company/Organization <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" th:field="*{company}"
+                                    placeholder="Enter company name" required>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Employee to Meet</label>
+                                    <input type="text" class="form-control" th:field="*{personToMeet}"
+                                        placeholder="Enter employee name">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Purpose of Visit <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" th:field="*{purpose}" required>
+                                        <option value="">Select purpose</option>
+                                        <option value="Meeting">Meeting</option>
+                                        <option value="Interview">Interview</option>
+                                        <option value="Delivery">Delivery</option>
+                                        <option value="Maintenance">Maintenance</option>
+                                        <option value="Client Visit">Client Visit</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Employee Email (for approval)</label>
+                                <input type="email" class="form-control" th:field="*{employeeEmail}"
+                                    placeholder="Enter employee email for approval request">
+                                <small class="text-muted">Leave empty for direct check-in without approval</small>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100 btn-lg"
+                                onclick="return validateRegistration()">Register Visitor</button>
+                            <p class="text-muted text-center mt-3 small">
+                                <strong>Note:</strong> Visitor will be registered but not checked in. They can check-in
+                                later using their Aadhar or PAN card number.
+                            </p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Toggle ID fields based on selection
+        function toggleIdFields() {
+            const idType = document.getElementById('idType').value;
+            document.getElementById('aadharField').style.display = (idType === 'aadhar') ? 'block' : 'none';
+            document.getElementById('panField').style.display = (idType === 'pan') ? 'block' : 'none';
+
+            // Clear fields when switching
+            if (idType !== 'aadhar') {
+                document.getElementById('aadharNumber').value = '';
+            }
+            if (idType !== 'pan') {
+                document.getElementById('panCardNumber').value = '';
+            }
+        }
+
+        // Auto-uppercase PAN card input
+        document.getElementById('panCardNumber')?.addEventListener('input', function (e) {
+            this.value = this.value.toUpperCase();
+        });
+
+        // Validate registration form
+        function validateRegistration() {
+            const idType = document.getElementById('idType').value;
+
+            if (!idType || idType === '') {
+                alert('Please select an ID type (Aadhar or PAN Card).');
+                return false;
+            }
+
+            if (idType === 'aadhar') {
+                const aadharNumber = document.getElementById('aadharNumber').value.trim();
+                if (!aadharNumber || aadharNumber.length === 0) {
+                    alert('Please enter Aadhar card number.');
+                    return false;
+                }
+                if (aadharNumber.length !== 12) {
+                    alert('Aadhar number must be exactly 12 digits.');
+                    return false;
+                }
+            } else if (idType === 'pan') {
+                const panCardNumber = document.getElementById('panCardNumber').value.trim();
+                if (!panCardNumber || panCardNumber.length === 0) {
+                    alert('Please enter PAN card number.');
+                    return false;
+                }
+                if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panCardNumber)) {
+                    alert('PAN card number must be in format: ABCDE1234F (5 letters, 4 digits, 1 letter).');
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    </script>
+</body>
+
+</html>
+

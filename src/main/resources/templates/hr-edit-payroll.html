@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Edit Payroll</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+            --success-color: #198754;
+            --danger-color: #dc3545;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            background: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+        }
+
+        .card-header h3 {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin: 0;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #e9ecef;
+        }
+
+        .section-title {
+            color: var(--brand-primary);
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 10px;
+            margin-bottom: 24px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .form-label {
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control,
+        .form-select {
+            border: 1px solid #dee2e6;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            color: var(--text-primary);
+            background-color: #ffffff;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--brand-primary);
+            border-color: var(--brand-primary);
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+
+        .calculation-box {
+            background: #e8f3ff;
+            border: 1px solid #cce5ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .calculation-box h5 {
+            color: var(--brand-primary);
+            font-weight: 600;
+        }
+
+        .net-salary {
+            color: var(--brand-primary) !important;
+            font-weight: 700 !important;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar"
+        style="min-height: 100vh; background: #e3f2fd; color: #0f1b2d; border-right: 1px solid #dcdfe6; width: 260px; position: fixed; top: 0; left: 0; padding: 20px; z-index: 1000;">
+        <h3 class="text-primary mb-5 px-3">LogSphere</h3>
+        <ul class="nav flex-column">
+            <li class="nav-item mb-1">
+                <a class="nav-link" th:href="@{/hr/dashboard}">👥 Overview</a>
+            </li>
+            <li class="nav-item mb-1">
+                <a class="nav-link" th:href="@{/hr/dashboard}">🕒 Attendance</a>
+            </li>
+            <li class="nav-item mb-1">
+                <a class="nav-link" th:href="@{/hr/dashboard}">📅 Leave Mgmt</a>
+            </li>
+            <li class="nav-item mb-1">
+                <a class="nav-link" th:href="@{/hr/dashboard}">✅ Tasks</a>
+            </li>
+            <li class="nav-item mb-1">
+                <a class="nav-link" th:href="@{/hr/recruitment/candidate/add}">👥 Recruitment</a>
+            </li>
+            <li class="nav-item mb-1">
+                <a class="nav-link active" th:href="@{/hr/dashboard}">💰 Payroll</a>
+            </li>
+            <li class="nav-item mt-4">
+                <a class="nav-link text-danger" th:href="@{/logout}">🚪 Logout</a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" style="margin-left: 260px; padding: 30px;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold mb-0 text-primary">Edit Payroll Record</h2>
+            <div>
+                <a th:href="@{/hr/dashboard(activeTab='payroll')}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h3 class="d-flex align-items-center"><i class="fas fa-edit me-2 text-primary"></i>Edit Record
+                            for <span class="ms-1" th:text="${payroll.employee.name}"></span></h3>
+                    </div>
+                    <div class="card-body p-4">
+                        <form th:action="@{/hr/payroll/update}" method="post" id="payrollForm">
+                            <input type="hidden" name="id" th:value="${payroll.id}">
+
+                            <!-- Employee & Period Info (Read-only) -->
+                            <div class="form-section">
+                                <h4 class="section-title">Record Details</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Employee</label>
+                                        <input type="text" class="form-control bg-light"
+                                            th:value="${payroll.employee.name + ' (' + payroll.employee.employeeId + ')'}"
+                                            readonly>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Period</label>
+                                        <input type="text" class="form-control bg-light"
+                                            th:value="${payroll.month + '/' + payroll.year}" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Editable Salary Details -->
+                            <div class="form-section">
+                                <h4 class="section-title">💰 Salary Components</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="grossSalary" class="form-label">Gross Salary</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">₹</span>
+                                            <input type="number" step="0.01" class="form-control" id="grossSalary"
+                                                name="grossSalary" th:value="${payroll.grossSalary}" min="0"
+                                                oninput="calculateEditSalary()">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="lopDeduction" class="form-label">LOP Deduction</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">₹</span>
+                                            <input type="number" step="0.01" class="form-control" id="lopDeduction"
+                                                name="lopDeduction" th:value="${payroll.lopDeduction}" min="0"
+                                                oninput="calculateEditSalary()">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="pfInput" class="form-label">Provident Fund (PF)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">₹</span>
+                                            <input type="number" step="0.01" class="form-control" id="pfInput" value="0"
+                                                min="0" oninput="calculateEditSalary()">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="taxInput" class="form-label">Tax</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">₹</span>
+                                            <input type="number" step="0.01" class="form-control" id="taxInput"
+                                                value="0" min="0" oninput="calculateEditSalary()">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Final Calculations -->
+                            <div class="calculation-box shadow-sm">
+                                <h5 class="mb-3">💰 Updated Totals</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-2"><strong>Gross Salary:</strong> <span id="grossDisplay"
+                                                class="text-success fw-bold">₹0.00</span></p>
+                                        <p class="mb-2"><strong>Total Deductions:</strong> <input type="hidden"
+                                                name="totalDeductions" id="totalDeductionsHidden"><span
+                                                id="deductionsDisplay" class="text-danger fw-bold">₹0.00</span></p>
+                                    </div>
+                                    <div class="col-md-6 text-md-end">
+                                        <p class="mb-2"><strong>Net Pay:</strong> <input type="hidden" name="netPay"
+                                                id="netPayHidden"><span id="netPayDisplay"
+                                                class="net-salary">₹0.00</span></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                <a th:href="@{/hr/dashboard(activeTab='payroll')}"
+                                    class="btn btn-light me-md-2">Cancel</a>
+                                <button type="submit" class="btn btn-primary px-4">Update Payroll</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function calculateEditSalary() {
+            const gross = parseFloat(document.getElementById('grossSalary').value) || 0;
+            const lop = parseFloat(document.getElementById('lopDeduction').value) || 0;
+            const pf = parseFloat(document.getElementById('pfInput').value) || 0;
+            const tax = parseFloat(document.getElementById('taxInput').value) || 0;
+
+            const totalDeductions = lop + pf + tax;
+            const netPay = gross - totalDeductions;
+
+            document.getElementById('grossDisplay').textContent = '₹' + gross.toFixed(2);
+            document.getElementById('deductionsDisplay').textContent = '₹' + totalDeductions.toFixed(2);
+            document.getElementById('totalDeductionsHidden').value = totalDeductions.toFixed(2);
+            document.getElementById('netPayDisplay').textContent = '₹' + netPay.toFixed(2);
+            document.getElementById('netPayHidden').value = netPay.toFixed(2);
+        }
+
+        document.addEventListener('DOMContentLoaded', calculateEditSalary);
+    </script>
+</body>
+
+</html>

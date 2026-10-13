@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
+        <a class="navbar-brand text-primary fw-bold" th:href="@{/issues}">LogSphere</a>
+        <a th:href="@{/issues}" class="btn btn-outline-secondary btn-sm">Back to Issues</a>
+    </nav>
+
+    <div class="container py-4">
+        <h4 class="mb-4" th:text="${issue.id != null} ? 'Edit Issue' : 'Create Issue'">Create Issue</h4>
+        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+        <div class="card" style="max-width: 700px;">
+            <div class="card-body">
+                <form th:action="@{/issues/save}" method="post">
+                    <input type="hidden" name="id" th:value="${issue.id}">
+                    <div class="mb-3">
+                        <label class="form-label">Title *</label>
+                        <input type="text" class="form-control" name="title" th:value="${issue.title}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" rows="3" th:text="${issue.description}"></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Issue Type *</label>
+                            <select class="form-select" name="issueType" required>
+                                <option value="BUG" th:selected="${issue.issueType == 'BUG'}">Bug</option>
+                                <option value="STORY" th:selected="${issue.issueType == 'STORY'}">Story</option>
+                                <option value="TASK" th:selected="${issue.issueType == 'TASK'}">Task</option>
+                                <option value="EPIC" th:selected="${issue.issueType == 'EPIC'}">Epic</option>
+                                <option value="SUBTASK" th:selected="${issue.issueType == 'SUBTASK'}">Subtask</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select" name="priority">
+                                <option value="BLOCKER" th:selected="${issue.priority == 'BLOCKER'}">Blocker</option>
+                                <option value="CRITICAL" th:selected="${issue.priority == 'CRITICAL'}">Critical</option>
+                                <option value="MAJOR" th:selected="${issue.priority == 'MAJOR'}">Major</option>
+                                <option value="MEDIUM" th:selected="${issue.priority == 'MEDIUM' or issue.priority == null}">Medium</option>
+                                <option value="MINOR" th:selected="${issue.priority == 'MINOR'}">Minor</option>
+                                <option value="TRIVIAL" th:selected="${issue.priority == 'TRIVIAL'}">Trivial</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Severity (for Bugs)</label>
+                            <select class="form-select" name="severity">
+                                <option value="">-</option>
+                                <option value="CRITICAL" th:selected="${issue.severity == 'CRITICAL'}">Critical</option>
+                                <option value="MAJOR" th:selected="${issue.severity == 'MAJOR'}">Major</option>
+                                <option value="MINOR" th:selected="${issue.severity == 'MINOR'}">Minor</option>
+                                <option value="COSMETIC" th:selected="${issue.severity == 'COSMETIC'}">Cosmetic</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div th:if="${issue.issueType == 'BUG'}" class="mb-3">
+                        <label class="form-label">Steps to Reproduce</label>
+                        <textarea class="form-control" name="stepsToReproduce" rows="2" th:text="${issue.stepsToReproduce}"></textarea>
+                    </div>
+                    <div th:if="${issue.issueType == 'BUG'}" class="mb-3">
+                        <label class="form-label">Environment</label>
+                        <input type="text" class="form-control" name="environment" th:value="${issue.environment}" placeholder="e.g., Chrome, Windows 10">
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Project *</label>
+                            <select class="form-select" name="projectId" required>
+                                <option value="">-- Select Project --</option>
+                                <option th:each="p : ${projects}" th:value="${p.id}" th:text="${p.name}" th:selected="${issue.project != null && issue.project.id == p.id}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Assignee</label>
+                            <select class="form-select" name="assigneeId">
+                                <option value="">-- None --</option>
+                                <option th:each="e : ${employees}" th:value="${e.id}" th:text="${e.name + ' (' + e.employeeId + ')'}" th:selected="${issue.assignee != null && issue.assignee.id == e.id}"></option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Reporter</label>
+                            <select class="form-select" name="reporterId">
+                                <option value="">-- None --</option>
+                                <option th:each="e : ${employees}" th:value="${e.id}" th:text="${e.name}" th:selected="${issue.reporter != null && issue.reporter.id == e.id}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Parent (for Subtask)</label>
+                            <select class="form-select" name="parentIssueId">
+                                <option value="">-- None --</option>
+                                <option th:each="pi : ${parentIssues}" th:value="${pi.id}" th:text="${pi.issueKey + ' - ' + pi.title}" th:selected="${issue.parentIssue != null && issue.parentIssue.id == pi.id}"></option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status">
+                                <option value="TRIAGE" th:selected="${issue.status == 'TRIAGE'}">Triage (Bugs)</option>
+                                <option value="OPEN" th:selected="${issue.status == 'OPEN' or (issue.status == null and issue.issueType != 'BUG')}">Open</option>
+                                <option value="IN_PROGRESS" th:selected="${issue.status == 'IN_PROGRESS'}">In Progress</option>
+                                <option value="IN_REVIEW" th:selected="${issue.status == 'IN_REVIEW'}">In Review</option>
+                                <option value="TESTING" th:selected="${issue.status == 'TESTING'}">Testing</option>
+                                <option value="DONE" th:selected="${issue.status == 'DONE'}">Done</option>
+                                <option value="CLOSED" th:selected="${issue.status == 'CLOSED'}">Closed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Due Date</label>
+                            <input type="date" class="form-control" name="dueDateStr" th:value="${issue.dueDate}">
+                        </div>
+                    </div>
+                    <div class="row mb-3" th:if="${issue.issueType == 'BUG'}">
+                        <div class="col-md-6">
+                            <label class="form-label">Resolution (for Bugs)</label>
+                            <select class="form-select" name="resolution">
+                                <option value="">-- Select --</option>
+                                <option value="DONE" th:selected="${issue.resolution == 'DONE'}">Done / Fixed</option>
+                                <option value="WONTFIX" th:selected="${issue.resolution == 'WONTFIX'}">Won't Fix</option>
+                                <option value="DUPLICATE" th:selected="${issue.resolution == 'DUPLICATE'}">Duplicate</option>
+                                <option value="CANNOT_REPRODUCE" th:selected="${issue.resolution == 'CANNOT_REPRODUCE'}">Cannot Reproduce</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3" th:if="${issue.id != null}">
+                        <label class="form-label">Attachments</label>
+                        <p class="small text-muted">Add attachments from the issue view page after saving.</p>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Org Performance - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
+        <a class="navbar-brand text-primary fw-bold" th:href="@{/hr/dashboard}">LogSphere</a>
+        <div>
+            <a th:href="@{/reports/export/performance}" class="btn btn-success btn-sm me-2"><i class="fas fa-file-csv me-1"></i> Export CSV</a>
+            <button type="button" class="btn btn-danger btn-sm me-2" onclick="window.print()"><i class="fas fa-file-pdf me-1"></i> Print / PDF</button>
+            <a th:href="@{/hr/dashboard}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+        </div>
+    </nav>
+    <div class="container py-4">
+        <h4 class="mb-4">Organization Performance</h4>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white"><h6 class="mb-0">Top 10 Performers</h6></div>
+                    <div class="list-group list-group-flush">
+                        <div th:each="r, i : ${topPerformers}" class="list-group-item d-flex justify-content-between">
+                            <span><span th:text="${i.count}">1</span>. <span th:text="${r.employee.name}">-</span></span>
+                            <span class="badge bg-success" th:text="${r.compositeScore != null ? #numbers.formatDecimal(r.compositeScore, 1, 1) : '-'}">-</span>
+                        </div>
+                        <div th:if="${topPerformers == null || topPerformers.isEmpty()}" class="list-group-item text-muted">No data yet.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-warning"><h6 class="mb-0">Needs Attention (Bottom 10)</h6></div>
+                    <div class="list-group list-group-flush">
+                        <div th:each="r : ${lowPerformers}" class="list-group-item d-flex justify-content-between">
+                            <span th:text="${r.employee.name}">-</span>
+                            <span class="badge bg-warning text-dark" th:text="${r.compositeScore != null ? #numbers.formatDecimal(r.compositeScore, 1, 1) : '-'}">-</span>
+                        </div>
+                        <div th:if="${lowPerformers == null || lowPerformers.isEmpty()}" class="list-group-item text-muted">No data yet.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">All Employees - This Week</h6></div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Score</th>
+                            <th>Tasks</th>
+                            <th>Issues</th>
+                            <th>Attendance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="r : ${orgPerformance}">
+                            <td th:text="${r.employee.name}">-</td>
+                            <td th:text="${r.employee.department}">-</td>
+                            <td><span class="badge" th:classappend="${r.compositeScore != null && r.compositeScore >= 70} ? 'bg-success' : 'bg-warning'" th:text="${r.compositeScore != null ? #numbers.formatDecimal(r.compositeScore, 1, 1) : '-'}">-</span></td>
+                            <td th:text="|${r.tasksCompleted}/${r.tasksTotal}|">-</td>
+                            <td th:text="|${r.issuesCompleted}/${r.issuesTotal}|">-</td>
+                            <td th:text="${r.attendanceScore != null ? #numbers.formatDecimal(r.attendanceScore, 1, 1) + '%' : '-'}">-</td>
+                        </tr>
+                        <tr th:if="${orgPerformance == null || orgPerformance.isEmpty()}">
+                            <td colspan="6" class="text-center text-muted py-4">No performance data yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

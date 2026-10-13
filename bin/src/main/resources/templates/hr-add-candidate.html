@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Add Candidate</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            background: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+        }
+
+        .card-header h3 {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin: 0;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #e9ecef;
+        }
+
+        .section-title {
+            color: var(--brand-primary);
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 10px;
+            margin-bottom: 24px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .form-label {
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control,
+        .form-select {
+            border: 1px solid #dee2e6;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            color: var(--text-primary);
+            background-color: #ffffff;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--brand-primary);
+            border-color: var(--brand-primary);
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top mb-4">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1 fw-bold text-primary"><i
+                    class="fas fa-user-plus me-2"></i>LogSphere</span>
+            <div>
+                <a th:href="@{/hr/dashboard}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> HR Dashboard
+                </a>
+                <a th:href="@{/logout}" class="btn btn-outline-danger btn-sm ms-2">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h3 class="d-flex align-items-center"><i class="fas fa-user-circle me-2 text-primary"></i>Add
+                            New Candidate</h3>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Success/Error Messages -->
+                        <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm"
+                            role="alert">
+                            <i class="fas fa-check-circle me-2"></i><span th:text="${success}"></span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm"
+                            role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i><span th:text="${error}"></span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+
+                        <form th:action="@{/hr/recruitment/candidate/add}" method="post" enctype="multipart/form-data">
+                            <!-- 👤 Basic Information -->
+                            <div class="form-section">
+                                <h4 class="section-title">👤 Basic Information</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="name" class="form-label">Full Name <span
+                                                class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="name" name="name" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="email" class="form-label">Email ID <span
+                                                class="text-danger">*</span></label>
+                                        <input type="email" class="form-control" id="email" name="email" required>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="phone" class="form-label">Phone Number</label>
+                                        <input type="tel" class="form-control" id="phone" name="phone">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="gender" class="form-label">Gender</label>
+                                        <select class="form-select" id="gender" name="gender">
+                                            <option value="">Select</option>
+                                            <option value="MALE">Male</option>
+                                            <option value="FEMALE">Female</option>
+                                            <option value="OTHER">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="dateOfBirth" class="form-label">Date of Birth</label>
+                                        <input type="date" class="form-control" id="dateOfBirth" name="dateOfBirth">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 💼 Job Information -->
+                            <div class="form-section">
+                                <h4 class="section-title">💼 Job Information</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="jobTitle" class="form-label">Job Title / Position</label>
+                                        <input type="text" class="form-control" id="jobTitle" name="jobTitle"
+                                            placeholder="e.g., Frontend Developer">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="department" class="form-label">Department</label>
+                                        <select class="form-select" id="department" name="department">
+                                            <option value="">Select Department</option>
+                                            <option value="Software Development">Software Development</option>
+                                            <option value="QA">QA</option>
+                                            <option value="UI/UX">UI/UX</option>
+                                            <option value="DevOps">DevOps</option>
+                                            <option value="HR">HR</option>
+                                            <option value="Finance">Finance</option>
+                                            <option value="Marketing">Marketing</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="employmentType" class="form-label">Employment Type</label>
+                                        <select class="form-select" id="employmentType" name="employmentType">
+                                            <option value="">Select</option>
+                                            <option value="FULL_TIME">Full Time</option>
+                                            <option value="PART_TIME">Part Time</option>
+                                            <option value="INTERNSHIP">Internship</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="jobOpeningId" class="form-label">Job Opening (Optional)</label>
+                                        <select class="form-select" id="jobOpeningId" name="jobOpeningId">
+                                            <option value="">Select Job Opening</option>
+                                            <option th:each="job : ${openJobs}" th:value="${job.id}"
+                                                th:text="${job.title + ' - ' + job.department}"
+                                                th:selected="${selectedJobId != null && selectedJobId == job.id}">
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 🎓 Qualification Details -->
+                            <div class="form-section">
+                                <h4 class="section-title">🎓 Qualification Details</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="highestQualification" class="form-label">Highest
+                                            Qualification</label>
+                                        <select class="form-select" id="highestQualification"
+                                            name="highestQualification">
+                                            <option value="">Select</option>
+                                            <option value="High School">High School</option>
+                                            <option value="Diploma">Diploma</option>
+                                            <option value="Bachelor's Degree">Bachelor's Degree</option>
+                                            <option value="Master's Degree">Master's Degree</option>
+                                            <option value="PhD">PhD</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="specialization" class="form-label">Specialization</label>
+                                        <input type="text" class="form-control" id="specialization"
+                                            name="specialization"
+                                            placeholder="e.g., Computer Science, Information Technology">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="collegeUniversity" class="form-label">College / University</label>
+                                        <input type="text" class="form-control" id="collegeUniversity"
+                                            name="collegeUniversity">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="yearOfPassing" class="form-label">Year of Passing</label>
+                                        <input type="number" class="form-control" id="yearOfPassing"
+                                            name="yearOfPassing" min="1950" max="2030">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 🧠 Skills & Experience -->
+                            <div class="form-section">
+                                <h4 class="section-title">🧠 Skills & Experience</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="primarySkills" class="form-label">Primary Skills</label>
+                                        <input type="text" class="form-control" id="primarySkills" name="primarySkills"
+                                            placeholder="e.g., Java, Python, React">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="secondarySkills" class="form-label">Secondary Skills</label>
+                                        <input type="text" class="form-control" id="secondarySkills"
+                                            name="secondarySkills" placeholder="e.g., HTML, CSS, JavaScript">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="totalExperience" class="form-label">Total Experience (Years)</label>
+                                        <input type="number" step="0.1" class="form-control" id="totalExperience"
+                                            name="totalExperience" min="0">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="relevantExperience" class="form-label">Relevant Experience
+                                            (Years)</label>
+                                        <input type="number" step="0.1" class="form-control" id="relevantExperience"
+                                            name="relevantExperience" min="0">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 📄 Resume & Documents -->
+                            <div class="form-section">
+                                <h4 class="section-title">📄 Resume & Documents</h4>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="portfolioLink" class="form-label">Portfolio Link (Optional)</label>
+                                        <input type="url" class="form-control" id="portfolioLink" name="portfolioLink"
+                                            placeholder="https://portfolio.example.com">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="status" class="form-label">Recruitment Status</label>
+                                        <select class="form-select" id="status" name="status">
+                                            <option value="APPLIED">Applied</option>
+                                            <option value="SHORTLISTED">Shortlisted</option>
+                                            <option value="INTERVIEW_SCHEDULED">Interview Scheduled</option>
+                                            <option value="SELECTED">Selected</option>
+                                            <option value="REJECTED">Rejected</option>
+                                            <option value="ON_HOLD">On Hold</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="resume" class="form-label">Upload Resume (PDF/DOC) - Optional</label>
+                                    <input type="file" class="form-control" id="resume" name="resume"
+                                        accept=".pdf,.doc,.docx">
+                                    <small class="text-secondary">Note: File upload functionality will be implemented
+                                        separately</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="certificate" class="form-label">Upload Certificate (Optional)</label>
+                                    <input type="file" class="form-control" id="certificate" name="certificate"
+                                        accept=".pdf,.jpg,.png">
+                                    <small class="text-secondary">Note: File upload functionality will be implemented
+                                        separately</small>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                <a th:href="@{/hr/dashboard}" class="btn btn-light me-md-2">Cancel</a>
+                                <button type="submit" class="btn btn-primary px-4">Save Candidate</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
+

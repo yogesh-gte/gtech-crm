@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Reports</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f7ff;
+            color: #333;
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: #1a8cf0 !important;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+            transition: transform 0.2s, box-shadow 0.2s;
+            background-color: #ffffff;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 1.25rem;
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .btn-outline-primary {
+            border-color: #e2e8f0;
+            color: #64748b;
+        }
+
+        .btn-outline-primary:hover,
+        .btn-outline-primary.active {
+            background-color: #eff6ff;
+            border-color: #1a8cf0;
+            color: #1a8cf0;
+        }
+
+        .stat-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+
+<body class="bg-light text-dark">
+    <nav class="navbar navbar-light bg-white p-3 border-bottom">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">LogSphere <span class="text-secondary fw-normal fs-6">| Reports &
+                    Analytics</span></span>
+            <div>
+                <a th:href="@{/admin/dashboard}" id="dashboardLink" class="btn btn-outline-secondary me-3 btn-sm">← Back
+                    to
+                    Dashboard</a>
+                <a th:href="@{/logout}" class="btn btn-outline-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+    <script th:inline="javascript">
+        document.addEventListener("DOMContentLoaded", function () {
+            const dashboardLink = document.getElementById('dashboardLink');
+            const referrer = document.referrer;
+            if (referrer) {
+                if (referrer.includes('/hr/')) {
+                    dashboardLink.href = /*[[@{/hr/dashboard}]]*/ '/hr/dashboard';
+                } else if (referrer.includes('/manager/')) {
+                    dashboardLink.href = /*[[@{/manager/dashboard}]]*/ '/manager/dashboard';
+                } else if (referrer.includes('/employee/')) {
+                    dashboardLink.href = /*[[@{/employee/dashboard}]]*/ '/employee/dashboard';
+                }
+            }
+        });
+    </script>
+
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h2 class="fw-bold text-dark mb-1">Reports & Analytics</h2>
+                <p class="text-secondary">Generate insights, track hours, and monitor visitor flow.</p>
+            </div>
+        </div>
+
+        <!-- Report Type Selection -->
+        <h5 class="text-secondary fw-bold text-uppercase mb-3 fs-6">Quick Reports</h5>
+        <div class="row mb-5">
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 border p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                            <span class="fs-4">👥</span>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-1 text-dark">Employee Work Hours</h5>
+                            <p class="text-secondary mb-0 small">View attendance and work duration logs</p>
+                        </div>
+                    </div>
+
+                    <div class="btn-group w-100 mt-auto" role="group">
+                        <a th:href="@{/reports/employee(period='daily')}" class="btn btn-outline-primary py-2">Daily</a>
+                        <a th:href="@{/reports/employee(period='weekly')}"
+                            class="btn btn-outline-primary py-2">Weekly</a>
+                        <a th:href="@{/reports/employee(period='monthly')}"
+                            class="btn btn-outline-primary py-2">Monthly</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 border p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3">
+                            <span class="fs-4">👣</span>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-1 text-dark">Visitor Flow Analysis</h5>
+                            <p class="text-secondary mb-0 small">Analyze visitor traffic and peak times</p>
+                        </div>
+                    </div>
+
+                    <div class="btn-group w-100 mt-auto" role="group">
+                        <a th:href="@{/reports/visitor(period='daily')}" class="btn btn-outline-primary py-2">Daily</a>
+                        <a th:href="@{/reports/visitor(period='weekly')}"
+                            class="btn btn-outline-primary py-2">Weekly</a>
+                        <a th:href="@{/reports/visitor(period='monthly')}"
+                            class="btn btn-outline-primary py-2">Monthly</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Summary -->
+        <h5 class="text-secondary fw-bold text-uppercase mb-3 fs-6">Today's Overview</h5>
+        <div class="row mb-5">
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="text-center">
+                        <div class="stat-label mb-2">Active Employees</div>
+                        <h2 class="stat-value text-success" th:text="${todayAttendance.size()}">0</h2>
+                        <small class="text-muted">Checked in today</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="text-center">
+                        <div class="stat-label mb-2">Total Work Hours</div>
+                        <h2 class="stat-value text-primary"
+                            th:text="${#numbers.formatDecimal(todayTotalHours, 1, 1)} + 'h'">0h
+                        </h2>
+                        <small class="text-muted">Accumulated today</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="text-center">
+                        <div class="stat-label mb-2">Total Visitors</div>
+                        <h2 class="stat-value text-info" th:text="${todayVisitors.size()}">0</h2>
+                        <small class="text-muted">Registered visits</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Summaries -->
+        <div class="row mb-5">
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100 border">
+                    <div class="card-header bg-white">
+                        <h5 class="fw-bold mb-0 text-dark">Weekly Insights</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3 p-2 border-bottom">
+                            <span class="text-secondary">Total Work Hours</span>
+                            <span class="fw-bold text-primary"
+                                th:text="${#numbers.formatDecimal(weeklyTotalHours, 1, 1)} + ' hours'">0 hours</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3 p-2 border-bottom">
+                            <span class="text-secondary">Total Visitors</span>
+                            <span class="fw-bold text-info" th:text="${weeklyVisitors.size()}">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center p-2">
+                            <span class="text-secondary">Attendance Records</span>
+                            <span class="fw-bold text-success" th:text="${weeklyAttendance.size()}">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100 border">
+                    <div class="card-header bg-white">
+                        <h5 class="fw-bold mb-0 text-dark">Monthly Insights</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3 p-2 border-bottom">
+                            <span class="text-secondary">Total Work Hours</span>
+                            <span class="fw-bold text-primary"
+                                th:text="${#numbers.formatDecimal(monthlyTotalHours, 1, 1)} + ' hours'">0 hours</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3 p-2 border-bottom">
+                            <span class="text-secondary">Total Visitors</span>
+                            <span class="fw-bold text-info" th:text="${monthlyVisitors.size()}">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center p-2">
+                            <span class="text-secondary">Attendance Records</span>
+                            <span class="fw-bold text-success" th:text="${monthlyAttendance.size()}">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Date Range -->
+        <div class="card shadow-sm border mb-5">
+            <div class="card-header bg-white">
+                <h4 class="fw-bold mb-0 text-dark">Custom Report Generation</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="get" id="customReportForm" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label text-secondary fw-medium">Start Date</label>
+                        <input type="date" name="startDate" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-secondary fw-medium">End Date</label>
+                        <input type="date" name="endDate" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-secondary fw-medium">Report Type</label>
+                        <select name="type" id="reportType" class="form-select" required>
+                            <option value="employee">Employee Work Report</option>
+                            <option value="visitor">Visitor Report</option>
+                        </select>
+                    </div>
+                    <div class="col-12 mt-4 text-end">
+                        <button type="submit" class="btn btn-primary px-4">Generate Report</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Handle custom date range report form submission
+        document.getElementById('customReportForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const reportType = document.getElementById('reportType').value;
+            const form = this;
+            const formData = new FormData(form);
+            const startDate = formData.get('startDate');
+            const endDate = formData.get('endDate');
+
+            // Redirect to the appropriate report endpoint based on selected type
+            if (reportType === 'visitor') {
+                const baseUrl = /*[[@{/reports/visitor}]]*/ '/reports/visitor';
+                window.location.href = `${baseUrl}?startDate=${startDate}&endDate=${endDate}`;
+            } else {
+                const baseUrl = /*[[@{/reports/employee}]]*/ '/reports/employee';
+                window.location.href = `${baseUrl}?startDate=${startDate}&endDate=${endDate}`;
+            }
+        });
+    </script>
+</body>
+
+</html>

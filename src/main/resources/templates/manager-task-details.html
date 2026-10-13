@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Details - Manager - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            margin-bottom: 24px;
+        }
+
+        .chat-box {
+            max-height: 400px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px;
+            background: #f8f9fc;
+            border-radius: 8px;
+        }
+
+        .chat-message {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            position: relative;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .chat-message.self {
+            align-self: flex-end;
+            background-color: #0d6efd;
+            color: #fff;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-message.other {
+            align-self: flex-start;
+            background-color: #ffffff;
+            color: var(--text-primary);
+            border: 1px solid #e2e8f0;
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-header {
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+            opacity: 0.8;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .chat-message.self .chat-header {
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top mb-4">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1 fw-bold text-primary"><i class="fas fa-tasks me-2"></i>Task Execution & Chat</span>
+            <div>
+                <a th:href="@{/manager/dashboard?tab=planning}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-4">
+        <!-- Success/Error Messages -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-check-circle me-2"></i> <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i> <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row">
+            <!-- Task Info -->
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h4 class="fw-bold mb-3" th:text="${task.title}">Task Title</h4>
+                        <div class="mb-3">
+                            <span class="badge"
+                                  th:classappend="${task.status == 'COMPLETED' ? 'bg-success' : (task.status == 'IN_PROGRESS' ? 'bg-info' : 'bg-secondary')}"
+                                  th:text="${task.status}"></span>
+                        </div>
+                        <p class="text-secondary small mb-4" th:text="${task.description}"></p>
+
+                        <div class="mb-3 small">
+                            <i class="fas fa-user-tie me-2 text-primary"></i> <strong>Assigned to:</strong> <span th:text="${task.employee.name}"></span>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between text-muted small mb-2">
+                            <span><strong>Due Date:</strong> <span th:text="${task.dueDate != null ? #temporals.format(task.dueDate, 'MMM dd, yyyy') : '-'}"></span></span>
+                            <span><strong>Priority:</strong> <span th:text="${task.priority}"></span></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold">Progress</label>
+                            <div class="d-flex align-items-center">
+                                <div class="progress flex-grow-1" style="height: 8px;">
+                                    <div class="progress-bar" role="progressbar"
+                                         th:style="${'width: ' + task.progressPercentage + '%'}"
+                                         th:classappend="${task.progressPercentage == 100 ? 'bg-success' : 'bg-primary'}"
+                                         th:aria-valuenow="${task.progressPercentage}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <span class="ms-3 fw-bold small text-dark" th:text="${task.progressPercentage + '%'}"></span>
+                            </div>
+                        </div>
+
+                        <div th:if="${task.attachmentUrl != null}">
+                            <a th:href="@{${task.attachmentUrl}}" class="btn btn-outline-secondary btn-sm w-100" target="_blank" download>
+                                <i class="fas fa-paperclip me-2"></i> Download Attachment
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task Chat -->
+            <div class="col-lg-8">
+                <div class="card h-100 d-flex flex-column">
+                    <div class="card-header bg-white border-bottom py-3">
+                        <h5 class="mb-0 fw-bold"><i class="fas fa-comments me-2 text-primary"></i>Manager-Employee Chat</h5>
+                    </div>
+                    <div class="card-body flex-grow-1 overflow-hidden d-flex flex-column h-100 p-0">
+                        <!-- Chat Box -->
+                        <div class="chat-box p-4" id="chatBox">
+                            <div th:if="${comments.isEmpty()}" class="text-center text-muted py-5 my-auto">
+                                <i class="fas fa-comment-dots fs-1 mb-3 text-secondary opacity-50"></i>
+                                <p>No comments yet. Start the discussion!</p>
+                            </div>
+
+                            <div th:each="comment : ${comments}" class="chat-message"
+                                 th:classappend="${comment.authorRole == 'MANAGER' ? 'self' : 'other'}">
+                                <div class="chat-header">
+                                    <span class="fw-bold">
+                                        <span th:text="${comment.authorName}">Name</span>
+                                        <span class="badge bg-light text-dark ms-1 small" style="font-size: 0.65rem;" th:text="${comment.authorRole}">ROLE</span>
+                                    </span>
+                                    <span class="ms-3 small" th:text="${#temporals.format(comment.createdAt, 'MMM dd, HH:mm')}">Time</span>
+                                </div>
+                                <div th:text="${comment.content}"></div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Input -->
+                        <div class="p-3 border-top bg-white mt-auto">
+                            <form th:action="@{/manager/tasks/comment/add}" method="post" class="d-flex gap-2">
+                                <input type="hidden" name="taskId" th:value="${task.id}">
+                                <input type="text" class="form-control" name="content" placeholder="Type a message to employee..." required autocomplete="off">
+                                <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-scroll chat to bottom
+        document.addEventListener("DOMContentLoaded", function () {
+            const chatBox = document.getElementById("chatBox");
+            if(chatBox) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>

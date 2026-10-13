@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --sidebar-bg: #e3f2fd;
+            /* Light blue sidebar like HR */
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --accent-blue: #0d6efd;
+            --border-color: #dcdfe6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        /* Sidebar Styling (Matching HR Dashboard) */
+        .sidebar {
+            min-height: 100vh;
+            background: var(--sidebar-bg);
+            color: var(--text-primary);
+            border-right: 1px solid var(--border-color);
+            width: 260px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .sidebar h3 {
+            color: var(--accent-blue);
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            padding-left: 10px;
+        }
+
+        .sidebar .nav-link {
+            color: #4a5568;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar .nav-link:hover {
+            background: rgba(13, 110, 253, 0.08);
+            color: var(--accent-blue);
+        }
+
+        .sidebar .nav-link.active {
+            background: #ffffff;
+            color: var(--accent-blue);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            padding: 2rem;
+        }
+
+        /* Cards */
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s;
+            margin-bottom: 24px;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-card {
+            border-left: 4px solid transparent;
+        }
+
+        .stat-card.border-success {
+            border-left-color: #198754 !important;
+        }
+
+        .stat-card.border-warning {
+            border-left-color: #ffc107 !important;
+        }
+
+        .stat-card.border-info {
+            border-left-color: #0dcaf0 !important;
+        }
+
+        .stat-card.border-secondary {
+            border-left-color: #6c757d !important;
+        }
+
+        .stat-card.border-danger {
+            border-left-color: #dc3545 !important;
+        }
+
+
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+        }
+
+        .card-header h4 {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        /* Tables (Clean Light Theme) */
+        .table {
+            color: var(--text-primary);
+            vertical-align: middle;
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table-striped>tbody>tr:nth-of-type(odd)>* {
+            background-color: rgba(0, 0, 0, 0.02);
+            color: var(--text-primary);
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(13, 110, 253, 0.04);
+        }
+
+        /* Misc */
+        .refresh-indicator {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .live-badge {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Badges */
+        .badge {
+            font-weight: 500;
+        }
+
+        /* Override Bootstrap dark text colors if used */
+        .text-warning {
+            color: #f59e0b !important;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h3>LogSphere</h3>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/}">
+                    <span>🏠</span> Home
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" th:href="@{/admin/dashboard}">
+                    <span>📊</span> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/visitors/dashboard}">
+                    <span>👥</span> All Visitors
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/meetings/list}">
+                    <span>🗓️</span> All Meetings
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/reports}">
+                    <span>📈</span> View Reports
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/meetings/create}">
+                    <span>📅</span> Create Meeting
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/admin/employees}">
+                    <span>👨‍💼</span> Manage Employees
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/employee/logs}">
+                    <span>📋</span> Employee Logs
+                </a>
+            </li>
+            <li class="nav-item mt-5 pt-3 border-top">
+                <a class="nav-link text-danger" th:href="@{/logout}">
+                    <span>🚪</span> Logout
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h2 class="fw-bold text-primary mb-1">Admin Dashboard <span class="live-badge small ms-2">🟢 LIVE</span>
+                </h2>
+                <div class="d-flex align-items-center gap-2">
+                    <p class="text-secondary mb-0">Welcome, <span class="fw-semibold text-dark"
+                            th:text="${userName}">Admin</span></p>
+                    <span class="text-muted">•</span>
+                    <p class="refresh-indicator mb-0">Auto-refreshing every 30s</p>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button onclick="location.reload()" class="btn btn-outline-primary shadow-sm bg-white">
+                    <i class="fas fa-sync-alt me-1"></i> Refresh
+                </button>
+                <a th:href="@{/logout}" class="btn btn-outline-danger shadow-sm bg-white">Logout</a>
+            </div>
+        </div>
+
+        <!-- Real-Time Statistics Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card shadow-sm h-100 border-success">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="text-secondary text-uppercase small fw-bold mb-1">Employees Present</h6>
+                                <h2 class="text-success fw-bold mb-0" th:text="${presentCount}">0</h2>
+                            </div>
+                            <div class="icon-shape bg-success bg-opacity-10 text-success rounded p-2">
+                                <i class="fas fa-user-check"></i>
+                            </div>
+                        </div>
+                        <small class="text-muted" th:text="'of ' + ${totalEmployees} + ' total'">of 0 total</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card shadow-sm h-100 border-warning">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="text-secondary text-uppercase small fw-bold mb-1">Visitors Inside</h6>
+                                <h2 class="text-warning fw-bold mb-0" th:text="${currentlyIn}">0</h2>
+                            </div>
+                            <div class="icon-shape bg-warning bg-opacity-10 text-warning rounded p-2">
+                                <i class="fas fa-walking"></i>
+                            </div>
+                        </div>
+                        <small class="text-muted">Currently on premises</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card shadow-sm h-100 border-info">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="text-secondary text-uppercase small fw-bold mb-1">Ongoing Meetings</h6>
+                                <h2 class="text-info fw-bold mb-0" th:text="${ongoingCount}">0</h2>
+                            </div>
+                            <div class="icon-shape bg-info bg-opacity-10 text-info rounded p-2">
+                                <i class="fas fa-handshake"></i>
+                            </div>
+                        </div>
+                        <small class="text-muted">Active meetings</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card shadow-sm h-100 border-secondary">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="text-secondary text-uppercase small fw-bold mb-1">Total Visitors</h6>
+                                <h2 class="text-dark fw-bold mb-0" th:text="${totalVisitors}">0</h2>
+                            </div>
+                            <div class="icon-shape bg-secondary bg-opacity-10 text-secondary rounded p-2">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                        <small class="text-muted">All time record</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <div class="row g-4">
+            <!-- Employees Currently Present -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">👨‍💼 Employees Present</h4>
+                        <span
+                            class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 rounded-pill"
+                            th:text="${presentCount} + ' present'">0 present</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th class="ps-3">Name</th>
+                                        <th>Department</th>
+                                        <th>Check-In</th>
+                                        <th>Hours</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${presentEmployees.isEmpty()}">
+                                        <td colspan="4" class="text-center text-muted py-4">No employees currently
+                                            present</td>
+                                    </tr>
+                                    <tr th:each="emp : ${presentEmployees}">
+                                        <td class="ps-3 fw-medium" th:text="${emp.name}"></td>
+                                        <td><span class="badge bg-light text-dark border"
+                                                th:text="${emp.department}"></span></td>
+                                        <td class="text-muted"
+                                            th:text="${emp.currentCheckIn != null ? #temporals.format(emp.currentCheckIn, 'HH:mm') : 'N/A'}">
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info-subtle text-info-emphasis"
+                                                th:text="${emp.totalHoursToday != null ? #numbers.formatDecimal(emp.totalHoursToday, 1, 1) + 'h' : '0h'}"></span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visitors Currently Inside -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">👥 Visitors Inside</h4>
+                        <span
+                            class="badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2 rounded-pill"
+                            th:text="${currentlyIn} + ' inside'">0 inside</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th class="ps-3">Name</th>
+                                        <th>Company</th>
+                                        <th>Meeting</th>
+                                        <th>Check-In</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${checkedInVisitors.isEmpty()}">
+                                        <td colspan="4" class="text-center text-muted py-4">No visitors currently inside
+                                        </td>
+                                    </tr>
+                                    <tr th:each="visitor : ${checkedInVisitors}">
+                                        <td class="ps-3 fw-medium" th:text="${visitor.name}"></td>
+                                        <td th:text="${visitor.company}"></td>
+                                        <td th:text="${visitor.personToMeet}"></td>
+                                        <td class="text-muted"
+                                            th:text="${#temporals.format(visitor.checkInTime, 'HH:mm')}"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ongoing Meetings -->
+        <div class="card shadow-sm my-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">📅 Ongoing Meetings</h4>
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2 rounded-pill"
+                    th:text="${ongoingCount} + ' active'">0 active</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Title</th>
+                                <th>Organizer</th>
+                                <th>Visitor</th>
+                                <th>Location</th>
+                                <th>Started</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${ongoingMeetings.isEmpty()}">
+                                <td colspan="7" class="text-center text-muted py-4">No ongoing meetings</td>
+                            </tr>
+                            <tr th:each="meeting : ${ongoingMeetings}">
+                                <td class="ps-3 fw-medium" th:text="${meeting.title}"></td>
+                                <td th:text="${meeting.organizer != null ? meeting.organizer.name : 'N/A'}"></td>
+                                <td th:text="${meeting.visitorName != null ? meeting.visitorName : 'Internal'}"></td>
+                                <td th:text="${meeting.location != null ? meeting.location : 'N/A'}"></td>
+                                <td th:text="${#temporals.format(meeting.startTime, 'HH:mm')}"></td>
+                                <td>
+                                    <span class="badge bg-light text-dark border"
+                                        th:text="${#temporals.format(meeting.startTime, 'HH:mm') + ' - Now'}"></span>
+                                </td>
+                                <td>
+                                    <form th:action="@{/meetings/end/{id}(id=${meeting.id})}" method="post"
+                                        style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">End Meeting</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Cards Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-danger">
+                    <div class="card-body text-center p-4">
+                        <h6 class="text-secondary text-uppercase small fw-bold mb-2">Employees Absent</h6>
+                        <h2 class="text-danger fw-bold mb-1" th:text="${absentCount}">0</h2>
+                        <small class="text-muted">Not checked in today</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-info">
+                    <div class="card-body text-center p-4">
+                        <h6 class="text-secondary text-uppercase small fw-bold mb-2">Total Meetings</h6>
+                        <h2 class="text-info fw-bold mb-1" th:text="${totalMeetings}">0</h2>
+                        <small class="text-muted">All time</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100 border-secondary">
+                    <div class="card-body text-center p-4">
+                        <h6 class="text-secondary text-uppercase small fw-bold mb-2">Checked Out</h6>
+                        <h2 class="text-dark fw-bold mb-1" th:text="${totalCheckedOut}">0</h2>
+                        <small class="text-muted">Visitors today</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Employees Details Section -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">👨‍💼 All Employees Details</h4>
+                <div>
+                    <a th:href="@{/admin/employees}" class="btn btn-outline-primary btn-sm me-2">Manage Employees</a>
+                    <span class="badge bg-light text-dark border" th:text="${totalEmployees} + ' total'">0 total</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th class="ps-3">ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Dept</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Mode</th>
+                                <th>Effort</th>
+                                <th>Check-In</th>
+                                <th>Hours</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${allEmployees.isEmpty()}">
+                                <td colspan="12" class="text-center text-muted py-4">No employees found</td>
+                            </tr>
+                            <tr th:each="emp : ${allEmployees}">
+                                <td class="ps-3">
+                                    <span class="badge bg-light text-dark border" th:text="${emp.employeeId}"></span>
+                                </td>
+                                <td class="fw-medium" th:text="${emp.name}"></td>
+                                <td>
+                                    <small class="text-muted" th:text="${emp.email}"></small>
+                                </td>
+                                <td class="text-muted small" th:text="${emp.phone != null ? emp.phone : '-'}"></td>
+                                <td><span class="badge bg-light text-dark" th:text="${emp.department}"></span></td>
+                                <td class="small" th:text="${emp.designation != null ? emp.designation : '-'}"></td>
+                                <td>
+                                    <span th:if="${emp.status == 'IN'}"
+                                        class="badge bg-success-subtle text-success">IN</span>
+                                    <span th:if="${emp.status == 'OUT'}"
+                                        class="badge bg-secondary-subtle text-secondary">OUT</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-info-emphasis"
+                                        th:text="${emp.workMode != null ? emp.workMode : 'OFFICE'}"></span>
+                                </td>
+                                <td>
+                                    <span class="badge"
+                                        th:classappend="${emp.effortScore != null && emp.effortScore >= 90 ? 'bg-success' : (emp.effortScore != null && emp.effortScore >= 70 ? 'bg-warning' : 'bg-danger')}"
+                                        th:text="${emp.effortScore != null ? #numbers.formatDecimal(emp.effortScore, 1, 1) : '-'}"></span>
+                                </td>
+                                <td>
+                                    <small th:if="${emp.currentCheckIn != null}"
+                                        th:text="${#temporals.format(emp.currentCheckIn, 'HH:mm')}"></small>
+                                    <small th:if="${emp.currentCheckIn == null}" class="text-muted">-</small>
+                                </td>
+                                <td>
+                                    <span class="fw-medium"
+                                        th:text="${emp.totalHoursToday != null ? #numbers.formatDecimal(emp.totalHoursToday, 1, 1) : '0.0'}"></span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a th:href="@{/admin/employees/edit/{id}(id=${emp.id})}"
+                                            class="btn btn-outline-primary btn-sm py-0" title="Edit"><i
+                                                class="fas fa-edit"></i></a>
+                                        <a th:href="@{/employee/logs(employeeId=${emp.employeeId})}"
+                                            class="btn btn-outline-info btn-sm py-0" title="Logs"><i
+                                                class="fas fa-list"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Idle Employees Section -->
+    <div class="main-content pt-0" th:if="${idleCount > 0}">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h4 class="mb-0 fs-5"><i class="fas fa-exclamation-triangle me-2"></i> Idle Employees Alert</h4>
+                        <small class="text-white-50">Employees inactive for 1+ minutes</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Name</th>
+                                        <th>ID</th>
+                                        <th>Department</th>
+                                        <th>Idle Duration</th>
+                                        <th>Idle Since</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="incident : ${idleIncidents}">
+                                        <td class="ps-3 fw-medium" th:text="${incident.employee.name}"></td>
+                                        <td th:text="${incident.employee.employeeId}"></td>
+                                        <td th:text="${incident.employee.department}"></td>
+                                        <td>
+                                            <span class="badge bg-danger-subtle text-danger"
+                                                th:text="${incident.idleDurationMinutes} + ' min'"></span>
+                                        </td>
+                                        <td th:text="${#temporals.format(incident.idleStartTime, 'HH:mm')}"></td>
+                                        <td>
+                                            <span class="badge bg-warning text-dark"
+                                                th:text="${incident.status}"></span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-refresh every 30 seconds
+        setInterval(function () {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+
+</html>
+

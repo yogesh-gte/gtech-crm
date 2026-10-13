@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bug Triage - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
+        <a class="navbar-brand text-primary fw-bold" th:href="@{/issues}">LogSphere</a>
+        <div>
+            <a th:href="@{/issues}" class="btn btn-outline-secondary btn-sm me-2">All Issues</a>
+            <a th:href="@{/issues/add}" class="btn btn-primary btn-sm">Create Issue</a>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h4 class="mb-4">Bug Triage</h4>
+        <p class="text-muted mb-4">Assign, set priority/severity, and move bugs from triage to Open.</p>
+
+        <form method="get" class="mb-4">
+            <div class="row g-2">
+                <div class="col-auto">
+                    <select name="projectId" class="form-select form-select-sm">
+                        <option value="">All Projects</option>
+                        <option th:each="p : ${projects}" th:value="${p.id}" th:text="${p.name}" th:selected="${selectedProjectId != null and selectedProjectId == p.id}"></option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Filter</button>
+                </div>
+            </div>
+        </form>
+
+        <div th:if="${bugs.isEmpty()}" class="alert alert-info">No bugs awaiting triage.</div>
+
+        <div class="card" th:if="${!bugs.isEmpty()}">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Key</th>
+                            <th>Title</th>
+                            <th>Project</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Severity</th>
+                            <th>Assignee</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="b : ${bugs}">
+                            <td><a th:href="@{/issues/view/{id}(id=${b.id})}" th:text="${b.issueKey}">-</a></td>
+                            <td th:text="${b.title}">-</td>
+                            <td th:text="${b.project != null ? b.project.name : '-'}">-</td>
+                            <td><span class="badge bg-warning" th:text="${b.status}">-</span></td>
+                            <td th:text="${b.priority}">-</td>
+                            <td th:text="${b.severity != null ? b.severity : '-'}">-</td>
+                            <td th:text="${b.assignee != null ? b.assignee.name : 'Unassigned'}">-</td>
+                            <td>
+                                <a th:href="@{/issues/edit/{id}(id=${b.id})}" class="btn btn-sm btn-outline-primary">Triage</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

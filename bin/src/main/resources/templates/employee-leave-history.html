@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave History - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            background: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+        }
+
+        .card-header h4 {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .table {
+            color: var(--text-primary);
+            vertical-align: middle;
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card {
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top mb-4">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1 fw-bold text-primary"><i class="fas fa-history me-2"></i>Leave
+                History</span>
+            <div>
+                <a th:href="@{/employee/dashboard}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Dashboard
+                </a>
+                <a th:href="@{/employee/leave/apply}" class="btn btn-primary btn-sm ms-2">
+                    <i class="fas fa-plus me-1"></i> Apply Leave
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container px-4 pb-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="row g-4 text-center">
+                    <div class="col-md-4">
+                        <div
+                            class="p-3 bg-light rounded text-center border h-100 d-flex flex-column justify-content-center">
+                            <div class="mb-2 text-primary fs-4"><i class="fas fa-calendar-check"></i></div>
+                            <h6 class="text-secondary small text-uppercase fw-bold">Leave Balance</h6>
+                            <h2 class="text-dark fw-bold mb-1" th:text="${leaveBalance != null ? leaveBalance : 0}">0
+                            </h2>
+                            <small class="text-muted">Days Available</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div
+                            class="p-3 bg-light rounded text-center border h-100 d-flex flex-column justify-content-center">
+                            <div class="mb-2 text-warning fs-4"><i class="fas fa-hourglass-half"></i></div>
+                            <h6 class="text-secondary small text-uppercase fw-bold">Pending Requests</h6>
+                            <h2 class="text-dark fw-bold mb-1"
+                                th:text="${pendingLeaves != null ? pendingLeaves.size() : 0}">0</h2>
+                            <small class="text-muted">Awaiting Approval</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div
+                            class="p-3 bg-light rounded text-center border h-100 d-flex flex-column justify-content-center">
+                            <div class="mb-2 text-success fs-4"><i class="fas fa-check-double"></i></div>
+                            <h6 class="text-secondary small text-uppercase fw-bold">Total Approved</h6>
+                            <h2 class="text-dark fw-bold mb-1"
+                                th:text="${approvedLeaves != null ? approvedLeaves.size() : 0}">0</h2>
+                            <small class="text-muted">Requests Approved</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-clipboard-list me-2 text-primary"></i>All Leave Requests</h4>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Leave Type</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Days</th>
+                                <th>Status</th>
+                                <th>Reason</th>
+                                <th>Applied On</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${leaveRequests == null || leaveRequests.isEmpty()}">
+                                <td colspan="7" class="text-center text-muted py-5">
+                                    <i class="far fa-folder-open fs-4 d-block mb-2 text-secondary"></i>
+                                    No leave history found.
+                                    <a th:href="@{/employee/leave/apply}" class="fw-bold text-decoration-none ms-1">Apply
+                                        now</a>
+                                </td>
+                            </tr>
+                            <tr th:each="leave : ${leaveRequests}">
+                                <td class="ps-4"><span class="badge bg-light text-dark border"
+                                        th:text="${leave.leaveType}"></span></td>
+                                <td th:text="${#temporals.format(leave.startDate, 'yyyy-MM-dd')}"></td>
+                                <td th:text="${#temporals.format(leave.endDate, 'yyyy-MM-dd')}"></td>
+                                <td class="fw-bold text-dark" th:text="${leave.numberOfDays}"></td>
+                                <td>
+                                    <span class="badge"
+                                        th:classappend="${leave.status == 'APPROVED' ? 'bg-success-subtle text-success' : (leave.status == 'REJECTED' ? 'bg-danger-subtle text-danger' : 'bg-warning-subtle text-warning-emphasis')}"
+                                        th:text="${leave.status}"></span>
+                                </td>
+                                <td class="text-secondary small text-truncate" style="max-width: 200px;"
+                                    th:text="${leave.reason != null ? leave.reason : '-'}"></td>
+                                <td class="text-secondary small"
+                                    th:text="${leave.createdAt != null ? #temporals.format(leave.createdAt, 'MMM dd, HH:mm') : '-'}">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
+

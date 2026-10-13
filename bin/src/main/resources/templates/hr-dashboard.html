@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - HR Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f7ff;
+            color: #333;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            min-height: 100vh;
+            background: #e3f2fd;
+            color: #0f1b2d;
+            border-right: 1px solid #dcdfe6;
+            width: 260px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .sidebar .nav-link {
+            color: #4a5568;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar .nav-link:hover {
+            background: #d0e6fb;
+            color: #0d6efd;
+        }
+
+        .sidebar .nav-link.active {
+            background: #ffffff;
+            color: #0d6efd;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+        }
+
+        /* Cards */
+        .card {
+            border: none;
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            margin-bottom: 24px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 20px 24px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #0f1b2d;
+        }
+
+        /* Stats Cards */
+        .stat-card.border-primary {
+            border-left: 4px solid #0d6efd !important;
+        }
+
+        .stat-card.border-success {
+            border-left: 4px solid #198754 !important;
+        }
+
+        .stat-card.border-danger {
+            border-left: 4px solid #dc3545 !important;
+        }
+
+        .stat-card.border-warning {
+            border-left: 4px solid #ffc107 !important;
+        }
+
+        .stat-card.border-info {
+            border-left: 4px solid #0dcaf0 !important;
+        }
+
+        .stat-card h5 {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #6c757d;
+        }
+
+        .stat-card h2 {
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+
+        /* Tables */
+        .table {
+            --bs-table-bg: transparent;
+        }
+
+        .table th {
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .table td {
+            vertical-align: middle;
+            color: #212529;
+        }
+
+        /* Common Elements */
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+
+        .text-primary {
+            color: #0d6efd !important;
+        }
+
+        .live-badge {
+            animation: pulse 2s infinite;
+            font-size: 0.8em;
+            vertical-align: middle;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h3 class="text-primary mb-5 px-3">LogSphere</h3>
+        <ul class="nav flex-column">
+            <li class="nav-item mb-1">
+                <a class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview"
+                    type="button" href="#">👥 Overview</a>
+            </li>
+            <li class="nav-item mb-1">
+                <button class="nav-link w-100 text-start" id="attendance-tab" data-bs-toggle="pill"
+                    data-bs-target="#attendance" type="button">🕒 Attendance</button>
+            </li>
+            <li class="nav-item mb-1">
+                <button class="nav-link w-100 text-start" id="leave-tab" data-bs-toggle="pill" data-bs-target="#leave"
+                    type="button">📅 Leave Mgmt</button>
+            </li>
+            <li class="nav-item mb-1">
+                <button class="nav-link w-100 text-start" id="task-tab" data-bs-toggle="pill" data-bs-target="#task"
+                    type="button">✅ Tasks</button>
+            </li>
+            <li class="nav-item mb-1">
+                <button class="nav-link w-100 text-start" id="recruitment-tab" data-bs-toggle="pill"
+                    data-bs-target="#recruitment" type="button">👥 Recruitment</button>
+            </li>
+            <li class="nav-item mb-1">
+                <button class="nav-link w-100 text-start" id="payroll-tab" data-bs-toggle="pill"
+                    data-bs-target="#payroll" type="button">💰 Payroll</button>
+            </li>
+            <li class="nav-item mb-1">
+                <button class="nav-link w-100 text-start" id="notifications-tab" data-bs-toggle="pill"
+                    data-bs-target="#notifications" type="button">🔔 Alerts</button>
+            </li>
+            <li class="nav-item mb-1">
+
+            <li class="nav-item mb-1">
+                <button class="nav-link w-100 text-start" id="suggestions-tab" data-bs-toggle="pill"
+                    data-bs-target="#suggestions" type="button">
+                    💡 Suggestions
+                    <span th:if="${suggestionCount > 0}" class="badge bg-warning text-dark ms-auto"
+                        th:text="${suggestionCount}"></span>
+                </button>
+            </li>
+
+            <li class="nav-item mb-1">
+                <a class="nav-link" th:href="@{/admin/employees}">👨‍💼 Manage Employees</a>
+            </li>
+            <li class="nav-item mb-1">
+                <a class="nav-link" th:href="@{/reports}">📈 Reports</a>
+            </li>
+            <li class="nav-item mt-4">
+                <a class="nav-link text-danger" th:href="@{/logout}">🚪 Logout</a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h2 class="fw-bold mb-1">HR Dashboard <span class="live-badge text-success small">● LIVE</span></h2>
+                <p class="text-secondary mb-0">Welcome back, <span class="fw-semibold text-dark"
+                        th:text="${userName}">HR Admin</span></p>
+            </div>
+            <div class="d-flex gap-2">
+                <a th:href="@{/}" class="btn btn-light border shadow-sm text-secondary fw-medium">Home</a>
+                <button onclick="location.reload()"
+                    class="btn btn-light border shadow-sm text-secondary">Refresh</button>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="hrTabContent">
+
+            <!-- 1. Employee Overview -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                <!-- Stats Row (Restored) -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card border-primary h-100">
+                            <div class="card-body">
+                                <h5>Total Employees</h5>
+                                <h2 class="text-primary" th:text="${totalEmployees}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card border-success h-100">
+                            <div class="card-body">
+                                <h5>Active</h5>
+                                <h2 class="text-success" th:text="${activeEmployees}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card border-danger h-100">
+                            <div class="card-body">
+                                <h5>Inactive</h5>
+                                <h2 class="text-danger" th:text="${inactiveEmployees}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card border-warning h-100">
+                            <div class="card-body">
+                                <h5>New this Month</h5>
+                                <h2 class="text-warning" th:text="${newJoineesThisMonth}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Row -->
+                <div class="row">
+                    <div class="col-lg-8"> <!-- Using col-lg-8 for a nice wide but focused aspect ratio -->
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start mb-4">
+                                    <div>
+                                        <h5 class="fw-bold mb-1">Department Member Hours</h5>
+                                        <div class="h3 fw-bold mb-0">
+                                            <span th:text="${activeEmployees}">0</span>
+                                            <span class="text-muted fs-6 fw-normal">Total Hours</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <span
+                                            class="badge rounded-pill bg-primary bg-opacity-10 text-primary px-3">Weekly
+                                            View</span>
+                                    </div>
+                                </div>
+                                <div style="height: 300px;">
+                                    <canvas id="departmentChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Attendance -->
+            <div class="tab-pane fade" id="attendance" role="tabpanel">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card border-success h-100">
+                            <div class="card-body">
+                                <h5>Present Today</h5>
+                                <h2 class="text-success" th:text="${presentCount}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card border-danger h-100">
+                            <div class="card-body">
+                                <h5>Absent</h5>
+                                <h2 class="text-danger" th:text="${absentCount}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card border-warning h-100">
+                            <div class="card-body">
+                                <h5>Late</h5>
+                                <h2 class="text-warning" th:text="${lateCount}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card border-info h-100">
+                            <div class="card-body">
+                                <h5>WFH Requests</h5>
+                                <h2 class="text-info" th:text="${wfhRequests}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        Monthly Attendance Trends
+                    </div>
+                    <div class="card-body">
+                        <canvas id="attendanceChart" style="max-height: 400px;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Leave Management -->
+            <div class="tab-pane fade" id="leave" role="tabpanel">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="card stat-card border-warning h-100">
+                            <div class="card-body">
+                                <h5>Pending Requests</h5>
+                                <h2 class="text-warning" th:text="${pendingLeaves.size()}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card stat-card border-success h-100">
+                            <div class="card-body">
+                                <h5>Approved</h5>
+                                <h2 class="text-success" th:text="${approvedLeaves.size()}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card stat-card border-danger h-100">
+                            <div class="card-body">
+                                <h5>Rejected</h5>
+                                <h2 class="text-danger" th:text="${rejectedLeaves.size()}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        Pending Leave Requests
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Type</th>
+                                        <th>Dates</th>
+                                        <th>Days</th>
+                                        <th>Reason</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${pendingLeaves.isEmpty()}">
+                                        <td colspan="6" class="text-center text-muted py-4">No pending requests</td>
+                                    </tr>
+                                    <tr th:each="leave : ${pendingLeaves}">
+                                        <td class="fw-medium" th:text="${leave.employee.name}">User</td>
+                                        <td><span class="badge bg-light text-dark border"
+                                                th:text="${leave.leaveType}">Sick</span></td>
+                                        <td>
+                                            <div class="small">
+                                                <span th:text="${#temporals.format(leave.startDate, 'MMM d')}"></span> -
+                                                <span th:text="${#temporals.format(leave.endDate, 'MMM d')}"></span>
+                                            </div>
+                                        </td>
+                                        <td th:text="${leave.numberOfDays}">1</td>
+                                        <td class="text-muted small" th:text="${leave.reason}">Reason</td>
+                                        <td>
+                                            <form th:action="@{/hr/leave/approve/{id}(id=${leave.id})}" method="post"
+                                                class="d-inline">
+                                                <button type="submit"
+                                                    class="btn btn-sm btn-success-light text-success bg-opacity-10 border-0 fw-semibold">Approve</button>
+                                            </form>
+                                            <button type="button"
+                                                class="btn btn-sm btn-danger-light text-danger bg-opacity-10 border-0 fw-semibold ms-1"
+                                                th:data-leave-id="${leave.id}"
+                                                onclick="showRejectModal(this.getAttribute('data-leave-id'))">Reject</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Tasks -->
+            <div class="tab-pane fade" id="task" role="tabpanel">
+                <!-- Stats Row -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card border-primary h-100">
+                            <div class="card-body">
+                                <h5>Total Tasks</h5>
+                                <h2 class="text-primary" th:text="${totalTasks}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card border-success h-100">
+                            <div class="card-body">
+                                <h5>Completed</h5>
+                                <h2 class="text-success" th:text="${completedTasks}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card border-danger h-100">
+                            <div class="card-body">
+                                <h5>Overdue</h5>
+                                <h2 class="text-danger" th:text="${overdueTasks}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card border-info h-100">
+                            <div class="card-body">
+                                <h5>Completion Rate</h5>
+                                <h2 class="text-info"
+                                    th:text="${#numbers.formatDecimal(taskCompletionRate, 1, 1)} + '%'">0%</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        Employee Performance Table
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Department</th>
+                                        <th>Total</th>
+                                        <th>Done</th>
+                                        <th>Progress</th>
+                                        <th>Pending</th>
+                                        <th>Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${employeeTaskPerformance.isEmpty()}">
+                                        <td colspan="7" class="text-center text-muted">No data available</td>
+                                    </tr>
+                                    <tr th:each="perf : ${employeeTaskPerformance}">
+                                        <td>
+                                            <div class="fw-medium" th:text="${perf.get('employee').name}">Name</div>
+                                            <div class="small text-muted" th:text="${perf.get('employee').employeeId}">
+                                                ID</div>
+                                        </td>
+                                        <td th:text="${perf.get('employee').department}">Dept</td>
+                                        <td><span class="badge bg-light text-dark border"
+                                                th:text="${perf.get('stats').get('total')}">0</span></td>
+                                        <td class="text-success fw-bold"
+                                            th:text="${perf.get('stats').get('completed')}">0</td>
+                                        <td class="text-warning" th:text="${perf.get('stats').get('inProgress')}">0</td>
+                                        <td class="text-danger" th:text="${perf.get('stats').get('pending')}">0</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 6px; width: 60px;">
+                                                    <div class="progress-bar" role="progressbar"
+                                                        th:classappend="${perf.get('stats').get('completionRate') >= 80 ? 'bg-success' : 'bg-warning'}"
+                                                        th:style="'width: ' + ${perf.get('stats').get('completionRate')} + '%'">
+                                                    </div>
+                                                </div>
+                                                <span class="small"
+                                                    th:text="${perf.get('stats').get('completionRate')} + '%'">0%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Recruitment -->
+            <div class="tab-pane fade" id="recruitment" role="tabpanel">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card border-primary h-100">
+                            <div class="card-body">
+                                <h5>Open Jobs</h5>
+                                <h2 class="text-primary" th:text="${openJobs.size()}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card border-info h-100">
+                            <div class="card-body">
+                                <h5>Candidates</h5>
+                                <h2 class="text-info" th:text="${allCandidates.size()}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Job Openings</span>
+                        <a th:href="@{/hr/recruitment/job/create}" class="btn btn-sm btn-primary">+ Post Job</a>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Dept</th>
+                                    <th>Status</th>
+                                    <th>Posted</th>
+                                    <th>Positions</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:if="${openJobs.isEmpty()}">
+                                    <td colspan="6" class="text-center text-muted">No open jobs</td>
+                                </tr>
+                                <tr th:each="job : ${openJobs}">
+                                    <td class="fw-medium" th:text="${job.title}">Title</td>
+                                    <td th:text="${job.department}">Dept</td>
+                                    <td><span class="badge bg-success-subtle text-success border border-success-subtle"
+                                            th:text="${job.status}">Active</span></td>
+                                    <td th:text="${#temporals.format(job.postedDate, 'MMM d, yyyy')}">Date</td>
+                                    <td th:text="${job.numberOfPositions != null ? job.numberOfPositions : 1}">1</td>
+                                    <td>
+                                        <a th:href="@{/hr/recruitment/candidate/add(jobId=${job.id})}"
+                                            class="btn btn-sm btn-outline-primary">Add Candidate</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Candidate Pipeline</span>
+                        <a th:href="@{/hr/recruitment/candidate/add}" class="btn btn-sm btn-outline-primary">Add
+                            Candidate</a>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                    <th>Experience</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:if="${allCandidates.isEmpty()}">
+                                    <td colspan="5" class="text-center text-muted">No candidates yet</td>
+                                </tr>
+                                <tr th:each="candidate : ${allCandidates}">
+                                    <td>
+                                        <div class="fw-medium" th:text="${candidate.name}">Name</div>
+                                        <div class="small text-muted" th:text="${candidate.email}">Email</div>
+                                    </td>
+                                    <td th:text="${candidate.jobTitle}">Job</td>
+                                    <td
+                                        th:text="${candidate.totalExperience != null ? candidate.totalExperience + ' yrs' : '-'}">
+                                        -</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border"
+                                            th:text="${candidate.status}">Status</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a th:href="@{/hr/recruitment/candidate/view/{id}(id=${candidate.id})}"
+                                                class="btn btn-outline-secondary">View</a>
+                                            <a th:href="@{/hr/recruitment/candidate/edit/{id}(id=${candidate.id})}"
+                                                class="btn btn-outline-secondary">Edit</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. Payroll -->
+            <div class="tab-pane fade" id="payroll" role="tabpanel">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="card stat-card border-success h-100">
+                            <div class="card-body">
+                                <h5>Processed</h5>
+                                <h2 class="text-success" th:text="${processedPayrolls.size()}">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Payroll History</span>
+                        <div>
+                            <a th:href="@{/hr/payroll/add}" class="btn btn-sm btn-warning">+ Add</a>
+                            <a th:href="@{/hr/payroll/generate-all}" class="btn btn-sm btn-success">Run Batch</a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Period</th>
+                                    <th>Net Salary</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:if="${monthlyPayrolls.isEmpty()}">
+                                    <td colspan="5" class="text-center text-muted">No records</td>
+                                </tr>
+                                <tr th:each="payroll : ${monthlyPayrolls}">
+                                    <td class="fw-medium" th:text="${payroll.employee.name}">Name</td>
+                                    <td class="small text-muted">
+                                        <span th:text="${#temporals.format(payroll.payPeriodStart, 'MMM d')}"></span> -
+                                        <span th:text="${#temporals.format(payroll.payPeriodEnd, 'MMM d')}"></span>
+                                    </td>
+                                    <td class="fw-bold text-success"
+                                        th:text="${'₹' + #numbers.formatDecimal(payroll.netSalary, 0, 0)}">₹0</td>
+                                    <td><span class="badge bg-light text-dark border"
+                                            th:text="${payroll.status}">Status</span></td>
+                                    <td>
+                                        <a th:href="@{/hr/payroll/payslip/{id}(id=${payroll.id})}"
+                                            class="btn btn-sm btn-outline-success">Payslip</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- 8. Suggestions -->
+            <div class="tab-pane fade" id="suggestions" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        Employee Suggestions
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Title</th>
+                                    <th>From</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:if="${allSuggestions == null || allSuggestions.isEmpty()}">
+                                    <td colspan="5" class="text-center text-muted">No suggestions</td>
+                                </tr>
+                                <tr th:each="s : ${allSuggestions}">
+                                    <td class="fw-medium" th:text="${s.title}">Title</td>
+                                    <td th:text="${s.employee.name}">Name</td>
+                                    <td><span class="badge bg-light text-dark border"
+                                            th:text="${s.status}">Status</span></td>
+                                    <td th:text="${#temporals.format(s.createdAt, 'MMM d')}">Date</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                                            th:attr="data-bs-target='#suggestionModal' + ${s.id}">View</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modals (Copied and styled for light theme) -->
+    <div class="modal fade" id="rejectModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">Reject Request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="rejectForm" method="post">
+                        <p class="text-muted mb-3">Please provide a reason for rejecting this request.</p>
+                        <textarea class="form-control" name="rejectionReason" rows="3" placeholder="Reason..."
+                            required></textarea>
+                        <div class="text-end mt-4">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger">Confirm Rejection</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Suggestions Modals -->
+    <div th:each="suggestion : ${allSuggestions}" th:attr="id='suggestionModal' + ${suggestion.id}" class="modal fade"
+        tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" th:text="${suggestion.title}">Title</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Submitted by <strong th:text="${suggestion.employee.name}"></strong> on <span
+                            th:text="${#temporals.format(suggestion.createdAt, 'MMM d, yyyy')}"></span>
+                    </p>
+                    <div class="p-3 bg-light rounded mb-3" th:text="${suggestion.description}"></div>
+
+                    <div th:if="${suggestion.status == 'PENDING'}">
+                        <form th:action="@{/hr/suggestion/respond/{id}(id=${suggestion.id})}" method="post">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Response</label>
+                                <textarea class="form-control" name="response" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">New Status</label>
+                                <select class="form-select" name="status">
+                                    <option value="REVIEWED">Mark as Reviewed</option>
+                                    <option value="IMPLEMENTED">Mark as Implemented</option>
+                                    <option value="REJECTED">Reject</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Submit Update</button>
+                        </form>
+                    </div>
+                    <div th:if="${suggestion.response != null}">
+                        <h6 class="text-primary small fw-bold">HR Response</h6>
+                        <p class="mb-0 small" th:text="${suggestion.response}"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        // Common Chart Options for Light Theme
+        const lightChartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#6c757d', font: { family: 'Inter', size: 12 } } }
+            },
+            scales: {
+                y: { grid: { color: '#f1f3f5' }, ticks: { color: '#6c757d' } },
+                x: { grid: { display: false }, ticks: { color: '#6c757d' } }
+            }
+        };
+
+        // Department Chart (Styled like Reference)
+        const deptCtx = document.getElementById('departmentChart');
+        if (deptCtx) {
+            const deptDataMap = /*[[${departmentCount}]]*/ {};
+            new Chart(deptCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(deptDataMap),
+                    datasets: [{
+                        label: 'Active Employees',
+                        data: Object.values(deptDataMap),
+                        backgroundColor: '#3b82f6', // Bright Blue from reference
+                        hoverBackgroundColor: '#2563eb',
+                        borderRadius: 4,
+                        barThickness: 30,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            padding: 12,
+                            titleFont: { size: 13 },
+                            bodyFont: { size: 13 },
+                            cornerRadius: 8,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#f1f5f9',
+                                borderDash: [5, 5], // Dashed grid like reference
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 11, family: 'Inter' },
+                                padding: 10
+                            },
+                            border: { display: false }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 11, family: 'Inter' }
+                            },
+                            border: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Attendance Chart
+        const attCtx = document.getElementById('attendanceChart');
+        if (attCtx) {
+            new Chart(attCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Present', 'Absent', 'Late', 'WFH'],
+                    datasets: [{
+                        label: 'Today',
+                        data: [
+                            /*[[${presentCount}]]*/ 0,
+                            /*[[${absentCount}]]*/ 0,
+                            /*[[${lateCount}]]*/ 0,
+                            /*[[${wfhRequests}]]*/ 0
+                        ],
+                        backgroundColor: ['#198754', '#dc3545', '#ffc107', '#0dcaf0'],
+                        borderRadius: 4,
+                        barThickness: 40
+                    }]
+                },
+                options: lightChartOptions
+            });
+        }
+
+        function showRejectModal(leaveId) {
+            const form = document.getElementById('rejectForm');
+            form.action = '/hr/leave/reject/' + leaveId;
+            new bootstrap.Modal(document.getElementById('rejectModal')).show();
+        }
+    </script>
+</body>
+
+</html>

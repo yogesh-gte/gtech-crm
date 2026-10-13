@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply for Leave - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            background: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.5rem;
+        }
+
+        .card-header h4 {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .form-label {
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control,
+        .form-select {
+            border: 1px solid #dee2e6;
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            background-color: #ffffff;
+            border-radius: 8px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+        }
+
+        .table {
+            color: var(--text-primary);
+            vertical-align: middle;
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top mb-5">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1 fw-bold text-primary"><i class="fas fa-calendar-plus me-2"></i>Apply
+                Leave</span>
+            <div>
+                <a th:href="@{/employee/dashboard}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Dashboard
+                </a>
+                <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm ms-2">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header text-center">
+                        <h4 class="mb-0">Leave Application Form</h4>
+                        <p class="text-secondary small mt-2 mb-0">Submit a new leave request for approval</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Leave Balance Info -->
+                        <div
+                            class="alert alert-primary d-flex align-items-center mb-4 border-0 bg-primary bg-opacity-10 text-primary">
+                            <i class="fas fa-info-circle fs-4 me-3"></i>
+                            <div>
+                                <strong>Leave Balance:</strong> <span
+                                    th:text="${leaveBalance != null ? leaveBalance : 0}" class="fw-bold">0</span> days
+                                remaining
+                            </div>
+                        </div>
+
+                        <!-- Success/Error Messages -->
+                        <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm"
+                            role="alert">
+                            <i class="fas fa-check-circle me-2"></i> <span th:text="${success}"></span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm"
+                            role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i> <span th:text="${error}"></span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+
+                        <form th:action="@{/employee/leave/apply}" method="post">
+                            <div class="mb-4">
+                                <label for="leaveType" class="form-label">Leave Type <span
+                                        class="text-danger">*</span></label>
+                                <select class="form-select" id="leaveType" name="leaveType" required>
+                                    <option value="">Select Leave Type</option>
+                                    <option value="CASUAL">Casual Leave</option>
+                                    <option value="SICK">Sick Leave</option>
+                                    <option value="EARNED">Earned Leave</option>
+                                    <option value="EMERGENCY">Emergency Leave</option>
+                                    <option value="MATERNITY">Maternity Leave</option>
+                                    <option value="PATERNITY">Paternity Leave</option>
+                                </select>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <label for="startDate" class="form-label">Start Date <span
+                                            class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-secondary border-end-0"><i
+                                                class="far fa-calendar-alt"></i></span>
+                                        <input type="date" class="form-control border-start-0" id="startDate"
+                                            name="startDate" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="endDate" class="form-label">End Date <span
+                                            class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-secondary border-end-0"><i
+                                                class="far fa-calendar-alt"></i></span>
+                                        <input type="date" class="form-control border-start-0" id="endDate"
+                                            name="endDate" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="reason" class="form-label">Reason <span
+                                        class="text-secondary fw-normal">(Optional)</span></label>
+                                <textarea class="form-control" id="reason" name="reason" rows="4"
+                                    placeholder="Please provide a brief reason for your leave request..."></textarea>
+                            </div>
+
+                            <div class="d-grid gap-2 mt-5">
+                                <button type="submit" class="btn btn-primary btn-lg shadow-sm">
+                                    <i class="fas fa-paper-plane me-2"></i> Submit Leave Request
+                                </button>
+                                <a th:href="@{/employee/dashboard}" class="btn btn-light text-secondary">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Recent Leave Requests -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0 text-dark">Recent Activity</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Type</th>
+                                        <th>Dates</th>
+                                        <th>Days</th>
+                                        <th class="text-end pe-4">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${leaveRequests.isEmpty()}">
+                                        <td colspan="4" class="text-center text-muted py-4">No recent requests</td>
+                                    </tr>
+                                    <tr th:each="leave : ${leaveRequests}">
+                                        <td class="ps-4"><span class="badge bg-light text-dark border"
+                                                th:text="${leave.leaveType}"></span></td>
+                                        <td class="small text-secondary">
+                                            <span th:text="${#temporals.format(leave.startDate, 'MMM dd')}"></span> -
+                                            <span th:text="${#temporals.format(leave.endDate, 'MMM dd')}"></span>
+                                        </td>
+                                        <td class="text-dark fw-medium" th:text="${leave.numberOfDays}"></td>
+                                        <td class="text-end pe-4">
+                                            <span class="badge"
+                                                th:classappend="${leave.status == 'APPROVED' ? 'bg-success-subtle text-success' : (leave.status == 'REJECTED' ? 'bg-danger-subtle text-danger' : 'bg-warning-subtle text-warning-emphasis')}"
+                                                th:text="${leave.status}"></span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('startDate').setAttribute('min', today);
+        document.getElementById('endDate').setAttribute('min', today);
+
+        // Update end date minimum when start date changes
+        document.getElementById('startDate').addEventListener('change', function () {
+            document.getElementById('endDate').setAttribute('min', this.value);
+        });
+    </script>
+</body>
+
+</html>
+

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issues - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
+        <a class="navbar-brand text-primary fw-bold" th:href="@{/}">LogSphere</a>
+        <span class="text-muted" th:text="${userName}"></span>
+        <div>
+            <a th:href="@{/sprints}" class="btn btn-outline-success btn-sm me-2">Sprints</a>
+            <a th:if="${canCreateIssue == true}" th:href="@{/issues/triage}" class="btn btn-outline-warning btn-sm me-2">Bug Triage</a>
+            <a th:href="@{/issues/audit}" class="btn btn-outline-info btn-sm me-2"><i class="fas fa-history me-1"></i> Audit Log</a>
+            <a th:href="@{/reports/export/issues}" class="btn btn-outline-secondary btn-sm me-2"><i class="fas fa-file-csv me-1"></i> Export</a>
+            <span th:if="${canCreateIssue == true}">
+                <a th:href="@{/issues/add}" class="btn btn-primary btn-sm">Create Issue</a>
+            </span>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h4 class="mb-4">Issues</h4>
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" th:text="${error}"></div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-2">
+                    <div class="col-md-3">
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Search key, title..." th:value="${searchQuery}">
+                    </div>
+                    <div class="col-md-2">
+                        <select name="projectId" class="form-select form-select-sm">
+                            <option value="">All Projects</option>
+                            <option th:each="p : ${projects}" th:value="${p.id}" th:text="${p.name}" th:selected="${selectedProjectId != null && selectedProjectId == p.id}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select name="issueType" class="form-select form-select-sm">
+                            <option value="">All Types</option>
+                            <option value="BUG" th:selected="${selectedIssueType == 'BUG'}">Bug</option>
+                            <option value="STORY" th:selected="${selectedIssueType == 'STORY'}">Story</option>
+                            <option value="TASK" th:selected="${selectedIssueType == 'TASK'}">Task</option>
+                            <option value="EPIC" th:selected="${selectedIssueType == 'EPIC'}">Epic</option>
+                            <option value="SUBTASK" th:selected="${selectedIssueType == 'SUBTASK'}">Subtask</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select name="status" class="form-select form-select-sm">
+                            <option value="">All Status</option>
+                            <option value="TRIAGE" th:selected="${selectedStatus == 'TRIAGE'}">Triage</option>
+                            <option value="OPEN" th:selected="${selectedStatus == 'OPEN'}">Open</option>
+                            <option value="IN_PROGRESS" th:selected="${selectedStatus == 'IN_PROGRESS'}">In Progress</option>
+                            <option value="IN_REVIEW" th:selected="${selectedStatus == 'IN_REVIEW'}">In Review</option>
+                            <option value="TESTING" th:selected="${selectedStatus == 'TESTING'}">Testing</option>
+                            <option value="DONE" th:selected="${selectedStatus == 'DONE'}">Done</option>
+                            <option value="CLOSED" th:selected="${selectedStatus == 'CLOSED'}">Closed</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Filter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div th:if="${issues.isEmpty()}" class="text-center text-muted py-5">No issues found.</div>
+                <div th:if="${!issues.isEmpty()}" class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Key</th>
+                                <th>Type</th>
+                                <th>Title</th>
+                                <th>Project</th>
+                                <th>Assignee</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="i : ${issues}">
+                                <td><span class="badge bg-secondary" th:text="${i.issueKey}">-</span></td>
+                                <td>
+                                    <span class="badge bg-danger" th:if="${i.issueType == 'BUG'}">Bug</span>
+                                    <span class="badge bg-primary" th:if="${i.issueType == 'STORY'}">Story</span>
+                                    <span class="badge bg-info" th:if="${i.issueType == 'TASK'}">Task</span>
+                                    <span class="badge bg-dark" th:if="${i.issueType == 'EPIC'}">Epic</span>
+                                    <span class="badge bg-secondary" th:if="${i.issueType == 'SUBTASK'}">Subtask</span>
+                                </td>
+                                <td th:text="${i.title}">-</td>
+                                <td th:text="${i.project != null ? i.project.name : '-'}">-</td>
+                                <td th:text="${i.assignee != null ? i.assignee.name : '-'}">-</td>
+                                <td th:text="${i.status}">-</td>
+                                <td th:text="${i.priority}">-</td>
+                                <td>
+                                    <a th:href="@{/issues/view/{id}(id=${i.id})}" class="btn btn-sm btn-outline-primary">View</a>
+                                    <a th:if="${canCreateIssue or (editableIssueIds != null and editableIssueIds.contains(i.id))}" th:href="@{/issues/edit/{id}(id=${i.id})}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

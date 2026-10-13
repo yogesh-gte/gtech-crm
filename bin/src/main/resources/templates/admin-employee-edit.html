@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Employee - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            background: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.5rem;
+        }
+
+        .card-header h4 {
+            color: var(--brand-primary);
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .form-label {
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control,
+        .form-select {
+            border: 1px solid #dee2e6;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            color: var(--text-primary);
+            background-color: #ffffff;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--brand-primary);
+            border-color: var(--brand-primary);
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top mb-5">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1 fw-bold text-primary"><i class="fas fa-user-edit me-2"></i>Edit
+                Employee</span>
+            <div>
+                <a th:href="@{/admin/employees}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Employees
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card shadow-sm">
+                    <div class="card-header text-center">
+                        <h4 class="mb-0">Update Employee Information</h4>
+                        <p class="text-secondary small mt-2 mb-0">Modify employee details and access settings</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <form th:action="@{/admin/employees/update/{id}(id=${employee.id})}" th:object="${employee}"
+                            method="post">
+                            <div class="mb-4">
+                                <label class="form-label">Employee ID <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-secondary border-end-0"><i
+                                            class="fas fa-id-badge"></i></span>
+                                    <input type="text" class="form-control border-start-0 ps-0" th:field="*{employeeId}"
+                                        required>
+                                </div>
+                                <div class="form-text text-muted small"><i class="fas fa-info-circle me-1"></i>Used for
+                                    login and identification</div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" th:field="*{name}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" th:field="*{phone}">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-secondary border-end-0"><i
+                                            class="fas fa-envelope"></i></span>
+                                    <input type="email" class="form-control border-start-0 ps-0" th:field="*{email}"
+                                        required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <label class="form-label">Department <span class="text-danger">*</span></label>
+                                    <select class="form-select" th:field="*{department}" required>
+                                        <option value="">Select Department</option>
+                                        <option th:each="dept : ${departments}" th:value="${dept}" th:text="${dept}">
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Designation</label>
+                                    <select class="form-select" th:field="*{designation}">
+                                        <option value="">Select Designation</option>
+                                        <option th:each="desig : ${designations}" th:value="${desig}"
+                                            th:text="${desig}"></option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-4 bg-light p-3 rounded-3 border border-light-subtle">
+                                <h6 class="text-secondary fw-bold small text-uppercase mb-3"><i
+                                        class="fas fa-clock me-1"></i> Work Schedule</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3 mb-md-0">
+                                        <label class="form-label small">Scheduled Start Time</label>
+                                        <input type="time" class="form-control" th:field="*{scheduledStartTime}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small">Scheduled End Time</label>
+                                        <input type="time" class="form-control" th:field="*{scheduledEndTime}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg shadow-sm">
+                                    <i class="fas fa-save me-2"></i> Update Employee
+                                </button>
+                                <a th:href="@{/admin/employees}" class="btn btn-light text-secondary">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
+

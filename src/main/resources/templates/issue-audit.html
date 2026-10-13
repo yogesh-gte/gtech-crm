@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue Audit Log - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
+        <a class="navbar-brand text-primary fw-bold" th:href="@{/}">LogSphere</a>
+        <span class="text-muted" th:text="${userName}"></span>
+        <div>
+            <a th:href="@{/issues}" class="btn btn-outline-secondary btn-sm me-2">Back to Issues</a>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h4 class="mb-4"><i class="fas fa-history me-2"></i>Issue Audit Log</h4>
+        <p class="text-muted small">Who changed what and when - full activity history for compliance.</p>
+
+        <div class="card">
+            <div class="card-body">
+                <div th:if="${activities == null || activities.isEmpty()}" class="text-center text-muted py-5">No activity recorded yet.</div>
+                <div th:if="${activities != null && !activities.isEmpty()}" class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Issue</th>
+                                <th>Activity</th>
+                                <th>Field</th>
+                                <th>Old</th>
+                                <th>New</th>
+                                <th>By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="a : ${activities}">
+                                <td th:text="${#temporals.format(a.createdAt, 'yyyy-MM-dd HH:mm')}">-</td>
+                                <td>
+                                    <a th:if="${a.issue != null}" th:href="@{/issues/view/{id}(id=${a.issue.id})}" th:text="${a.issue.issueKey}">-</a>
+                                    <span th:if="${a.issue == null}">-</span>
+                                </td>
+                                <td><span class="badge bg-secondary" th:text="${a.activityType}">-</span></td>
+                                <td th:text="${a.fieldName}">-</td>
+                                <td th:text="${a.oldValue}">-</td>
+                                <td th:text="${a.newValue}">-</td>
+                                <td th:text="${a.changedByName + (a.changedByRole != null ? ' (' + a.changedByRole + ')' : '')}">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
