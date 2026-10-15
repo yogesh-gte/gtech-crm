@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Controller
-@RequestMapping("/admin/employees")
+@RequestMapping({"/admin/employees", "/hr/employees"})
 public class EmployeeManagementController {
 
     @Autowired
@@ -130,6 +130,11 @@ public class EmployeeManagementController {
             "Payroll Executive",
             "Office Administrator");
 
+    private String getEmployeesRedirect(HttpSession session) {
+        String role = (String) session.getAttribute("userRole");
+        return "HR".equals(role) ? "redirect:/hr/employees" : "redirect:/admin/employees";
+    }
+
     @RequestMapping(method = RequestMethod.GET)
     public String listEmployees(Model model, HttpSession session) {
         if (session.getAttribute("user") == null) {
@@ -145,12 +150,15 @@ public class EmployeeManagementController {
         // Determine dashboard link based on role
         String role = (String) session.getAttribute("userRole");
         String dashboardLink = "/admin/dashboard"; // Default
+        String baseEmployeesUrl = "/admin/employees";
         if ("HR".equals(role)) {
             dashboardLink = "/hr/dashboard";
+            baseEmployeesUrl = "/hr/employees";
         } else if ("MANAGER".equals(role)) {
             dashboardLink = "/manager/dashboard";
         }
         model.addAttribute("dashboardLink", dashboardLink);
+        model.addAttribute("baseEmployeesUrl", baseEmployeesUrl);
 
         return "admin-employee-management";
     }
@@ -167,18 +175,44 @@ public class EmployeeManagementController {
             return "redirect:/login";
         }
 
+        // Validate required employee fields
+        if (employee.getEmployeeId() == null || employee.getEmployeeId().trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Employee ID is required!");
+            return getEmployeesRedirect(session);
+        }
+        if (employee.getName() == null || employee.getName().trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Employee name is required!");
+            return getEmployeesRedirect(session);
+        }
+        if (employee.getEmail() == null || !employee.getEmail().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            redirectAttributes.addFlashAttribute("error", "A valid email address is required!");
+            return getEmployeesRedirect(session);
+        }
+        if (employee.getDepartment() == null || employee.getDepartment().trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Department is required!");
+            return getEmployeesRedirect(session);
+        }
+        if (employee.getSalary() != null && employee.getSalary() < 0) {
+            redirectAttributes.addFlashAttribute("error", "Base salary cannot be negative!");
+            return getEmployeesRedirect(session);
+        }
+
+        employee.setEmployeeId(employee.getEmployeeId().trim().toUpperCase());
+        employee.setName(employee.getName().trim());
+        employee.setEmail(employee.getEmail().trim().toLowerCase());
+
         // Check if employee ID already exists
         Optional<Employee> existingById = employeeRepository.findByEmployeeId(employee.getEmployeeId());
         if (existingById.isPresent()) {
             redirectAttributes.addFlashAttribute("error", "Employee ID already exists!");
-            return "redirect:/admin/employees";
+            return getEmployeesRedirect(session);
         }
 
         // Check if email already exists
         Optional<Employee> existingByEmail = employeeRepository.findByEmail(employee.getEmail());
         if (existingByEmail.isPresent()) {
             redirectAttributes.addFlashAttribute("error", "Email already exists!");
-            return "redirect:/admin/employees";
+            return getEmployeesRedirect(session);
         }
 
         employee.setStatus("OUT");
@@ -196,7 +230,7 @@ public class EmployeeManagementController {
         // Password is required for employee login (email + password + employeeId)
         if (employee.getPassword() == null || employee.getPassword().trim().isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Password is required for employee login!");
-            return "redirect:/admin/employees";
+            return getEmployeesRedirect(session);
         }
         // Generate QR code token for new employee
         String qrToken = qrCodeService.generateQRCodeToken();
@@ -226,7 +260,7 @@ public class EmployeeManagementController {
         employeeRepository.save(employee);
         redirectAttributes.addFlashAttribute("success",
                 "Employee added successfully! Employee can now login with email, password and Employee ID.");
-        return "redirect:/admin/employees";
+        return getEmployeesRedirect(session);
     }
 
     @RequestMapping(value = "/edit/{id}", method = RequestMethod.GET)
@@ -237,7 +271,7 @@ public class EmployeeManagementController {
 
         Optional<Employee> employee = employeeRepository.findById(id);
         if (employee.isEmpty()) {
-            return "redirect:/admin/employees";
+            return getEmployeesRedirect(session);
         }
 
         model.addAttribute("employee", employee.get());
@@ -263,12 +297,31 @@ public class EmployeeManagementController {
         Optional<Employee> existingEmployee = employeeRepository.findById(id);
         if (existingEmployee.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Employee not found!");
-            return "redirect:/admin/employees";
+            return getEmployeesRedirect(session);
+        }
+
+        // Validate required employee fields
+        if (employee.getName() == null || employee.getName().trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Employee name is required!");
+            return getEmployeesRedirect(session);
+        }
+        if (employee.getEmail() == null || !employee.getEmail().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            redirectAttributes.addFlashAttribute("error", "A valid email address is required!");
+            return getEmployeesRedirect(session);
+        }
+        if (employee.getSalary() != null && employee.getSalary() < 0) {
+            redirectAttributes.addFlashAttribute("error", "Base salary cannot be negative!");
+            return getEmployeesRedirect(session);
+        }
+        Optional<Employee> existingByEmail = employeeRepository.findByEmail(employee.getEmail().trim().toLowerCase());
+        if (existingByEmail.isPresent() && !existingByEmail.get().getId().equals(id)) {
+            redirectAttributes.addFlashAttribute("error", "Email already exists!");
+            return getEmployeesRedirect(session);
         }
 
         Employee emp = existingEmployee.get();
-        emp.setName(employee.getName());
-        emp.setEmail(employee.getEmail());
+        emp.setName(employee.getName().trim());
+        emp.setEmail(employee.getEmail().trim().toLowerCase());
         emp.setDepartment(employee.getDepartment());
         emp.setDesignation(employee.getDesignation());
         emp.setIsTeamLead(Boolean.TRUE.equals(isTeamLead));
@@ -295,7 +348,7 @@ public class EmployeeManagementController {
             Optional<Employee> existingById = employeeRepository.findByEmployeeId(employee.getEmployeeId());
             if (existingById.isPresent() && !existingById.get().getId().equals(id)) {
                 redirectAttributes.addFlashAttribute("error", "Employee ID already exists!");
-                return "redirect:/admin/employees";
+                return getEmployeesRedirect(session);
             }
             emp.setEmployeeId(employee.getEmployeeId());
         }
@@ -329,7 +382,7 @@ public class EmployeeManagementController {
 
         employeeRepository.save(emp);
         redirectAttributes.addFlashAttribute("success", "Employee updated successfully!");
-        return "redirect:/admin/employees";
+        return getEmployeesRedirect(session);
     }
 
     @RequestMapping(value = "/delete/{id}", method = RequestMethod.GET)
@@ -341,7 +394,7 @@ public class EmployeeManagementController {
         Optional<Employee> employeeOpt = employeeRepository.findById(id);
         if (employeeOpt.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Employee not found!");
-            return "redirect:/admin/employees";
+            return getEmployeesRedirect(session);
         }
 
         Employee employee = employeeOpt.get();
@@ -491,8 +544,8 @@ public class EmployeeManagementController {
             System.err.println("Error deleting employee: " + e.getMessage());
             e.printStackTrace();
         }
-
-        return "redirect:/admin/employees";
+ 
+        return getEmployeesRedirect(session);
     }
 
     @RequestMapping(value = "/grant-leaves", method = RequestMethod.POST)
@@ -509,13 +562,13 @@ public class EmployeeManagementController {
         Optional<Employee> employeeOpt = employeeRepository.findById(employeeId);
         if (employeeOpt.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Employee not found!");
-            return "redirect:/admin/employees";
+            return getEmployeesRedirect(session);
         }
 
         Employee employee = employeeOpt.get();
         if (days <= 0) {
             redirectAttributes.addFlashAttribute("error", "Days must be greater than 0!");
-            return "redirect:/admin/employees";
+            return getEmployeesRedirect(session);
         }
 
         switch (leaveType) {
@@ -530,7 +583,7 @@ public class EmployeeManagementController {
                 break;
             default:
                 redirectAttributes.addFlashAttribute("error", "Invalid leave type!");
-                return "redirect:/admin/employees";
+                return getEmployeesRedirect(session);
         }
 
         employeeRepository.save(employee);
@@ -538,6 +591,6 @@ public class EmployeeManagementController {
                 "Successfully granted " + days + " extra " + leaveType.toLowerCase() + " leave(s) to "
                         + employee.getName());
 
-        return "redirect:/admin/employees";
+        return getEmployeesRedirect(session);
     }
 }

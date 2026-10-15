@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="sidebar(activeTab)">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Sidebar Navigation Styling */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #e3f2fd;
+            border-right: 1px solid #dcdfe6;
+            padding: 20px 14px;
+            z-index: 1040;
+            overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(13, 110, 253, 0.05);
+        }
+
+        /* Sidebar Brand */
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 10px 16px 10px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(13, 110, 253, 0.12);
+            text-decoration: none;
+        }
+
+        .sidebar-brand h3 {
+            color: #0d6efd;
+            font-weight: 800;
+            font-size: 1.4rem;
+            margin: 0;
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+        }
+
+        .sidebar-brand-sub {
+            font-size: 0.68rem;
+            letter-spacing: 1px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .sidebar-section-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #64748b;
+            padding: 12px 12px 6px 12px;
+            margin-top: 4px;
+        }
+
+        /* Navigation Links */
+        .sidebar .nav {
+            flex-grow: 1;
+        }
+
+        .sidebar .nav-link {
+            color: #334155;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 3px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .sidebar .nav-link i {
+            width: 20px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: #64748b;
+            transition: color 0.2s;
+        }
+
+        .sidebar .nav-link:hover {
+            background-color: rgba(13, 110, 253, 0.08);
+            color: #0d6efd;
+            transform: translateX(3px);
+        }
+
+        .sidebar .nav-link:hover i {
+            color: #0d6efd;
+        }
+
+        .sidebar .nav-link.active {
+            background-color: #ffffff;
+            color: #0d6efd;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .sidebar .nav-link.active i {
+            color: #0d6efd;
+        }
+
+        /* Sidebar User Profile at bottom */
+        .sidebar-user {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: auto;
+            border: 1px solid #dcdfe6;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+
+        .sidebar-user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #e3f2fd;
+            color: #0d6efd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            border: 1px solid #b6d4fe;
+            flex-shrink: 0;
+        }
+
+        /* Main Content Offset */
+        .main-content {
+            margin-left: 260px;
+            padding: 24px 30px;
+            min-height: 100vh;
+            background-color: #f3f7ff;
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        /* Toggle Button & Overlay for Mobile */
+        .sidebar-toggle-btn {
+            display: none;
+            background: #ffffff;
+            border: 1px solid #dcdfe6;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 1.1rem;
+            color: #475569;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .sidebar-toggle-btn:hover {
+            background-color: #f8fafc;
+            color: #0d6efd;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(15, 27, 45, 0.45);
+            backdrop-filter: blur(2px);
+            z-index: 1035;
+        }
+
+        .sidebar-overlay.active,
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active,
+            .sidebar.show {
+                transform: translateX(0);
+                box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 16px 12px;
+            }
+
+            .sidebar-toggle-btn {
+                display: inline-flex;
+            }
+        }
+
+        @media print {
+            .sidebar, .sidebar-overlay, .sidebar-toggle-btn {
+                display: none !important;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                padding: 0 !important;
+            }
+        }
+
+        /* Custom Scrollbar for Sidebar */
+        .sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(13, 110, 253, 0.2);
+            border-radius: 4px;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(13, 110, 253, 0.4);
+        }
+    </style>
+
+    <!-- Employee Portal Sidebar -->
+    <div class="sidebar" id="employeeSidebar" th:with="emp=${employee != null ? employee : session.employee}">
+        <a th:href="@{/employee/dashboard}" class="sidebar-brand text-decoration-none">
+            <i class="fas fa-cube text-primary fs-3"></i>
+            <div>
+                <h3>LogSphere</h3>
+                <div class="sidebar-brand-sub">Employee Portal</div>
+            </div>
+        </a>
+
+        <ul class="nav flex-column">
+            <!-- MAIN -->
+            <div class="sidebar-section-title">Main</div>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'dashboard'} ? 'active' : ''" th:href="@{/employee/dashboard}">
+                    <i class="fas fa-home"></i> <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'tasks'} ? 'active' : ''" th:href="@{/employee/tasks}">
+                    <i class="fas fa-tasks"></i> <span>My Tasks</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'approvals'} ? 'active' : ''" th:href="@{/employee/approvals}">
+                    <i class="fas fa-user-check"></i> <span>Approvals</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'performance'} ? 'active' : ''" th:href="@{/employee/performance}">
+                    <i class="fas fa-chart-line"></i> <span>Performance</span>
+                </a>
+            </li>
+            <li class="nav-item" th:if="${emp != null and emp.isTeamLead == true and emp.team != null}">
+                <a class="nav-link text-primary fw-semibold" th:classappend="${activeTab == 'tl-dashboard'} ? 'active' : ''" th:href="@{/employee/tl-dashboard}">
+                    <i class="fas fa-users-cog text-primary"></i> <span>TL Dashboard</span>
+                </a>
+            </li>
+
+            <!-- ATTENDANCE & LEAVES -->
+            <div class="sidebar-section-title">Attendance & Leaves</div>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'attendance'} ? 'active' : ''" th:href="@{/employee/attendance/history}">
+                    <i class="fas fa-clock"></i> <span>Attendance</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'manual-attendance'} ? 'active' : ''" th:href="@{/employee/attendance/manual}">
+                    <i class="fas fa-edit"></i> <span>Manual Attendance</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'apply-leave'} ? 'active' : ''" th:href="@{/employee/leave/apply}">
+                    <i class="fas fa-calendar-plus"></i> <span>Apply Leave</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'leave-history'} ? 'active' : ''" th:href="@{/employee/leave/history}">
+                    <i class="fas fa-calendar-alt"></i> <span>Leave History</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'qrcode'} ? 'active' : ''" th:href="@{/employee/qrcode}">
+                    <i class="fas fa-qrcode"></i> <span>My QR Code</span>
+                </a>
+            </li>
+
+            <!-- PROJECTS & OPS -->
+            <div class="sidebar-section-title">Projects & Ops</div>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'issues'} ? 'active' : ''" th:href="@{/issues}">
+                    <i class="fas fa-bug"></i> <span>Issues</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'sprints'} ? 'active' : ''" th:href="@{/sprints}">
+                    <i class="fas fa-running"></i> <span>Sprints</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'payslips'} ? 'active' : ''" th:href="@{/employee/payroll/history}">
+                    <i class="fas fa-file-invoice-dollar"></i> <span>Payslips</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'suggestions'} ? 'active' : ''" th:href="@{/employee/suggestion/submit}">
+                    <i class="fas fa-lightbulb"></i> <span>Suggestions</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- Bottom User Card -->
+        <div class="sidebar-user mt-3">
+            <div class="sidebar-user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="overflow-hidden me-auto">
+                <div class="fw-bold text-dark text-truncate" style="font-size: 0.88rem;" th:text="${emp != null ? emp.name : 'Employee'}">Employee</div>
+                <small class="text-secondary d-block text-truncate" style="font-size: 0.72rem;" th:text="${emp != null and emp.department != null ? emp.department : (emp != null and emp.designation != null ? emp.designation : 'Employee')}">Department</small>
+            </div>
+            <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm p-1 rounded-circle" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;" title="Logout">
+                <i class="fas fa-sign-out-alt small"></i>
+            </a>
+        </div>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar Mobile Toggle & Interaction Script -->
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('employeeSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar) {
+                sidebar.classList.toggle('active');
+                sidebar.classList.toggle('show');
+            }
+            if (overlay) {
+                overlay.classList.toggle('active');
+                overlay.classList.toggle('show');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('employeeSidebar');
+            if (sidebar) {
+                const links = sidebar.querySelectorAll('.nav-link');
+                links.forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        if (window.innerWidth < 992) {
+                            toggleSidebar();
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+</div>
+
+</body>
+</html>

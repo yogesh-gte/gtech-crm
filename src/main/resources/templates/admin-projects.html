@@ -6,59 +6,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projects - LogSphere</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f7ff; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); }
+    </style>
 </head>
 
-<body class="bg-light">
-    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
-        <a class="navbar-brand text-primary fw-bold" th:href="@{/admin/dashboard}">LogSphere</a>
-        <div>
-            <a th:href="@{/admin/organization}" class="btn btn-outline-secondary btn-sm me-2">Back to Organization</a>
-            <a th:href="@{/admin/organization/projects/add}" class="btn btn-info btn-sm">Add Project</a>
+<body>
+    <!-- Shared Admin Sidebar Fragment -->
+    <div th:replace="~{fragments/admin-sidebar :: sidebar('projects')}"></div>
+
+    <div class="main-content">
+        <!-- Mobile Header Bar -->
+        <div class="mobile-header-bar d-lg-none">
+            <button class="sidebar-toggle-btn" type="button" onclick="toggleAdminSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <span class="fw-bold text-primary">Projects</span>
         </div>
-    </nav>
 
-    <div class="container py-4">
-        <h4 class="mb-4">Projects</h4>
-        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" th:text="${success}"></div>
-        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" th:text="${error}"></div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold text-primary mb-1"><i class="fas fa-project-diagram me-2"></i>Projects</h3>
+                <p class="text-secondary small mb-0">Track projects, timelines, assigned teams, and owners</p>
+            </div>
+            <div>
+                <a th:href="@{/admin/organization}" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="fas fa-arrow-left me-1"></i> Organization
+                </a>
+                <a th:href="@{/admin/organization/projects/add}" class="btn btn-info btn-sm text-white">
+                    <i class="fas fa-plus me-1"></i> Add Project
+                </a>
+            </div>
+        </div>
 
-        <div class="card">
-            <div class="card-body">
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i><span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i><span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
                 <div th:if="${projects.isEmpty()}" class="text-center text-muted py-5">
+                    <i class="fas fa-project-diagram fs-3 d-block mb-2 text-secondary"></i>
                     No projects yet. <a th:href="@{/admin/organization/projects/add}">Add first project</a>
                 </div>
                 <div th:if="${!projects.isEmpty()}" class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
                             <tr>
-                                <th>Project</th>
+                                <th class="ps-4">Project</th>
                                 <th>Code</th>
                                 <th>Team</th>
                                 <th>Owner</th>
                                 <th>Start</th>
                                 <th>End</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th class="text-end pe-4">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="p : ${projects}">
-                                <td th:text="${p.name}">-</td>
-                                <td><span class="badge bg-secondary" th:text="${p.projectCode != null ? p.projectCode : '-'}">-</span></td>
+                                <td class="ps-4 fw-medium" th:text="${p.name}">-</td>
+                                <td><span class="badge bg-secondary-subtle text-secondary border" th:text="${p.projectCode != null ? p.projectCode : '-'}">-</span></td>
                                 <td th:text="${p.team != null ? p.team.name : '-'}">-</td>
-                                <td th:text="${p.owner != null ? p.owner.name : '-'}">-</td>
+                                <td>
+                                    <span th:if="${p.owner != null}" th:text="${p.owner.name + ' (' + p.owner.employeeId + ')'}">-</span>
+                                    <span th:if="${p.owner == null}" class="text-muted small">Unassigned</span>
+                                </td>
                                 <td th:text="${p.startDate != null ? p.startDate : '-'}">-</td>
                                 <td th:text="${p.endDate != null ? p.endDate : '-'}">-</td>
                                 <td>
-                                    <span class="badge bg-success" th:if="${p.status == 'ACTIVE'}">Active</span>
-                                    <span class="badge bg-warning" th:if="${p.status == 'ON_HOLD'}">On Hold</span>
-                                    <span class="badge bg-secondary" th:if="${p.status == 'COMPLETED'}">Completed</span>
-                                    <span class="badge bg-danger" th:if="${p.status == 'CANCELLED'}">Cancelled</span>
+                                    <span class="badge bg-success-subtle text-success" th:if="${p.status == 'ACTIVE'}">Active</span>
+                                    <span class="badge bg-warning-subtle text-warning-emphasis" th:if="${p.status == 'ON_HOLD'}">On Hold</span>
+                                    <span class="badge bg-secondary-subtle text-secondary" th:if="${p.status == 'COMPLETED'}">Completed</span>
+                                    <span class="badge bg-danger-subtle text-danger" th:if="${p.status == 'CANCELLED'}">Cancelled</span>
                                 </td>
-                                <td>
-                                    <a th:href="@{/admin/organization/projects/edit/{id}(id=${p.id})}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                <td class="text-end pe-4">
+                                    <a th:href="@{/admin/organization/projects/edit/{id}(id=${p.id})}" class="btn btn-sm btn-outline-primary me-1">Edit</a>
                                     <form th:action="@{/admin/organization/projects/delete/{id}(id=${p.id})}" method="post" class="d-inline"
-                                          th:if="${p.status == 'ACTIVE'}" onsubmit="return confirm('Cancel this project?');">
+                                          th:if="${p.status != 'CANCELLED'}" onsubmit="return confirm('Cancel this project?');">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
                                     </form>
                                 </td>
@@ -69,5 +102,7 @@
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

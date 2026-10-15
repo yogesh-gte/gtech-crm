@@ -197,10 +197,21 @@ public class AdminController {
     @RequestMapping(value = "/payroll/save", method = RequestMethod.POST)
     @org.springframework.web.bind.annotation.ResponseBody
     public java.util.Map<String, Object> savePayroll(
-            @org.springframework.web.bind.annotation.RequestParam Long employeeId,
-            @org.springframework.web.bind.annotation.RequestParam Double baseSalary) {
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long employeeId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Double baseSalary) {
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         try {
+            if (employeeId == null) {
+                response.put("success", false);
+                response.put("message", "Employee selection is required");
+                return response;
+            }
+            if (baseSalary == null || baseSalary <= 0) {
+                response.put("success", false);
+                response.put("message", "Base salary must be greater than zero");
+                return response;
+            }
+
             com.example.demo.model.Employee employee = employeeRepository.findById(employeeId).orElse(null);
             if (employee == null) {
                 response.put("success", false);
@@ -259,14 +270,29 @@ public class AdminController {
             return "redirect:/login";
         }
 
+        // Form validations
+        if (user.getName() == null || user.getName().trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Full name is required!");
+            return "redirect:/admin/register/hr";
+        }
+        if (user.getEmail() == null || !user.getEmail().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            redirectAttributes.addFlashAttribute("error", "A valid email address is required!");
+            return "redirect:/admin/register/hr";
+        }
+        if (user.getPassword() == null || user.getPassword().trim().length() < 6) {
+            redirectAttributes.addFlashAttribute("error", "Password must be at least 6 characters long!");
+            return "redirect:/admin/register/hr";
+        }
+
         // Check if email already exists
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+        if (userRepository.findByEmail(user.getEmail().trim()).isPresent()) {
             redirectAttributes.addFlashAttribute("error", "Email already exists!");
             return "redirect:/admin/register/hr";
         }
 
+        user.setName(user.getName().trim());
+        user.setEmail(user.getEmail().trim().toLowerCase());
         user.setRole("HR");
-        // In a real app, hash the password here
         userRepository.save(user);
 
         redirectAttributes.addFlashAttribute("success", "HR registered successfully!");
@@ -292,14 +318,29 @@ public class AdminController {
             return "redirect:/login";
         }
 
+        // Form validations
+        if (user.getName() == null || user.getName().trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Full name is required!");
+            return "redirect:/admin/register/manager";
+        }
+        if (user.getEmail() == null || !user.getEmail().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            redirectAttributes.addFlashAttribute("error", "A valid email address is required!");
+            return "redirect:/admin/register/manager";
+        }
+        if (user.getPassword() == null || user.getPassword().trim().length() < 6) {
+            redirectAttributes.addFlashAttribute("error", "Password must be at least 6 characters long!");
+            return "redirect:/admin/register/manager";
+        }
+
         // Check if email already exists
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+        if (userRepository.findByEmail(user.getEmail().trim()).isPresent()) {
             redirectAttributes.addFlashAttribute("error", "Email already exists!");
             return "redirect:/admin/register/manager";
         }
 
+        user.setName(user.getName().trim());
+        user.setEmail(user.getEmail().trim().toLowerCase());
         user.setRole("MANAGER");
-        // In a real app, hash the password here
         userRepository.save(user);
 
         redirectAttributes.addFlashAttribute("success", "Manager registered successfully!");

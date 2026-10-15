@@ -4,30 +4,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team - LogSphere</title>
+    <title>Team Form - LogSphere</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f7ff; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); }
+        .form-label { font-weight: 500; color: #495057; }
+    </style>
 </head>
 
-<body class="bg-light">
-    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
-        <a class="navbar-brand text-primary fw-bold" th:href="@{/admin/dashboard}">LogSphere</a>
-        <a th:href="@{/admin/organization/teams}" class="btn btn-outline-secondary btn-sm">Back to Teams</a>
-    </nav>
+<body>
+    <!-- Shared Admin Sidebar Fragment -->
+    <div th:replace="~{fragments/admin-sidebar :: sidebar('teams')}"></div>
 
-    <div class="container py-4">
-        <h4 class="mb-4" th:text="${team.id != null} ? 'Edit Team' : 'Add Team'">Add Team</h4>
-        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div class="main-content">
+        <!-- Mobile Header Bar -->
+        <div class="mobile-header-bar d-lg-none">
+            <button class="sidebar-toggle-btn" type="button" onclick="toggleAdminSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <span class="fw-bold text-primary">Teams</span>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold text-primary mb-1" th:text="${team.id != null} ? 'Edit Team' : 'Add Team'">Add Team</h3>
+                <p class="text-secondary small mb-0">Create team, designate team lead, and map to department</p>
+            </div>
+            <div>
+                <a th:href="@{/admin/organization/teams}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Teams
+                </a>
+            </div>
+        </div>
+
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i><span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
 
         <div class="card" style="max-width: 600px;">
-            <div class="card-body">
+            <div class="card-body p-4">
                 <form th:action="@{/admin/organization/teams/save}" method="post">
                     <input type="hidden" name="id" th:value="${team.id}">
                     <div class="mb-3">
-                        <label class="form-label">Team Name *</label>
-                        <input type="text" class="form-control" name="name" th:value="${team.name}" placeholder="e.g., Backend Team" required>
+                        <label class="form-label">Team Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" th:value="${team.name}" placeholder="e.g., Backend Team" required minlength="2" maxlength="50">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Department *</label>
+                        <label class="form-label">Department <span class="text-danger">*</span></label>
                         <select class="form-select" name="departmentId" required>
                             <option value="">-- Select Department --</option>
                             <option th:each="d : ${departments}" th:value="${d.id}" th:text="${d.name}"
@@ -36,21 +63,73 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Team Lead (TL)</label>
-                        <select class="form-select" name="teamLeadId">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" class="form-control" id="teamLeadSearchInput" list="teamLeadDatalist"
+                                   placeholder="Search or type TL name/ID..." autocomplete="off">
+                        </div>
+                        <datalist id="teamLeadDatalist">
+                            <option value="-- None --"></option>
+                            <option th:each="e : ${employees}" th:value="${e.name + ' (' + e.employeeId + ')'}" th:data-id="${e.id}"></option>
+                        </datalist>
+                        <select class="form-select mt-2" name="teamLeadId" id="teamLeadSelect">
                             <option value="">-- None --</option>
                             <option th:each="e : ${employees}" th:value="${e.id}" th:text="${e.name + ' (' + e.employeeId + ')'}"
-                                    th:selected="${team.teamLead != null && team.teamLead.id == e.id}"></option>
+                                     th:selected="${team.teamLead != null && team.teamLead.id == e.id}"></option>
                         </select>
-                        <small class="text-muted" th:if="${employees == null || employees.isEmpty()}">No employees yet. Add employees via <a th:href="@{/admin/employees}">Employee Registration</a> first.</small>
+                        <div class="form-text text-muted">Search by typing name/ID or choose from dropdown.</div>
+                        <small class="text-muted d-block mt-1" th:if="${employees == null || employees.isEmpty()}">
+                            No employees yet. Add employees via <a th:href="@{/admin/employees}">Employee Registration</a> first.
+                        </small>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label class="form-label">Description (optional)</label>
-                        <textarea class="form-control" name="description" rows="2" th:text="${team.description}"></textarea>
+                        <textarea class="form-control" name="description" rows="2" th:text="${team.description}" maxlength="500"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="submit" class="btn btn-primary px-4"><i class="fas fa-save me-1"></i> Save Team</button>
                 </form>
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const teamLeadSearchInput = document.getElementById('teamLeadSearchInput');
+            const teamLeadSelect = document.getElementById('teamLeadSelect');
+
+            if (teamLeadSelect && teamLeadSelect.value) {
+                const selected = teamLeadSelect.options[teamLeadSelect.selectedIndex];
+                if (selected && selected.value) {
+                    teamLeadSearchInput.value = selected.text;
+                }
+            }
+
+            if (teamLeadSearchInput && teamLeadSelect) {
+                teamLeadSearchInput.addEventListener('input', function () {
+                    const query = this.value.trim().toLowerCase();
+                    if (!query || query === '-- none --') {
+                        teamLeadSelect.value = '';
+                        return;
+                    }
+                    for (let i = 0; i < teamLeadSelect.options.length; i++) {
+                        const opt = teamLeadSelect.options[i];
+                        if (opt.value && (opt.text.toLowerCase().includes(query) || opt.value.toLowerCase() === query)) {
+                            teamLeadSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                });
+
+                teamLeadSelect.addEventListener('change', function () {
+                    if (this.value) {
+                        teamLeadSearchInput.value = this.options[this.selectedIndex].text;
+                    } else {
+                        teamLeadSearchInput.value = '';
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

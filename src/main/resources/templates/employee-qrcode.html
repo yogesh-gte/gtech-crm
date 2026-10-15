@@ -7,12 +7,23 @@
     <title>My QR Code - LogSphere</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
+        :root {
+            --primary-bg: #f3f7ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --brand-primary: #0d6efd;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
         }
 
         .navbar {
@@ -20,89 +31,205 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
-        .navbar-brand {
-            font-weight: 700;
-            color: #1a8cf0 !important;
-        }
-
         .card {
             border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
-            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            background-color: var(--card-bg);
         }
 
         .card-header {
             background-color: #ffffff;
             border-bottom: 1px solid #f1f5f9;
-            padding: 1.25rem;
-            border-radius: 12px 12px 0 0 !important;
+            padding: 1.5rem;
+            border-radius: 16px 16px 0 0 !important;
         }
 
-        .qr-container {
+        .qr-card-box {
             background: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 24px;
+            border-radius: 14px;
             display: inline-block;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease;
+        }
+
+        .qr-card-box:hover {
+            transform: scale(1.02);
         }
 
         .qr-code-img {
-            max-width: 300px;
-            height: auto;
+            width: 250px;
+            height: 250px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+
+        #clientQrContainer {
+            width: 250px;
+            height: 250px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #clientQrContainer img,
+        #clientQrContainer canvas {
+            margin: 0 auto;
         }
     </style>
 </head>
 
-<body class="bg-light text-dark">
-    <nav class="navbar navbar-light bg-white p-3 border-bottom">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">LogSphere <span class="text-secondary fw-normal fs-6">| My QR
-                    Code</span></span>
-            <div>
-                <a th:href="@{/employee/dashboard}" class="btn btn-outline-secondary btn-sm">Back to Dashboard</a>
-            </div>
-        </div>
-    </nav>
+<body>
+    <!-- Employee Portal Shared Sidebar -->
+    <div th:replace="~{fragments/employee-sidebar :: sidebar(activeTab='qrcode')}"></div>
 
-    <div class="container mt-5">
+    <div class="main-content">
+        <nav class="navbar navbar-expand-lg rounded-3 mb-4 p-3 shadow-sm bg-white">
+            <div class="container-fluid px-2">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="sidebar-toggle-btn me-2" type="button" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="navbar-brand mb-0 h4 fw-bold text-primary mb-0">
+                        <i class="fas fa-qrcode me-2"></i>My QR Code
+                    </span>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-sign-out-alt me-1"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid px-0 py-3">
         <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-white text-center">
-                        <h4 class="text-dark fw-bold mb-0">Scan QR Code for Attendance</h4>
-                        <p class="text-muted mb-0 mt-2">Employee: <span class="fw-medium text-dark"
-                                th:text="${employee.name}"></span></p>
-                        <p class="text-muted mb-0 small">ID: <span th:text="${employee.employeeId}"></span></p>
+            <div class="col-lg-7 col-md-9">
+                <div class="card shadow-sm text-center">
+                    <div class="card-header bg-white">
+                        <h4 class="text-dark fw-bold mb-1">Employee Attendance QR Code</h4>
+                        <p class="text-muted mb-0">Employee: <span class="fw-semibold text-primary" th:text="${employee.name}">Employee Name</span></p>
+                        <span class="badge bg-light text-secondary border mt-1">ID: <span th:text="${employee.employeeId}">EMP001</span></span>
                     </div>
-                    <div class="card-body text-center p-4">
-                        <div class="qr-container mb-4">
-                            <img th:src="${qrCodeImage}" alt="QR Code" class="qr-code-img">
+
+                    <div class="card-body p-4 p-md-5">
+                        <!-- Scannable QR Code Visual Container -->
+                        <div class="qr-card-box mb-4">
+                            <!-- High-resolution server-generated QR -->
+                            <img id="serverQrImg" th:if="${qrCodeImage != null and !#strings.isEmpty(qrCodeImage)}"
+                                 th:src="${qrCodeImage}" alt="Scannable QR Code" class="qr-code-img">
+                            
+                            <!-- Fallback client-generated QR Code -->
+                            <div id="clientQrContainer" style="display:none;"></div>
                         </div>
-                        <p class="text-muted">Scan this QR code at the office terminal to clock in/out</p>
-                        <div class="alert alert-info bg-info bg-opacity-10 border-info border-opacity-25 text-primary text-start d-inline-block mx-auto"
-                            style="max-width: 500px">
-                            <strong><i class="bi bi-info-circle me-2"></i>Instructions:</strong><br>
-                            <div class="mt-2 ms-1">
-                                1. Open the QR scanner at the office terminal<br>
-                                2. Select your work mode (Office/WFH/On-Site)<br>
-                                3. Scan this QR code to clock in/out
-                            </div>
+
+                        <p class="text-secondary small mb-3">
+                            <i class="fas fa-camera text-primary me-1"></i> Scan with your mobile device camera or LogSphere mobile app to clock in/out instantly.
+                        </p>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
+                            <a th:href="${qrData}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-external-link-alt me-1"></i> Open Mobile Clock-In Page
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyLink()">
+                                <i class="fas fa-copy me-1"></i> Copy Link
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="downloadQRCode()">
+                                <i class="fas fa-download me-1"></i> Download QR (PNG)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-dark" onclick="window.print()">
+                                <i class="fas fa-print me-1"></i> Print QR
+                            </button>
                         </div>
-                        <div class="mt-4">
-                            <button onclick="window.print()" class="btn btn-primary px-4 me-2">Print QR Code</button>
-                            <a th:href="@{/employee/dashboard}" class="btn btn-outline-secondary">Back to Dashboard</a>
+
+                        <!-- URL breakdown -->
+                        <div class="p-3 bg-light rounded text-start mb-4 border">
+                            <small class="fw-bold text-secondary d-block mb-1">DIRECT ATTENDANCE URL:</small>
+                            <a id="directQrLink" th:href="${qrData}" target="_blank" class="small text-break text-decoration-none text-primary" th:text="${qrData}">
+                                http://localhost:8083/attendance/mobile?empId=...
+                            </a>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="alert alert-info bg-info bg-opacity-10 border border-info border-opacity-25 text-start d-inline-block w-100 mb-0">
+                            <h6 class="fw-bold text-info mb-2"><i class="fas fa-info-circle me-2"></i>How to use:</h6>
+                            <ol class="mb-0 ps-3 small text-secondary">
+                                <li class="mb-1">Ensure your smartphone is on the same local network or Wi-Fi.</li>
+                                <li class="mb-1">Scan the QR code above using your camera or scan app.</li>
+                                <li>Select your work mode (Office, WFH, On-Site) and confirm your attendance.</li>
+                            </ol>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </div> <!-- /main-content -->
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const qrDataUrl = /*[[${qrData}]]*/ '';
+        const employeeId = /*[[${employee.employeeId}]]*/ 'Employee';
+
+        window.addEventListener('DOMContentLoaded', function () {
+            const serverImg = document.getElementById('serverQrImg');
+            const clientContainer = document.getElementById('clientQrContainer');
+
+            // If server image fails to render or is missing, render with QRCode.js
+            if (!serverImg || !serverImg.getAttribute('src') || serverImg.getAttribute('src').length < 50) {
+                if (serverImg) serverImg.style.display = 'none';
+                clientContainer.style.display = 'flex';
+                if (typeof QRCode !== 'undefined' && qrDataUrl) {
+                    new QRCode(clientContainer, {
+                        text: qrDataUrl,
+                        width: 250,
+                        height: 250,
+                        colorDark: "#0f1b2d",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }
+            }
+        });
+
+        function copyLink() {
+            const linkElem = document.getElementById('directQrLink');
+            if (linkElem) {
+                navigator.clipboard.writeText(linkElem.href || linkElem.textContent.trim()).then(function () {
+                    alert('Mobile attendance link copied to clipboard!');
+                }).catch(function () {
+                    alert('Please copy manually: ' + (linkElem.href || linkElem.textContent.trim()));
+                });
+            }
+        }
+
+        function downloadQRCode() {
+            const serverImg = document.getElementById('serverQrImg');
+            if (serverImg && serverImg.style.display !== 'none' && serverImg.src) {
+                const a = document.createElement('a');
+                a.href = serverImg.src;
+                a.download = 'LogSphere_QR_' + employeeId + '.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                const canvas = document.querySelector('#clientQrContainer canvas');
+                if (canvas) {
+                    const a = document.createElement('a');
+                    a.href = canvas.toDataURL("image/png");
+                    a.download = 'LogSphere_QR_' + employeeId + '.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            }
+        }
+        /*]]>*/
+    </script>
 </body>
 
 </html>
-

@@ -15,13 +15,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #f3f7ff;
             color: #333;
-        }
-
-        .main-content {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 6rem 1rem 2rem 1rem;
-            /* Extra top padding as requested */
+            overflow-x: hidden;
         }
 
         .form-section {
@@ -65,21 +59,38 @@
 </head>
 
 <body class="bg-light text-dark">
-    <!-- Sidebar Removed as per request -->
+    <!-- Shared Manager Sidebar (LOG-MGR-002, LOG-MGR-004) -->
+    <div th:replace="~{fragments/manager-sidebar :: sidebar('create-meeting')}"></div>
 
     <!-- Main Content -->
     <div class="main-content">
         <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div class="d-flex align-items-center">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <button class="sidebar-toggle-btn me-2" onclick="toggleManagerSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <h2 class="fw-bold mb-0 text-primary">Create Team Meeting</h2>
             </div>
             <div>
-                <a th:href="@{/manager/dashboard}" class="btn btn-outline-secondary btn-sm me-2">
+                <a th:href="@{/manager/dashboard(tab='planning')}" class="btn btn-outline-secondary btn-sm me-2">
                     <i class="fas fa-arrow-left me-1"></i> Dashboard
                 </a>
                 <a th:href="@{/logout}" class="btn btn-outline-danger btn-sm">Logout</a>
             </div>
+        </div>
+
+        <!-- LOG-MGR-005: Idle Alert Banner if idle employees exist -->
+        <div th:if="${idleCount != null && idleCount > 0}" class="alert alert-danger d-flex justify-content-between align-items-center shadow-sm py-2 px-3 mb-4 rounded-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fas fa-exclamation-triangle text-danger fs-5"></i>
+                <div>
+                    <strong>Team Alert:</strong> <span th:text="${idleCount}">1</span> employee(s) currently marked as idle.
+                </div>
+            </div>
+            <button class="btn btn-sm btn-danger py-1 px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#idleEmployeesModal">
+                <i class="fas fa-eye me-1"></i> View Idle List
+            </button>
         </div>
 
         <div class="container-fluid px-0 pb-5">
@@ -87,7 +98,7 @@
                 <div class="col-lg-10">
                     <div class="card shadow-sm border-0 rounded-4 bg-white">
                         <div class="card-header bg-white border-bottom py-3">
-                            <h3 class="text-dark mb-0 fw-bold">📅 Meeting Details</h3>
+                            <h4 class="text-dark mb-0 fw-bold">📅 Meeting Details & Team Availability</h4>
                         </div>
                         <div class="card-body p-4">
                             <!-- Success/Error Messages -->
@@ -102,26 +113,26 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
 
-                            <form th:action="@{/manager/meetings/create}" method="post">
+                            <form id="meetingForm" th:action="@{/manager/meetings/create}" method="post">
                                 <div class="form-section shadow-sm">
                                     <h5 class="section-title">General Info</h5>
                                     <div class="mb-3">
                                         <label for="title" class="form-label">Meeting Title <span
                                                 class="text-danger">*</span></label>
                                         <input type="text" class="form-control" id="title" name="title" required
-                                            placeholder="e.g., Weekly Stand-up">
+                                            placeholder="e.g., Weekly Sprint Planning & Stand-up">
                                     </div>
                                     <div class="mb-3">
                                         <label for="description" class="form-label">Description (Optional)</label>
                                         <textarea class="form-control" id="description" name="description" rows="3"
-                                            placeholder="Enter meeting agenda..."></textarea>
+                                            placeholder="Enter meeting agenda, objectives, and discussion points..."></textarea>
                                     </div>
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
                                             <label for="meetingType" class="form-label">Meeting Type</label>
                                             <select class="form-select" id="meetingType" name="meetingType">
-                                                <option value="In-Person">In-Person</option>
-                                                <option value="Online">Online</option>
+                                                <option value="Online">Online (Google Meet / Zoom)</option>
+                                                <option value="In-Person">In-Person (Conference Room)</option>
                                                 <option value="Hybrid">Hybrid</option>
                                             </select>
                                         </div>
@@ -129,12 +140,13 @@
                                 </div>
 
                                 <div class="form-section shadow-sm">
-                                    <h5 class="section-title">Schedule</h5>
+                                    <h5 class="section-title">Schedule & Timing</h5>
                                     <div class="row">
                                         <div class="col-md-4 mb-3">
                                             <label for="date" class="form-label">Date <span
                                                     class="text-danger">*</span></label>
-                                            <input type="date" class="form-control" id="date" name="date" required>
+                                            <input type="date" class="form-control" id="date" name="date" required
+                                                th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
                                         </div>
                                         <div class="col-md-4 mb-3">
                                             <label for="startTime" class="form-label">Start Time <span
@@ -149,32 +161,48 @@
                                     </div>
                                 </div>
 
+                                <!-- LOG-MGR-003: Team Availability in Meeting Section -->
                                 <div class="form-section shadow-sm">
-                                    <h5 class="section-title">Attendees</h5>
-                                    <div class="mb-3 form-check">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="section-title mb-0 border-0 pb-0">Invite Attendees & Team Availability</h5>
+                                        <span class="small text-muted">Real-time availability shown for each team member</span>
+                                    </div>
+                                    <hr class="mt-2 mb-3">
+
+                                    <div class="mb-3 form-check bg-light p-3 rounded border">
                                         <input type="checkbox" class="form-check-input" id="addEveryone"
                                             name="addEveryone" value="true">
-                                        <label class="form-check-label" for="addEveryone">Invite All Active
-                                            Employees</label>
+                                        <label class="form-check-label fw-semibold text-primary" for="addEveryone">
+                                            <i class="fas fa-users me-1"></i> Invite All Active Employees
+                                        </label>
                                     </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Select Attendees</label>
-                                        <div class="card p-3" style="max-height: 200px; overflow-y: auto;">
-                                            <div class="form-check" th:each="emp : ${employees}">
-                                                <input class="form-check-input employee-checkbox" type="checkbox"
-                                                    name="employeeIds" th:value="${emp.id}" th:id="${'emp_' + emp.id}">
-                                                <label class="form-check-label" th:for="${'emp_' + emp.id}"
-                                                    th:text="${emp.name + ' (' + emp.department + ')'}">
-                                                </label>
+
+                                    <div class="mb-3" id="attendeesSelectionBlock">
+                                        <label class="form-label">Select Specific Attendees</label>
+                                        <div class="card p-2 border" style="max-height: 280px; overflow-y: auto;">
+                                            <div class="form-check d-flex justify-content-between align-items-center py-2 px-3 border-bottom" th:each="emp : ${employees}">
+                                                <div class="d-flex align-items-center">
+                                                    <input class="form-check-input employee-checkbox" type="checkbox"
+                                                        name="employeeIds" th:value="${emp.id}" th:id="${'emp_' + emp.id}">
+                                                    <label class="form-check-label ms-2" th:for="${'emp_' + emp.id}">
+                                                        <span class="fw-semibold text-dark" th:text="${emp.name}"></span>
+                                                        <small class="text-secondary ms-1" th:text="'(' + ${emp.department != null ? emp.department : 'General'} + ' - ' + ${emp.employeeId} + ')'"></small>
+                                                    </label>
+                                                </div>
+                                                <span class="badge" th:with="avail=${employeeAvailability != null ? employeeAvailability.get(emp) : 'AVAILABLE'}"
+                                                      th:classappend="${avail == 'AVAILABLE' ? 'bg-success bg-opacity-10 text-success' : (avail == 'BUSY' ? 'bg-danger bg-opacity-10 text-danger' : (avail == 'IN_MEETING' ? 'bg-info bg-opacity-10 text-info' : 'bg-secondary bg-opacity-10 text-secondary'))}"
+                                                      th:text="${avail != null ? avail : 'AVAILABLE'}">
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                                    <a th:href="@{/manager/dashboard}" class="btn btn-light border px-4">Cancel</a>
-                                    <button type="submit" class="btn btn-primary px-4 shadow-sm">✅ Schedule
-                                        Meeting</button>
+                                    <a th:href="@{/manager/dashboard(tab='planning')}" class="btn btn-light border px-4">Cancel</a>
+                                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                                        <i class="fas fa-calendar-check me-1"></i> Schedule Meeting
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -196,6 +224,27 @@
                 checkbox.disabled = isChecked;
                 if (isChecked) checkbox.checked = false;
             });
+        });
+
+        // Client-side validation for meeting schedule
+        document.getElementById('meetingForm').addEventListener('submit', function(e) {
+            const addEveryone = addEveryoneCheckbox.checked;
+            const checkedCount = document.querySelectorAll('.employee-checkbox:checked').length;
+            if (!addEveryone && checkedCount === 0) {
+                e.preventDefault();
+                alert('Please select at least one attendee or check "Invite All Active Employees".');
+                return false;
+            }
+
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            if (startTime && endTime) {
+                if (endTime <= startTime) {
+                    e.preventDefault();
+                    alert('End time must be later than start time.');
+                    return false;
+                }
+            }
         });
     </script>
 </body>

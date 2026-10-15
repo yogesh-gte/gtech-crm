@@ -70,14 +70,47 @@ public class SprintController {
 
     @PostMapping("/save")
     public String saveSprint(@RequestParam(required = false) Long id,
-            @RequestParam String name,
+            @RequestParam(required = false) String name,
             @RequestParam(required = false) String goal,
-            @RequestParam Long projectId,
-            @RequestParam String startDateStr,
-            @RequestParam String endDateStr,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String startDateStr,
+            @RequestParam(required = false) String endDateStr,
             RedirectAttributes ra, HttpSession session) {
         if (!isLoggedIn(session)) return "redirect:/login";
-        Project project = projectRepository.findById(projectId).orElseThrow();
+
+        if (name == null || name.trim().isEmpty()) {
+            ra.addFlashAttribute("error", "Sprint name is required");
+            return id != null ? "redirect:/sprints/edit/" + id : "redirect:/sprints/add";
+        }
+        if (projectId == null) {
+            ra.addFlashAttribute("error", "Please select a project");
+            return id != null ? "redirect:/sprints/edit/" + id : "redirect:/sprints/add";
+        }
+        Optional<Project> projectOpt = projectRepository.findById(projectId);
+        if (projectOpt.isEmpty()) {
+            ra.addFlashAttribute("error", "Selected project not found");
+            return id != null ? "redirect:/sprints/edit/" + id : "redirect:/sprints/add";
+        }
+        if (startDateStr == null || startDateStr.isBlank() || endDateStr == null || endDateStr.isBlank()) {
+            ra.addFlashAttribute("error", "Both Start Date and End Date are required");
+            return id != null ? "redirect:/sprints/edit/" + id : "redirect:/sprints/add";
+        }
+
+        LocalDate start;
+        LocalDate end;
+        try {
+            start = LocalDate.parse(startDateStr.trim());
+            end = LocalDate.parse(endDateStr.trim());
+        } catch (Exception e) {
+            ra.addFlashAttribute("error", "Invalid date format");
+            return id != null ? "redirect:/sprints/edit/" + id : "redirect:/sprints/add";
+        }
+
+        if (end.isBefore(start)) {
+            ra.addFlashAttribute("error", "End date cannot be before start date");
+            return id != null ? "redirect:/sprints/edit/" + id : "redirect:/sprints/add";
+        }
+
         Sprint sprint;
         if (id != null) {
             sprint = sprintRepository.findById(id).orElse(new Sprint());
@@ -86,12 +119,12 @@ public class SprintController {
         }
         sprint.setName(name.trim());
         sprint.setGoal(goal != null && !goal.isBlank() ? goal.trim() : null);
-        sprint.setProject(project);
-        sprint.setStartDate(LocalDate.parse(startDateStr));
-        sprint.setEndDate(LocalDate.parse(endDateStr));
+        sprint.setProject(projectOpt.get());
+        sprint.setStartDate(start);
+        sprint.setEndDate(end);
         if (sprint.getStatus() == null) sprint.setStatus("PLANNING");
         sprintRepository.save(sprint);
-        ra.addFlashAttribute("success", "Sprint saved");
+        ra.addFlashAttribute("success", "Sprint saved successfully");
         return "redirect:/sprints/board/" + sprint.getId();
     }
 

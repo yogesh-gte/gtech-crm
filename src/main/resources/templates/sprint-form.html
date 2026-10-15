@@ -17,9 +17,16 @@
     <div class="container py-4">
         <h4 class="mb-4" th:text="${sprint.id != null} ? 'Edit Sprint' : 'Create Sprint'">Create Sprint</h4>
 
+        <div th:if="${error}" class="alert alert-danger" role="alert" style="max-width: 500px;">
+            <span th:text="${error}"></span>
+        </div>
+        <div th:if="${success}" class="alert alert-success" role="alert" style="max-width: 500px;">
+            <span th:text="${success}"></span>
+        </div>
+
         <div class="card" style="max-width: 500px;">
             <div class="card-body">
-                <form th:action="@{/sprints/save}" method="post">
+                <form id="sprintForm" th:action="@{/sprints/save}" method="post">
                     <input type="hidden" name="id" th:value="${sprint.id}">
                     <div class="mb-3">
                         <label class="form-label">Sprint Name *</label>
@@ -27,28 +34,64 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Goal (optional)</label>
-                        <textarea class="form-control" name="goal" rows="2" th:text="${sprint.goal}"></textarea>
+                        <textarea class="form-control" name="goal" rows="2" th:text="${sprint.goal}" placeholder="Sprint objective or focus"></textarea>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Project *</label>
-                        <select class="form-select" name="projectId" required>
+                        <select class="form-select" id="projectId" name="projectId" required>
+                            <option value="">-- Select Project --</option>
                             <option th:each="p : ${projects}" th:value="${p.id}" th:text="${p.name}" th:selected="${(sprint.project != null and sprint.project.id == p.id) or (selectedProjectId != null and selectedProjectId == p.id)}"></option>
                         </select>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
                             <label class="form-label">Start Date *</label>
-                            <input type="date" class="form-control" name="startDateStr" th:value="${sprint.startDate}" required>
+                            <input type="date" class="form-control" id="startDate" name="startDateStr" th:value="${sprint.startDate}" required>
                         </div>
                         <div class="col-6">
                             <label class="form-label">End Date *</label>
-                            <input type="date" class="form-control" name="endDateStr" th:value="${sprint.endDate}" required>
+                            <input type="date" class="form-control" id="endDate" name="endDateStr" th:value="${sprint.endDate}" required>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <div id="dateAlert" class="alert alert-danger d-none py-2 small mb-3"></div>
+                    <button type="submit" id="saveBtn" class="btn btn-primary">Save Sprint</button>
                 </form>
             </div>
         </div>
     </div>
+
+    <script>
+        const startInput = document.getElementById('startDate');
+        const endInput = document.getElementById('endDate');
+        const dateAlert = document.getElementById('dateAlert');
+        const form = document.getElementById('sprintForm');
+
+        function validateDates() {
+            if (startInput.value && endInput.value) {
+                if (endInput.value < startInput.value) {
+                    dateAlert.textContent = 'End date cannot be earlier than start date.';
+                    dateAlert.classList.remove('d-none');
+                    return false;
+                } else {
+                    dateAlert.classList.add('d-none');
+                    return true;
+                }
+            }
+            return true;
+        }
+
+        startInput.addEventListener('change', function () {
+            endInput.setAttribute('min', this.value);
+            validateDates();
+        });
+
+        endInput.addEventListener('change', validateDates);
+
+        form.addEventListener('submit', function (e) {
+            if (!validateDates()) {
+                e.preventDefault();
+            }
+        });
+    </script>
 </body>
 </html>

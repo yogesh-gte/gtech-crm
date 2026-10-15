@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="sidebar(activeTab)">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Shared Manager Sidebar Styling */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            padding: 20px 14px;
+            z-index: 1040;
+            overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(15, 23, 42, 0.04);
+        }
+
+        /* Sidebar Brand */
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 10px 16px 10px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #f1f5f9;
+            text-decoration: none;
+        }
+
+        .sidebar-brand h3 {
+            color: #1a8cf0;
+            font-weight: 800;
+            font-size: 1.35rem;
+            margin: 0;
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+        }
+
+        .sidebar-brand-sub {
+            font-size: 0.68rem;
+            letter-spacing: 1px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .sidebar-section-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #94a3b8;
+            padding: 10px 12px 4px 12px;
+            margin-top: 4px;
+        }
+
+        /* Navigation Links */
+        .sidebar .nav {
+            flex-grow: 1;
+        }
+
+        .sidebar .nav-link {
+            color: #475569;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 3px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .sidebar .nav-link i {
+            width: 20px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: #64748b;
+            transition: color 0.2s;
+        }
+
+        .sidebar .nav-link:hover {
+            background-color: #f0f7ff;
+            color: #1a8cf0;
+            transform: translateX(3px);
+        }
+
+        .sidebar .nav-link:hover i {
+            color: #1a8cf0;
+        }
+
+        .sidebar .nav-link.active {
+            background-color: #eff6ff;
+            color: #1a8cf0;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(26, 140, 240, 0.08);
+        }
+
+        .sidebar .nav-link.active i {
+            color: #1a8cf0;
+        }
+
+        /* Sidebar User Profile at bottom */
+        .sidebar-user {
+            background-color: #f8fafc;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: auto;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .sidebar-user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #eff6ff;
+            color: #1a8cf0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            border: 1px solid #bfdbfe;
+            flex-shrink: 0;
+        }
+
+        /* Main Content Offset */
+        .main-content {
+            margin-left: 260px;
+            padding: 24px 30px;
+            min-height: 100vh;
+            background-color: #f3f7ff;
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        /* Toggle Button & Overlay for Mobile */
+        .sidebar-toggle-btn {
+            display: none;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 1.1rem;
+            color: #475569;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .sidebar-toggle-btn:hover {
+            background-color: #f8fafc;
+            color: #1a8cf0;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+            z-index: 1035;
+        }
+
+        .sidebar-overlay.active,
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        /* Mobile Responsive Adjustments */
+        @media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active,
+            .sidebar.show {
+                transform: translateX(0);
+                box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                padding: 16px 12px;
+            }
+
+            .sidebar-toggle-btn {
+                display: inline-flex;
+            }
+        }
+
+        @media print {
+            .sidebar, .sidebar-overlay, .sidebar-toggle-btn {
+                display: none !important;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                padding: 0 !important;
+            }
+        }
+
+        /* Custom Scrollbar for Sidebar */
+        .sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(26, 140, 240, 0.2);
+            border-radius: 4px;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(26, 140, 240, 0.4);
+        }
+    </style>
+
+    <!-- Mobile Sidebar Toggle Overlay -->
+    <div class="sidebar-overlay" id="managerSidebarOverlay" onclick="toggleManagerSidebar()"></div>
+
+    <!-- Manager Sidebar -->
+    <div class="sidebar" id="managerSidebar">
+        <a th:href="@{/manager/dashboard(tab='planning')}" class="sidebar-brand text-decoration-none">
+            <i class="fas fa-layer-group text-primary fs-3"></i>
+            <div>
+                <h3>LogSphere</h3>
+                <div class="sidebar-brand-sub">Manager Portal</div>
+            </div>
+        </a>
+
+        <ul class="nav flex-column">
+            <!-- MAIN MANAGEMENT -->
+            <div class="sidebar-section-title">Core Management</div>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'planning' || activeTab == null || activeTab == 'dashboard'} ? 'active' : ''" 
+                   th:href="@{/manager/dashboard(tab='planning')}">
+                    <i class="fas fa-chart-line"></i> <span>Dashboard Home</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'create-meeting'} ? 'active' : ''" 
+                   th:href="@{/manager/meetings/create}">
+                    <i class="fas fa-calendar-plus"></i> <span>Create Meeting</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'feedback'} ? 'active' : ''" 
+                   th:href="@{/manager/dashboard(tab='feedback')}">
+                    <i class="fas fa-comments"></i> <span>Feedback</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'availability'} ? 'active' : ''" 
+                   th:href="@{/manager/dashboard(tab='availability')}">
+                    <i class="fas fa-user-clock"></i> <span>Availability</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'recognition'} ? 'active' : ''" 
+                   th:href="@{/manager/dashboard(tab='recognition')}">
+                    <i class="fas fa-award"></i> <span>Recognition</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'rules'} ? 'active' : ''" 
+                   th:href="@{/manager/dashboard(tab='rules')}">
+                    <i class="fas fa-gavel"></i> <span>Team Rules</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'suggestions'} ? 'active' : ''" 
+                   th:href="@{/manager/dashboard(tab='suggestions')}">
+                    <i class="fas fa-lightbulb"></i> <span>Suggestions</span>
+                    <span th:if="${suggestionCount != null && suggestionCount > 0}" class="badge bg-warning text-dark ms-auto"
+                          th:text="${suggestionCount}"></span>
+                </a>
+            </li>
+
+            <!-- TEAM MONITORING (LOG-MGR-005) -->
+            <div class="sidebar-section-title">Monitoring</div>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'idle'} ? 'active' : ''" 
+                   th:href="@{/manager/dashboard(tab='idle')}" 
+                   data-bs-toggle="modal" data-bs-target="#idleEmployeesModal">
+                    <i class="fas fa-stopwatch text-danger"></i> <span>Idle Employees</span>
+                    <span th:if="${idleCount != null && idleCount > 0}" class="badge bg-danger rounded-pill ms-auto"
+                          th:text="${idleCount}"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${activeTab == 'performance'} ? 'active' : ''" 
+                   th:href="@{/manager/performance}">
+                    <i class="fas fa-chart-bar"></i> <span>Team Performance</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- Bottom User Card -->
+        <div class="sidebar-user mt-3">
+            <div class="sidebar-user-avatar">
+                <i class="fas fa-user-tie"></i>
+            </div>
+            <div class="overflow-hidden me-auto">
+                <div class="fw-bold text-dark text-truncate small" th:text="${userName != null ? userName : (session.userName != null ? session.userName : 'Manager')}">Manager</div>
+                <div class="text-muted text-truncate" style="font-size: 0.72rem;">Manager Portal</div>
+            </div>
+            <a th:href="@{/logout}" class="btn btn-sm btn-outline-danger border-0 p-1" title="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Global Idle Employees Modal (LOG-MGR-005: Accessible from any manager page) -->
+    <div class="modal fade" id="idleEmployeesModal" tabindex="-1" aria-labelledby="idleEmployeesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger bg-opacity-10 border-bottom">
+                    <h5 class="modal-title text-danger fw-bold" id="idleEmployeesModalLabel">
+                        <i class="fas fa-user-clock me-2"></i> Active Idle Incidents
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div th:if="${idleCount == null || idleCount == 0}" class="text-center p-4 text-muted">
+                        <i class="fas fa-check-circle text-success fs-1 mb-2"></i>
+                        <p class="mb-0 fw-medium">All team members are currently active. No idle incidents reported!</p>
+                    </div>
+                    <div th:if="${idleCount != null && idleCount > 0}" class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Employee</th>
+                                    <th>ID</th>
+                                    <th>Department</th>
+                                    <th>Duration</th>
+                                    <th>Idle Since</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="incident : ${idleIncidents}">
+                                    <td class="ps-3 fw-medium text-dark" th:text="${incident.employee.name}"></td>
+                                    <td class="text-secondary small" th:text="${incident.employee.employeeId}"></td>
+                                    <td class="text-secondary small" th:text="${incident.employee.department}"></td>
+                                    <td>
+                                        <span class="badge bg-danger bg-opacity-10 text-danger"
+                                              th:text="${incident.idleDurationMinutes} + ' min'"></span>
+                                    </td>
+                                    <td class="text-secondary small"
+                                        th:text="${#temporals.format(incident.idleStartTime, 'yyyy-MM-dd HH:mm')}"></td>
+                                    <td>
+                                        <span class="badge bg-warning bg-opacity-10 text-warning"
+                                              th:text="${incident.status}"></span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <a th:href="@{/manager/dashboard(tab='idle')}" class="btn btn-outline-primary btn-sm me-auto">
+                        <i class="fas fa-external-link-alt me-1"></i> Open on Dashboard
+                    </a>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Drawer Toggle Script -->
+    <script>
+        function toggleManagerSidebar() {
+            const sidebar = document.getElementById('managerSidebar');
+            const overlay = document.getElementById('managerSidebarOverlay');
+            if (sidebar) sidebar.classList.toggle('show');
+            if (overlay) overlay.classList.toggle('show');
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const sidebar = document.getElementById('managerSidebar');
+                const overlay = document.getElementById('managerSidebarOverlay');
+                if (sidebar && sidebar.classList.contains('show')) sidebar.classList.remove('show');
+                if (overlay && overlay.classList.contains('show')) overlay.classList.remove('show');
+            }
+        });
+    </script>
+</div>
+
+</body>
+</html>

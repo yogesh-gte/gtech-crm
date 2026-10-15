@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visitor History - LogSphere</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -65,22 +66,33 @@
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg sticky-top mb-4">
-        <div class="container-fluid px-4">
-            <span class="navbar-brand mb-0 h1 text-primary fw-bold"><i class="fas fa-history me-2"></i>Visitor
-                History</span>
+    <!-- Shared Admin Sidebar Fragment -->
+    <div th:replace="~{fragments/admin-sidebar :: sidebar('visitors')}"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Mobile Header Bar -->
+        <div class="mobile-header-bar d-lg-none">
+            <button class="sidebar-toggle-btn" type="button" onclick="toggleAdminSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <span class="fw-bold text-primary">Visitor History</span>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h3 class="fw-bold text-primary mb-1"><i class="fas fa-history me-2"></i>Visitor History</h3>
+                <p class="text-secondary small mb-0">Complete historical records of company visitor visits</p>
+            </div>
             <div class="d-flex gap-2">
                 <a th:href="@{/visitors/search}" class="btn btn-outline-primary btn-sm">
                     <i class="fas fa-search me-1"></i> Search
                 </a>
                 <a th:href="@{/visitors/dashboard}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+                    <i class="fas fa-arrow-left me-1"></i> Back to Reception
                 </a>
             </div>
         </div>
-    </nav>
-
-    <div class="container-fluid px-4 pb-4">
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="mb-0 fw-bold text-dark">Complete Visitor Log History</h4>

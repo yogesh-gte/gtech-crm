@@ -109,6 +109,12 @@ public class HRController {
         }
     }
 
+    @RequestMapping(value = "/logout", method = RequestMethod.GET)
+    public String hrLogout(HttpSession session) {
+        session.invalidate();
+        return "redirect:/hr/login";
+    }
+
     @RequestMapping(value = "/dashboard", method = RequestMethod.GET)
     public String hrDashboard(@RequestParam(required = false) String employeeSearch, Model model, HttpSession session) {
         User user = (User) session.getAttribute("user");
@@ -359,11 +365,25 @@ public class HRController {
         model.addAttribute("processedPayrolls", processedPayrolls);
         model.addAttribute("monthlyPayrolls", monthlyPayrolls);
 
-        // Notifications
-        model.addAttribute("expiringContracts", expiringContracts);
-
         List<Notification> notifications = notificationRepository
                 .findByUserRecipientAndIsReadFalseOrderByCreatedAtDesc(user);
+
+        if (pendingLeaves != null && !pendingLeaves.isEmpty()) {
+            boolean hasLeaveNotifs = notifications.stream().anyMatch(n -> n.getMessage() != null && n.getMessage().contains("Leave Request"));
+            if (!hasLeaveNotifs) {
+                for (LeaveRequest pl : pendingLeaves) {
+                    Notification n = new Notification();
+                    n.setUserRecipient(user);
+                    String empName = (pl.getEmployee() != null && pl.getEmployee().getName() != null) ? pl.getEmployee().getName() : "Employee";
+                    n.setMessage("Pending Leave: " + empName + " applied for " + pl.getLeaveType() + " (" + pl.getNumberOfDays() + " day(s))");
+                    n.setCreatedAt(pl.getCreatedAt() != null ? pl.getCreatedAt() : LocalDateTime.now());
+                    n.setIsRead(false);
+                    notificationRepository.save(n);
+                }
+                notifications = notificationRepository.findByUserRecipientAndIsReadFalseOrderByCreatedAtDesc(user);
+            }
+        }
+
         model.addAttribute("notifications", notifications);
 
         // Visitor stats
@@ -461,15 +481,56 @@ public class HRController {
     }
 
     @RequestMapping(value = "/holiday/add", method = RequestMethod.POST)
-    public String addHoliday(@RequestParam String date, @RequestParam String name, HttpSession session, RedirectAttributes redirectAttributes) {
+    public String addHoliday(@RequestParam(required = false) String date,
+                             @RequestParam(required = false) String name,
+                             HttpSession session,
+                             RedirectAttributes redirectAttributes) {
         User user = (User) session.getAttribute("user");
         if (user == null || !"HR".equals(user.getRole())) {
             return "redirect:/hr/login";
         }
+        if (name == null || name.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Holiday name is required.");
+            redirectAttributes.addAttribute("activeTab", "holiday");
+            return "redirect:/hr/dashboard";
+        }
+        if (date == null || date.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Holiday date is required.");
+            redirectAttributes.addAttribute("activeTab", "holiday");
+            return "redirect:/hr/dashboard";
+        }
+
+        LocalDate holidayDate;
+        try {
+            holidayDate = LocalDate.parse(date.trim());
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Invalid date format. Please use YYYY-MM-DD.");
+            redirectAttributes.addAttribute("activeTab", "holiday");
+            return "redirect:/hr/dashboard";
+        }
+
+        List<com.example.demo.model.CompanyHoliday> existing = companyHolidayRepository.findAll();
+        boolean dateExists = existing != null && existing.stream()
+                .anyMatch(h -> h.getDate() != null && h.getDate().equals(holidayDate));
+        if (dateExists) {
+            redirectAttributes.addFlashAttribute("error", "A company holiday already exists on " + holidayDate + ".");
+            redirectAttributes.addAttribute("activeTab", "holiday");
+            return "redirect:/hr/dashboard";
+        }
+
+        boolean nameExists = existing != null && existing.stream()
+                .anyMatch(h -> h.getName() != null && h.getName().equalsIgnoreCase(name.trim())
+                        && h.getDate() != null && h.getDate().getYear() == holidayDate.getYear());
+        if (nameExists) {
+            redirectAttributes.addFlashAttribute("error", "A holiday named '" + name.trim() + "' already exists for year " + holidayDate.getYear() + ".");
+            redirectAttributes.addAttribute("activeTab", "holiday");
+            return "redirect:/hr/dashboard";
+        }
+
         try {
             com.example.demo.model.CompanyHoliday holiday = new com.example.demo.model.CompanyHoliday();
-            holiday.setDate(LocalDate.parse(date));
-            holiday.setName(name);
+            holiday.setDate(holidayDate);
+            holiday.setName(name.trim());
             companyHolidayRepository.save(holiday);
             redirectAttributes.addFlashAttribute("success", "Holiday added successfully.");
         } catch (Exception e) {
@@ -520,34 +581,20 @@ public class HRController {
         leaveRequest.setApprovalDate(LocalDateTime.now());
         leaveRequestRepository.save(leaveRequest);
 
-        // Update employee leave balance (deduct approved days)
-        // Update employee leave balance (deduct approved days)
+        // Leave was already deducted when requested by employee.
         Employee employee = leaveRequest.getEmployee();
-        String leaveType = leaveRequest.getLeaveType();
-        int daysToDeduct = leaveRequest.getNumberOfDays();
 
-        if ("PAID".equals(leaveType)) {
-            int current = employee.getPaidLeave() != null ? employee.getPaidLeave() : 0;
-            employee.setPaidLeave(Math.max(0, current - daysToDeduct));
-        } else if ("SICK".equals(leaveType)) {
-            int current = employee.getSickLeave() != null ? employee.getSickLeave() : 0;
-            employee.setSickLeave(Math.max(0, current - daysToDeduct));
-        } else if ("CASUAL".equals(leaveType)) {
-            int current = employee.getCasualLeave() != null ? employee.getCasualLeave() : 0;
-            employee.setCasualLeave(Math.max(0, current - daysToDeduct));
-        } else if (employee.getCustomLeaves() != null && employee.getCustomLeaves().containsKey(leaveType)) {
-            int current = employee.getCustomLeaves().get(leaveType);
-            employee.getCustomLeaves().put(leaveType, Math.max(0, current - daysToDeduct));
+        // In-app notification for employee
+        try {
+            Notification notif = new Notification();
+            notif.setRecipient(employee);
+            notif.setMessage("Leave Approved: Your " + leaveRequest.getLeaveType() + " leave request for " + leaveRequest.getNumberOfDays() + " day(s) (" + leaveRequest.getStartDate() + " to " + leaveRequest.getEndDate() + ") has been approved.");
+            notif.setCreatedAt(LocalDateTime.now());
+            notif.setIsRead(false);
+            notificationRepository.save(notif);
+        } catch (Exception notifEx) {
+            System.err.println("Failed to create leave approval notification: " + notifEx.getMessage());
         }
-
-        // Also update the total leave balance for backward compatibility or display
-        // purposes if needed
-        // Assuming 'leaveBalance' field might still be used for a total aggregate or
-        // legacy reasons
-        Integer currentTotal = employee.getLeaveBalance() != null ? employee.getLeaveBalance() : 0;
-        employee.setLeaveBalance(Math.max(0, currentTotal - daysToDeduct));
-
-        employeeRepository.save(employee);
 
         // Send email notification
         try {
@@ -563,7 +610,7 @@ public class HRController {
         }
 
         redirectAttributes.addFlashAttribute("success",
-                "Leave request approved successfully! Email notification sent to employee.");
+                "Leave request approved successfully! Notification sent to employee.");
         return "redirect:/hr/dashboard";
     }
 
@@ -596,8 +643,42 @@ public class HRController {
         leaveRequest.setRejectionReason(rejectionReason);
         leaveRequestRepository.save(leaveRequest);
 
-        // Send email notification
+        // Refund employee leave balance on rejection
         Employee employee = leaveRequest.getEmployee();
+        String leaveType = leaveRequest.getLeaveType();
+        int daysToRefund = leaveRequest.getNumberOfDays() != null ? leaveRequest.getNumberOfDays() : 0;
+
+        if ("PAID".equals(leaveType)) {
+            int current = employee.getPaidLeave() != null ? employee.getPaidLeave() : 0;
+            employee.setPaidLeave(current + daysToRefund);
+        } else if ("SICK".equals(leaveType)) {
+            int current = employee.getSickLeave() != null ? employee.getSickLeave() : 0;
+            employee.setSickLeave(current + daysToRefund);
+        } else if ("CASUAL".equals(leaveType)) {
+            int current = employee.getCasualLeave() != null ? employee.getCasualLeave() : 0;
+            employee.setCasualLeave(current + daysToRefund);
+        } else if (employee.getCustomLeaves() != null && employee.getCustomLeaves().containsKey(leaveType)) {
+            int current = employee.getCustomLeaves().get(leaveType);
+            employee.getCustomLeaves().put(leaveType, current + daysToRefund);
+        }
+
+        Integer currentTotal = employee.getLeaveBalance() != null ? employee.getLeaveBalance() : 0;
+        employee.setLeaveBalance(currentTotal + daysToRefund);
+        employeeRepository.save(employee);
+
+        // In-app notification for employee
+        try {
+            Notification notif = new Notification();
+            notif.setRecipient(employee);
+            notif.setMessage("Leave Rejected: Your " + leaveRequest.getLeaveType() + " leave request was rejected." + (rejectionReason != null && !rejectionReason.isBlank() ? " Reason: " + rejectionReason : ""));
+            notif.setCreatedAt(LocalDateTime.now());
+            notif.setIsRead(false);
+            notificationRepository.save(notif);
+        } catch (Exception notifEx) {
+            System.err.println("Failed to create leave rejection notification: " + notifEx.getMessage());
+        }
+
+        // Send email notification
         try {
             emailService.sendLeaveRejectionNotification(
                     employee.getEmail(),
@@ -610,7 +691,7 @@ public class HRController {
             System.err.println("Failed to send leave rejection email: " + e.getMessage());
         }
 
-        redirectAttributes.addFlashAttribute("success", "Leave request rejected. Email notification sent to employee.");
+        redirectAttributes.addFlashAttribute("success", "Leave request rejected. Notification sent to employee.");
         return "redirect:/hr/dashboard";
     }
 
@@ -1163,8 +1244,21 @@ public class HRController {
 
         List<Payroll> pendingPayrolls = payrollRepository.findByPayrollStatus(Payroll.PayrollStatus.GENERATED);
         for (Payroll payroll : pendingPayrolls) {
-            payroll.setPayrollStatus(Payroll.PayrollStatus.APPROVED); // Example flow
+            payroll.setPayrollStatus(Payroll.PayrollStatus.APPROVED);
             payrollRepository.save(payroll);
+
+            if (payroll.getEmployee() != null) {
+                try {
+                    Notification notif = new Notification();
+                    notif.setRecipient(payroll.getEmployee());
+                    String periodStr = (payroll.getMonth() != null && payroll.getYear() != null)
+                            ? (payroll.getMonth() + "/" + payroll.getYear()) : "this month";
+                    notif.setMessage("New Payslip Available: Your payslip for " + periodStr + " is now available to view.");
+                    notif.setCreatedAt(LocalDateTime.now());
+                    notif.setIsRead(false);
+                    notificationRepository.save(notif);
+                } catch (Exception ignored) {}
+            }
         }
         redirectAttributes.addFlashAttribute("success", "All pending payslips generated successfully!");
         return "redirect:/hr/dashboard";
@@ -1258,6 +1352,44 @@ public class HRController {
         User user = (User) session.getAttribute("user");
         if (user == null || !"HR".equals(user.getRole())) {
             return "redirect:/hr/login";
+        }
+
+        String returnUrl = "MANAGER".equals(targetType) ? "redirect:/hr/meeting/schedule/manager" : "redirect:/hr/meeting/schedule/employee";
+
+        if (meeting.getTitle() == null || meeting.getTitle().trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Meeting title is required.");
+            return returnUrl;
+        }
+
+        if (meeting.getLocation() == null || meeting.getLocation().trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Location / Meeting link is required.");
+            return returnUrl;
+        }
+
+        if (meeting.getStartTime() == null) {
+            redirectAttributes.addFlashAttribute("error", "Start time is required.");
+            return returnUrl;
+        }
+
+        if (meeting.getStartTime().isBefore(LocalDateTime.now().minusMinutes(10))) {
+            redirectAttributes.addFlashAttribute("error", "Meeting start time cannot be in the past.");
+            return returnUrl;
+        }
+
+        if (meeting.getEndTime() != null && !meeting.getEndTime().isAfter(meeting.getStartTime())) {
+            redirectAttributes.addFlashAttribute("error", "End time must be after start time.");
+            return returnUrl;
+        }
+
+        if (!Boolean.TRUE.equals(isEveryone)) {
+            if ("EMPLOYEE".equals(targetType) && (employeeIds == null || employeeIds.isEmpty())) {
+                redirectAttributes.addFlashAttribute("error", "Please select at least one employee or choose 'Everyone'.");
+                return returnUrl;
+            }
+            if ("MANAGER".equals(targetType) && (managerIds == null || managerIds.isEmpty())) {
+                redirectAttributes.addFlashAttribute("error", "Please select at least one manager or choose 'Everyone'.");
+                return returnUrl;
+            }
         }
 
         if ("EMPLOYEE".equals(targetType)) {
@@ -1447,27 +1579,50 @@ public class HRController {
                     .sum();
 
             // Calculate Metrics
-            int totalDaysInMonth = today.lengthOfMonth();
-            // Simple logic for working days: Days passed excluding Sundays.
-            // For accurate 'Total Working Days', we might assume standard 22 or calculate
-            // excluding weekends.
-            // Let's calculate working days excluding Sundays for the whole month.
+            LocalDate effectiveStart = startOfMonth;
+            if (employee.getJoinDate() != null && employee.getJoinDate().isAfter(startOfMonth)) {
+                effectiveStart = employee.getJoinDate();
+            }
+
+            List<com.example.demo.model.CompanyHoliday> holidays = companyHolidayRepository.findAll();
+            Set<LocalDate> holidayDates = (holidays != null)
+                    ? holidays.stream().map(com.example.demo.model.CompanyHoliday::getDate).filter(Objects::nonNull).collect(Collectors.toSet())
+                    : Collections.emptySet();
+
+            // Total working days in the month (excluding Saturdays, Sundays, and Company Holidays)
             long totalWorkingDays = startOfMonth.datesUntil(endOfMonth.plusDays(1))
-                    .filter(d -> d.getDayOfWeek() != java.time.DayOfWeek.SUNDAY)
+                    .filter(d -> d.getDayOfWeek() != java.time.DayOfWeek.SATURDAY
+                            && d.getDayOfWeek() != java.time.DayOfWeek.SUNDAY
+                            && !holidayDates.contains(d))
                     .count();
 
-            long daysPresent = monthlyAttendance.size();
+            // Working days passed up to today (excluding weekends and holidays)
+            long workingDaysPassed = effectiveStart.datesUntil(today.plusDays(1))
+                    .filter(d -> d.getDayOfWeek() != java.time.DayOfWeek.SATURDAY
+                            && d.getDayOfWeek() != java.time.DayOfWeek.SUNDAY
+                            && !holidayDates.contains(d))
+                    .count();
+
+            // Check if employee is present today
+            boolean isPresentToday = "IN".equalsIgnoreCase(employee.getStatus())
+                    || monthlyAttendance.stream().anyMatch(a -> today.equals(a.getAttendanceDate()));
+
+            // Distinct days present
+            long daysPresent = monthlyAttendance.stream()
+                    .map(Attendance::getAttendanceDate)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .count();
+
+            if (isPresentToday && monthlyAttendance.stream().noneMatch(a -> today.equals(a.getAttendanceDate()))) {
+                daysPresent++;
+            }
+
             long leaves = approvedLeavesCount;
             long overtimeDays = monthlyAttendance.stream()
                     .filter(a -> a.getTotalHours() != null && a.getTotalHours() > 9).count();
 
-            // LOP = Total Working Days Passed - Present - Leaves
-            // We calculate LOP based on days *passed* so far, or for the whole month?
-            // Usually LOP is calculated for payroll. For history view, let's show LOP for
-            // days passed.
-            long workingDaysPassed = startOfMonth.datesUntil(today.plusDays(1))
-                    .filter(d -> d.getDayOfWeek() != java.time.DayOfWeek.SUNDAY)
-                    .count();
+            // LOP = Total Working Days Passed - Present - Leaves (cannot be negative)
             long lopDays = Math.max(0, workingDaysPassed - daysPresent - leaves);
 
             // Construct Daily Records
@@ -1498,8 +1653,9 @@ public class HRController {
 
             // Summary Object
             Map<String, Object> summary = new HashMap<>();
-            summary.put("id", 1); // Mock ID as per image
+            summary.put("id", 1);
             summary.put("employee_id", employee.getId());
+            summary.put("employee_code", employee.getEmployeeId());
             summary.put("employee_name", employee.getName());
             summary.put("month", today.getMonthValue());
             summary.put("year", today.getYear());
@@ -1535,14 +1691,16 @@ public class HRController {
             LocalDate endOfMonth = today.withDayOfMonth(today.lengthOfMonth());
             int totalDaysInMonth = today.lengthOfMonth();
 
-            // Calculate working days passed (excluding Sundays)
-            long workingDaysPassed = startOfMonth.datesUntil(today.plusDays(1))
-                    .filter(d -> d.getDayOfWeek() != java.time.DayOfWeek.SUNDAY)
-                    .count();
+            List<com.example.demo.model.CompanyHoliday> holidays = companyHolidayRepository.findAll();
+            Set<LocalDate> holidayDates = (holidays != null)
+                    ? holidays.stream().map(com.example.demo.model.CompanyHoliday::getDate).filter(Objects::nonNull).collect(Collectors.toSet())
+                    : Collections.emptySet();
 
-            // Calculate total working days in month (excluding Sundays)
+            // Total working days in month (excluding Saturdays, Sundays, and Company Holidays)
             long totalWorkingDaysMonth = startOfMonth.datesUntil(endOfMonth.plusDays(1))
-                    .filter(d -> d.getDayOfWeek() != java.time.DayOfWeek.SUNDAY)
+                    .filter(d -> d.getDayOfWeek() != java.time.DayOfWeek.SATURDAY
+                            && d.getDayOfWeek() != java.time.DayOfWeek.SUNDAY
+                            && !holidayDates.contains(d))
                     .count();
 
             List<Employee> allEmployees = employeeRepository.findAll();
@@ -1565,7 +1723,32 @@ public class HRController {
                             .mapToLong(LeaveRequest::getNumberOfDays)
                             .sum();
 
-                    long daysPresent = monthlyAttendance.size();
+                    LocalDate effectiveStart = (emp.getJoinDate() != null && emp.getJoinDate().isAfter(startOfMonth))
+                            ? emp.getJoinDate()
+                            : startOfMonth;
+                    if (effectiveStart.isAfter(today)) {
+                        effectiveStart = today;
+                    }
+
+                    long workingDaysPassed = effectiveStart.datesUntil(today.plusDays(1))
+                            .filter(d -> d.getDayOfWeek() != java.time.DayOfWeek.SATURDAY
+                                    && d.getDayOfWeek() != java.time.DayOfWeek.SUNDAY
+                                    && !holidayDates.contains(d))
+                            .count();
+
+                    boolean isPresentToday = "IN".equalsIgnoreCase(emp.getStatus())
+                            || monthlyAttendance.stream().anyMatch(a -> today.equals(a.getAttendanceDate()));
+
+                    long daysPresent = monthlyAttendance.stream()
+                            .map(Attendance::getAttendanceDate)
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .count();
+
+                    if (isPresentToday && monthlyAttendance.stream().noneMatch(a -> today.equals(a.getAttendanceDate()))) {
+                        daysPresent++;
+                    }
+
                     long overtimeDays = monthlyAttendance.stream()
                             .filter(a -> a.getTotalHours() != null && a.getTotalHours() > 9).count();
                     long lopDays = Math.max(0, workingDaysPassed - daysPresent - leaves);

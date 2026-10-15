@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @Service
 public class EmailService {
 
-    @Autowired
+    @Autowired(required = false)
     private JavaMailSender mailSender;
 
     @Autowired

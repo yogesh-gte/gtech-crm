@@ -164,14 +164,23 @@
             </div>
         </div>
 
-        <!-- Today's Summary -->
-        <h5 class="text-secondary fw-bold text-uppercase mb-3 fs-6">Today's Overview</h5>
-        <div class="row mb-5">
+        <!-- Overview with Period Switcher -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="text-secondary fw-bold text-uppercase mb-0 fs-6">Performance Overview</h5>
+            <div class="btn-group btn-group-sm" role="group" id="overviewPeriodTabs">
+                <button type="button" class="btn btn-primary active" id="btnDaily" onclick="switchOverview('daily')">Daily (Today)</button>
+                <button type="button" class="btn btn-outline-primary" id="btnWeekly" onclick="switchOverview('weekly')">Weekly (This Week)</button>
+                <button type="button" class="btn btn-outline-primary" id="btnMonthly" onclick="switchOverview('monthly')">Monthly (This Month)</button>
+            </div>
+        </div>
+
+        <!-- Daily Overview Cards -->
+        <div class="row mb-5 overview-section" id="overviewDaily">
             <div class="col-md-4">
                 <div class="card stat-card shadow-sm border h-100">
                     <div class="text-center">
                         <div class="stat-label mb-2">Active Employees</div>
-                        <h2 class="stat-value text-success" th:text="${todayAttendance.size()}">0</h2>
+                        <h2 class="stat-value text-success" th:text="${todayActiveEmployees}">0</h2>
                         <small class="text-muted">Checked in today</small>
                     </div>
                 </div>
@@ -192,7 +201,73 @@
                     <div class="text-center">
                         <div class="stat-label mb-2">Total Visitors</div>
                         <h2 class="stat-value text-info" th:text="${todayVisitors.size()}">0</h2>
-                        <small class="text-muted">Registered visits</small>
+                        <small class="text-muted">Registered visits today</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Overview Cards -->
+        <div class="row mb-5 overview-section d-none" id="overviewWeekly">
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="text-center">
+                        <div class="stat-label mb-2">Active Employees</div>
+                        <h2 class="stat-value text-success" th:text="${weeklyActiveEmployees}">0</h2>
+                        <small class="text-muted">Checked in this week</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="text-center">
+                        <div class="stat-label mb-2">Total Work Hours</div>
+                        <h2 class="stat-value text-primary"
+                            th:text="${#numbers.formatDecimal(weeklyTotalHours, 1, 1)} + 'h'">0h
+                        </h2>
+                        <small class="text-muted">Avg: <span th:text="${#numbers.formatDecimal(weeklyAvgHours, 1, 1)} + 'h / day'">0h/day</span></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="text-center">
+                        <div class="stat-label mb-2">Total Visitors</div>
+                        <h2 class="stat-value text-info" th:text="${weeklyVisitors.size()}">0</h2>
+                        <small class="text-muted">Registered this week</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Overview Cards -->
+        <div class="row mb-5 overview-section d-none" id="overviewMonthly">
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="text-center">
+                        <div class="stat-label mb-2">Active Employees</div>
+                        <h2 class="stat-value text-success" th:text="${monthlyActiveEmployees}">0</h2>
+                        <small class="text-muted">Checked in this month</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="text-center">
+                        <div class="stat-label mb-2">Total Work Hours</div>
+                        <h2 class="stat-value text-primary"
+                            th:text="${#numbers.formatDecimal(monthlyTotalHours, 1, 1)} + 'h'">0h
+                        </h2>
+                        <small class="text-muted">Avg: <span th:text="${#numbers.formatDecimal(monthlyAvgHours, 1, 1)} + 'h / day'">0h/day</span></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="text-center">
+                        <div class="stat-label mb-2">Total Visitors</div>
+                        <h2 class="stat-value text-info" th:text="${monthlyVisitors.size()}">0</h2>
+                        <small class="text-muted">Registered this month</small>
                     </div>
                 </div>
             </div>
@@ -304,7 +379,24 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script th:inline="javascript">
-        // Handle custom date range report form submission
+        function switchOverview(period) {
+            document.querySelectorAll('.overview-section').forEach(el => el.classList.add('d-none'));
+            document.getElementById('btnDaily').className = 'btn btn-outline-primary';
+            document.getElementById('btnWeekly').className = 'btn btn-outline-primary';
+            document.getElementById('btnMonthly').className = 'btn btn-outline-primary';
+            
+            if (period === 'weekly') {
+                document.getElementById('overviewWeekly').classList.remove('d-none');
+                document.getElementById('btnWeekly').className = 'btn btn-primary active';
+            } else if (period === 'monthly') {
+                document.getElementById('overviewMonthly').classList.remove('d-none');
+                document.getElementById('btnMonthly').className = 'btn btn-primary active';
+            } else {
+                document.getElementById('overviewDaily').classList.remove('d-none');
+                document.getElementById('btnDaily').className = 'btn btn-primary active';
+            }
+        }
+
         // Handle custom date range report form submission
         document.getElementById('customReportForm').addEventListener('submit', function (e) {
             e.preventDefault();
@@ -314,18 +406,8 @@
             const startDate = formData.get('startDate');
             const endDate = formData.get('endDate');
 
-            // Get context path
-            let contextPath = /*[[@{/}]]*/ '/';
-            if (contextPath.length > 1 && contextPath.endsWith('/')) {
-                contextPath = contextPath.substring(0, contextPath.length - 1);
-            }
-
-            // Redirect to the appropriate report endpoint based on selected type
-            if (reportType === 'visitor') {
-                window.location.href = contextPath + `/reports/visitor?startDate=${startDate}&endDate=${endDate}`;
-            } else {
-                window.location.href = contextPath + `/reports/employee?startDate=${startDate}&endDate=${endDate}`;
-            }
+            const basePath = /*[[@{/reports}]]*/ '/reports';
+            window.location.href = basePath + '/' + encodeURIComponent(reportType) + '?startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
         });
     </script>
 </body>

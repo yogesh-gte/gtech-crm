@@ -104,6 +104,10 @@ public class OrganizationController {
         if (!isAdminLoggedIn(session)) {
             return "redirect:/login";
         }
+        if (name == null || name.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Department name is required");
+            return id != null ? "redirect:/admin/organization/departments/edit/" + id : "redirect:/admin/organization/departments/add";
+        }
         Department dept;
         if (id != null) {
             dept = departmentRepository.findById(id).orElse(new Department());
@@ -201,12 +205,20 @@ public class OrganizationController {
     @PostMapping("/teams/save")
     public String saveTeam(@RequestParam(required = false) Long id,
             @RequestParam String name,
-            @RequestParam Long departmentId,
+            @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long teamLeadId,
             @RequestParam(required = false) String description,
             RedirectAttributes redirectAttributes, HttpSession session) {
         if (!isAdminLoggedIn(session)) {
             return "redirect:/login";
+        }
+        if (name == null || name.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Team name is required");
+            return id != null ? "redirect:/admin/organization/teams/edit/" + id : "redirect:/admin/organization/teams/add";
+        }
+        if (departmentId == null) {
+            redirectAttributes.addFlashAttribute("error", "Department selection is required");
+            return id != null ? "redirect:/admin/organization/teams/edit/" + id : "redirect:/admin/organization/teams/add";
         }
         Team team;
         if (id != null) {
@@ -214,8 +226,11 @@ public class OrganizationController {
         } else {
             team = new Team();
         }
-        Department dept = departmentRepository.findById(departmentId)
-                .orElseThrow(() -> new IllegalArgumentException("Department not found"));
+        Department dept = departmentRepository.findById(departmentId).orElse(null);
+        if (dept == null) {
+            redirectAttributes.addFlashAttribute("error", "Department not found");
+            return id != null ? "redirect:/admin/organization/teams/edit/" + id : "redirect:/admin/organization/teams/add";
+        }
         team.setName(name.trim());
         team.setDepartment(dept);
         team.setDescription(description != null && !description.isBlank() ? description.trim() : null);
@@ -336,6 +351,36 @@ public class OrganizationController {
         if (!isAdminLoggedIn(session)) {
             return "redirect:/login";
         }
+        if (name == null || name.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Project name is required");
+            return id != null ? "redirect:/admin/organization/projects/edit/" + id : "redirect:/admin/organization/projects/add";
+        }
+
+        LocalDate parsedStartDate = null;
+        LocalDate parsedEndDate = null;
+
+        if (startDateStr != null && !startDateStr.isBlank()) {
+            try {
+                parsedStartDate = LocalDate.parse(startDateStr.trim());
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("error", "Invalid start date format");
+                return id != null ? "redirect:/admin/organization/projects/edit/" + id : "redirect:/admin/organization/projects/add";
+            }
+        }
+        if (endDateStr != null && !endDateStr.isBlank()) {
+            try {
+                parsedEndDate = LocalDate.parse(endDateStr.trim());
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("error", "Invalid end date format");
+                return id != null ? "redirect:/admin/organization/projects/edit/" + id : "redirect:/admin/organization/projects/add";
+            }
+        }
+
+        if (parsedStartDate != null && parsedEndDate != null && parsedStartDate.isAfter(parsedEndDate)) {
+            redirectAttributes.addFlashAttribute("error", "Start date cannot be after end date");
+            return id != null ? "redirect:/admin/organization/projects/edit/" + id : "redirect:/admin/organization/projects/add";
+        }
+
         Project project;
         if (id != null) {
             project = projectRepository.findById(id).orElse(new Project());
@@ -355,20 +400,8 @@ public class OrganizationController {
         } else {
             project.setOwner(null);
         }
-        if (startDateStr != null && !startDateStr.isBlank()) {
-            try {
-                project.setStartDate(LocalDate.parse(startDateStr));
-            } catch (Exception e) { /* ignore */ }
-        } else {
-            project.setStartDate(null);
-        }
-        if (endDateStr != null && !endDateStr.isBlank()) {
-            try {
-                project.setEndDate(LocalDate.parse(endDateStr));
-            } catch (Exception e) { /* ignore */ }
-        } else {
-            project.setEndDate(null);
-        }
+        project.setStartDate(parsedStartDate);
+        project.setEndDate(parsedEndDate);
         project.setStatus(status != null && !status.isBlank() ? status : "ACTIVE");
         projectRepository.save(project);
         redirectAttributes.addFlashAttribute("success", "Project saved successfully");

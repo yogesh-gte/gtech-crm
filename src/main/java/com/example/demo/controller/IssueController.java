@@ -244,11 +244,20 @@ public class IssueController {
             redirectAttributes.addFlashAttribute("error", "Only Admin, Manager or HR can create issues.");
             return "redirect:/issues";
         }
-        if (title == null || title.isBlank()) {
-            redirectAttributes.addFlashAttribute("error", "Title is required.");
+        if (title == null || title.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Issue title is required.");
             return id != null ? "redirect:/issues/edit/" + id : "redirect:/issues/add";
         }
-        Project project = projectRepository.findById(projectId).orElseThrow();
+        if (projectId == null) {
+            redirectAttributes.addFlashAttribute("error", "Project is required.");
+            return id != null ? "redirect:/issues/edit/" + id : "redirect:/issues/add";
+        }
+        Optional<Project> projectOpt = projectRepository.findById(projectId);
+        if (projectOpt.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Selected project was not found.");
+            return id != null ? "redirect:/issues/edit/" + id : "redirect:/issues/add";
+        }
+        Project project = projectOpt.get();
         Issue issue;
         if (id != null) {
             issue = issueRepository.findById(id).orElse(null);

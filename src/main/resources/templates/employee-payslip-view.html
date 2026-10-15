@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Payslip</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                background: white !important;
+            }
+
+            .payslip-container {
+                box-shadow: none !important;
+                border: 1px solid #ddd !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+            }
+        }
+
+        .payslip-container {
+            background: white;
+            color: #1e293b;
+            padding: 40px;
+            max-width: 800px;
+            margin: 40px auto;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .payslip-header {
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .payslip-header h1 {
+            color: #3b82f6;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .payslip-section {
+            margin-bottom: 30px;
+        }
+
+        .payslip-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .payslip-table th,
+        .payslip-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .payslip-table th {
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .payslip-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .total-row td {
+            background-color: #f0f9ff;
+            font-weight: 700;
+            color: #0f172a;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .net-salary-box {
+            background: #eff6ff;
+            padding: 24px;
+            border-radius: 8px;
+            border: 1px solid #bfdbfe;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <!-- Employee Portal Shared Sidebar -->
+    <div th:replace="~{fragments/employee-sidebar :: sidebar(activeTab='payslips')}"></div>
+
+    <div class="main-content">
+        <div class="no-print text-center mt-2 mb-3">
+            <button class="sidebar-toggle-btn me-2" type="button" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <a th:href="@{/employee/payroll/history}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left me-1"></i> Back to Payslips
+            </a>
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fas fa-print me-1"></i> Print Payslip
+            </button>
+        </div>
+
+    <div class="payslip-container">
+        <div class="payslip-header text-center">
+            <h1 class="mb-2">LogSphere</h1>
+            <h4 class="text-secondary fw-bold">PAYSLIP</h4>
+            <p class="mb-0 text-muted" th:text="${payroll.month} + ' / ' + ${payroll.year}"></p>
+        </div>
+
+        <div class="payslip-section">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-1"><strong class="text-secondary">Employee Name:</strong> <span
+                            th:text="${payroll.employee.name}" class="fw-bold"></span></p>
+                    <p class="mb-1"><strong class="text-secondary">Employee ID:</strong> <span
+                            th:text="${payroll.employee.employeeId}"></span></p>
+                    <p class="mb-1"><strong class="text-secondary">Department:</strong> <span
+                            th:text="${payroll.employee.department}"></span></p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-1"><strong class="text-secondary">Generated On:</strong>
+                        <span
+                            th:text="${payroll.generatedOn != null ? #dates.format(payroll.generatedOn, 'dd MMM yyyy') : 'Pending'}"></span>
+                    </p>
+                    <p class="mb-1"><strong class="text-secondary">Paid On:</strong>
+                        <span
+                            th:text="${payroll.paidOn != null ? #dates.format(payroll.paidOn, 'dd MMM yyyy') : 'Pending'}"></span>
+                    </p>
+                    <p class="mb-1"><strong class="text-secondary">Status:</strong> <span class="badge bg-success"
+                            th:text="${payroll.payrollStatus}"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="payslip-section">
+            <h5 class="mb-3 text-primary fw-bold">EARNINGS</h5>
+            <table class="payslip-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Gross Salary</td>
+                        <td class="text-right" th:text="'₹' + ${#numbers.formatDecimal(payroll.grossSalary != null ? payroll.grossSalary : 0, 0, 2)}">
+                        </td>
+                    </tr>
+                    <tr class="total-row">
+                        <td>Total Earnings</td>
+                        <td class="text-right">
+                            <span th:text="'₹' + ${#numbers.formatDecimal(payroll.grossSalary != null ? payroll.grossSalary : 0, 0, 2)}"></span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="payslip-section">
+            <h5 class="mb-3 text-danger fw-bold">DEDUCTIONS</h5>
+            <table class="payslip-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${payroll.lopDeduction != null and payroll.lopDeduction > 0}">
+                        <td>LOP Deduction</td>
+                        <td class="text-right" th:text="'₹' + ${#numbers.formatDecimal(payroll.lopDeduction, 0, 2)}">
+                        </td>
+                    </tr>
+                    <tr th:if="${payroll.lopDeduction == null or payroll.lopDeduction == 0}">
+                        <td colspan="2" class="text-center text-muted">No deductions</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td>Total Deductions</td>
+                        <td class="text-right">
+                            <span th:text="'₹' + ${#numbers.formatDecimal(payroll.totalDeductions != null ? payroll.totalDeductions : 0, 0, 2)}"></span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="net-salary-box">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h4 class="mb-0 text-primary fw-bold">NET SALARY</h4>
+                    <small class="text-muted">Total Payable Amount</small>
+                </div>
+                <div class="col-md-6 text-right">
+                    <h2 class="mb-0 text-dark fw-bold" th:text="'₹' + ${#numbers.formatDecimal(payroll.netPay != null ? payroll.netPay : 0, 0, 2)}">
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="payslip-section text-center mt-5 pt-4 border-top">
+            <p class="text-muted small mb-1">This is a computer-generated payslip. No signature required.</p>
+            <p class="text-muted small">Generated on: <span
+                    th:text="${#temporals.format(#temporals.createNow(), 'dd MMM yyyy HH:mm')}"></span></p>
+        </div>
+    </div>
+    </div> <!-- /main-content -->
+</body>
+
+</html>

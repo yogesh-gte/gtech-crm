@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -51,28 +52,100 @@
             letter-spacing: 0.05em;
             border-bottom: 1px solid #e5e7eb;
         }
+
+        .stat-card {
+            border-radius: 12px;
+            padding: 1.25rem;
+            background: #fff;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
     </style>
 </head>
 
 <body class="bg-light text-dark">
     <nav class="navbar navbar-light bg-white p-3 border-bottom">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">Visitor Flow Report</span>
-            <a th:href="@{/reports}" class="btn btn-outline-secondary btn-sm">Back to Reports</a>
+            <span class="navbar-brand mb-0 h1"><i class="fas fa-users-viewfinder me-2"></i>Visitor Flow Report</span>
+            <a th:href="@{/reports}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Back to Reports</a>
         </div>
     </nav>
-    <div class="container mt-5">
+    <div class="container mt-4 mb-5">
+        <!-- Report Header & Period Toggle -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white">
-                <h4 class="text-dark fw-bold mb-0">Report Period:
-                    <span class="text-primary" th:text="${startDate} + ' to ' + ${endDate}"></span>
-                </h4>
+            <div class="card-body p-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge text-uppercase px-3 py-2"
+                              th:classappend="${period == 'daily' ? 'bg-primary' : (period == 'weekly' ? 'bg-success' : (period == 'monthly' ? 'bg-info' : 'bg-secondary'))}"
+                              th:text="${period != null ? period + ' report' : 'Report'}">DAILY REPORT</span>
+                        <h4 class="text-dark fw-bold mb-0" th:text="${periodTitle}">Visitor Flow Report</h4>
+                    </div>
+                    <p class="text-secondary small mb-0">
+                        Date Range: <strong class="text-dark" th:text="${startDate} + ' to ' + ${endDate}"></strong>
+                        (<span th:text="${daysInPeriod}">1</span> <span th:text="${daysInPeriod == 1 ? 'day' : 'days'}"></span>)
+                    </p>
+                </div>
+                <!-- Period Switcher -->
+                <div class="btn-group" role="group" aria-label="Period Switcher">
+                    <a th:href="@{/reports/visitor(period='daily')}"
+                       class="btn btn-sm" th:classappend="${period == 'daily' ? 'btn-primary' : 'btn-outline-primary'}">
+                       <i class="fas fa-calendar-day me-1"></i> Daily
+                    </a>
+                    <a th:href="@{/reports/visitor(period='weekly')}"
+                       class="btn btn-sm" th:classappend="${period == 'weekly' ? 'btn-primary' : 'btn-outline-primary'}">
+                       <i class="fas fa-calendar-week me-1"></i> Weekly
+                    </a>
+                    <a th:href="@{/reports/visitor(period='monthly')}"
+                       class="btn btn-sm" th:classappend="${period == 'monthly' ? 'btn-primary' : 'btn-outline-primary'}">
+                       <i class="fas fa-calendar-alt me-1"></i> Monthly
+                    </a>
+                </div>
             </div>
         </div>
 
+        <!-- Summary KPI Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="stat-label mb-1">Total Visitors</div>
+                    <h3 class="stat-value text-primary mb-1" th:text="${totalVisitors}">0</h3>
+                    <small class="text-muted">Registered visits in period</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="stat-label mb-1">Days in Period</div>
+                    <h3 class="stat-value text-success mb-1" th:text="${daysInPeriod}">1</h3>
+                    <small class="text-muted">Reporting timeframe</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border h-100">
+                    <div class="stat-label mb-1">Average / Day</div>
+                    <h3 class="stat-value text-info mb-1" th:text="${#numbers.formatDecimal(avgVisitorsPerDay, 1, 1)}">0</h3>
+                    <small class="text-muted">Average visitors per day</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Visitor Flow Table -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h5 class="text-dark fw-bold mb-0">Daily Visitor Flow</h5>
+                <span class="badge bg-light text-secondary border" th:text="${visitorFlow.size()} + ' active days'"></span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -84,10 +157,13 @@
                             </tr>
                         </thead>
                         <tbody>
+                            <tr th:if="${visitorFlow.isEmpty()}">
+                                <td colspan="2" class="text-center text-muted py-4">No visitor records found for this period.</td>
+                            </tr>
                             <tr th:each="entry : ${visitorFlow}">
                                 <td class="ps-4 fw-medium text-dark" th:text="${entry.key}"></td>
-                                <td class="pe-4"><span class="badge bg-warning text-dark"
-                                        th:text="${entry.value}"></span></td>
+                                <td class="pe-4"><span class="badge bg-primary bg-opacity-10 text-primary fs-6 px-3 py-1"
+                                        th:text="${entry.value} + ' visitors'"></span></td>
                             </tr>
                         </tbody>
                     </table>
@@ -95,9 +171,11 @@
             </div>
         </div>
 
+        <!-- Visitor Details Table -->
         <div class="card shadow-sm">
-            <div class="card-header bg-white">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h5 class="text-dark fw-bold mb-0">Visitor Details</h5>
+                <span class="badge bg-light text-secondary border" th:text="${visitors.size()} + ' total'"></span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -114,6 +192,9 @@
                             </tr>
                         </thead>
                         <tbody>
+                            <tr th:if="${visitors.isEmpty()}">
+                                <td colspan="7" class="text-center text-muted py-4">No visitors recorded during this period.</td>
+                            </tr>
                             <tr th:each="visitor : ${visitors}">
                                 <td class="ps-4 fw-medium text-dark" th:text="${visitor.name}"></td>
                                 <td th:text="${visitor.company}"></td>

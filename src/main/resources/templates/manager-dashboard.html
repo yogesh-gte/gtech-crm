@@ -307,103 +307,24 @@
 </head>
 
 <body class="bg-light text-dark">
-    <!-- Mobile Sidebar Toggle Button -->
-    <button class="sidebar-toggle" id="sidebarToggle">
-        <i class="fas fa-bars"></i>
-    </button>
-    
-    <!-- Overlay for mobile -->
-    <div class="overlay" id="overlay"></div>
-
-    <!-- Sidebar -->
-    <div class="sidebar p-3" id="sidebar">
-        <div class="sidebar-brand">LogSphere</div>
-        <ul class="nav flex-column">
-            <li class="nav-item mb-2">
-                <a class="nav-link" th:href="@{/manager/dashboard(tab='planning')}"
-                    th:classappend="${activeTab == 'planning' || activeTab == null ? 'active' : ''}">
-                    <span class="me-2">📊</span> Dashboard Home
-                </a>
-            </li>
-
-            <li class="nav-item mb-2">
-                <a class="nav-link" th:href="@{/manager/meetings/create}">
-                    <span class="me-2">➕</span> Create Meeting
-                </a>
-            </li>
-
-
-            <li class="nav-item mb-2">
-                <a class="nav-link" th:href="@{/manager/dashboard(tab='feedback')}"
-                    th:classappend="${activeTab == 'feedback' ? 'active' : ''}">
-                    <span class="me-2">🗣️</span> Feedback
-                </a>
-            </li>
-            <li class="nav-item mb-2">
-                <a class="nav-link" th:href="@{/manager/dashboard(tab='availability')}"
-                    th:classappend="${activeTab == 'availability' ? 'active' : ''}">
-                    <span class="me-2">📅</span> Availability
-                </a>
-            </li>
-            <li class="nav-item mb-2">
-                <a class="nav-link" th:href="@{/manager/dashboard(tab='recognition')}"
-                    th:classappend="${activeTab == 'recognition' ? 'active' : ''}">
-                    <span class="me-2">🏆</span> Recognition
-                </a>
-            </li>
-            <li class="nav-item mb-2">
-                <a class="nav-link" th:href="@{/manager/dashboard(tab='rules')}"
-                    th:classappend="${activeTab == 'rules' ? 'active' : ''}">
-                    <span class="me-2">🔧</span> Rules
-                </a>
-            </li>
-
-            <li class="nav-item mb-2">
-                <a class="nav-link" th:href="@{/manager/dashboard(tab='suggestions')}"
-                    th:classappend="${activeTab == 'suggestions' ? 'active' : ''}">
-                    <span class="me-2">💡</span> Suggestions
-                    <span th:if="${suggestionCount > 0}" class="badge bg-warning text-dark ms-2"
-                        th:text="${suggestionCount}"></span>
-                </a>
-            </li>
-            <li class="nav-item mb-2">
-                <a class="nav-link" th:href="@{/issues}">
-                    <span class="me-2">📋</span> Issues
-                </a>
-            </li>
-            <li class="nav-item mb-2">
-                <a class="nav-link" th:href="@{/sprints}">
-                    <span class="me-2">🏃</span> Sprints
-                </a>
-            </li>
-            <li class="nav-item mb-2">
-                <a class="nav-link" th:href="@{/manager/performance}">
-                    <span class="me-2">📊</span> Team Performance
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:href="@{/reports}">
-                    <span class="me-2">📈</span> Reports
-                </a>
-            </li>
-            <li class="nav-item mt-auto pt-4">
-                <a class="nav-link text-danger" th:href="@{/logout}">
-                    <span class="me-2">🚪</span> Logout
-                </a>
-            </li>
-        </ul>
-    </div>
+    <!-- Shared Manager Sidebar (LOG-MGR-002, LOG-MGR-004, LOG-MGR-005, LOG-MGR-007) -->
+    <div th:replace="~{fragments/manager-sidebar :: sidebar(${activeTab})}"></div>
 
     <!-- Main Content -->
     <div class="main-content">
         <!-- Header -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-            <div class="text-center text-md-start">
-                <h2 class="fw-bold text-dark">Manager Dashboard <span
-                        class="badge bg-success bg-opacity-10 text-success fs-6 align-middle ms-2 live-badge d-inline-block">🟢
-                        LIVE</span></h2>
-                <p class="text-secondary mb-0">Welcome back, <span class="fw-semibold text-primary"
-                        th:text="${userName}">Manager</span></p>
+            <div class="d-flex align-items-center gap-2">
+                <button class="sidebar-toggle-btn me-2" onclick="toggleManagerSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h2 class="fw-bold text-dark mb-0">Manager Dashboard <span
+                            class="badge bg-success bg-opacity-10 text-success fs-6 align-middle ms-2 live-badge d-inline-block">🟢
+                            LIVE</span></h2>
+                    <p class="text-secondary mb-0">Welcome back, <span class="fw-semibold text-primary"
+                            th:text="${userName}">Manager</span></p>
+                </div>
             </div>
             <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-end">
                 <div class="dropdown">
@@ -431,10 +352,14 @@
                             <div class="dropdown-item p-3" style="white-space: normal;">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div class="pe-2">
-                                        <a href="#" class="text-decoration-none text-dark"
+                                        <a th:if="${notif.meetingId != null}" href="#" class="text-decoration-none text-dark"
                                             th:onclick="'showMeetingDetails(' + ${notif.meetingId} + ', ' + ${notif.id} + ', this)'">
-                                            <p class="mb-1 small fw-medium" th:text="${notif.message}">Message</p>
+                                            <p class="mb-1 small fw-semibold text-primary"><i class="fas fa-calendar-alt me-1"></i> <span th:text="${notif.message}">Message</span></p>
                                         </a>
+                                        <a th:if="${notif.meetingId == null && notif.actionUrl != null && notif.actionUrl != '#'}" th:href="@{${notif.actionUrl}}" class="text-decoration-none text-dark">
+                                            <p class="mb-1 small fw-semibold text-primary"><i class="fas fa-external-link-alt me-1"></i> <span th:text="${notif.message}">Message</span></p>
+                                        </a>
+                                        <p th:if="${notif.meetingId == null && (notif.actionUrl == null || notif.actionUrl == '#')}" class="mb-1 small fw-medium text-dark" th:text="${notif.message}">Message</p>
                                         <small class="text-muted" style="font-size: 0.75rem;"
                                             th:text="${#temporals.format(notif.createdAt, 'MMM dd, HH:mm')}">Date</small>
                                     </div>
@@ -460,8 +385,8 @@
             </div>
         </div>
 
-        <!-- Idle Employees Section -->
-        <div class="row mb-4" th:if="${idleCount > 0}">
+        <!-- Idle Employees Section (LOG-MGR-005) -->
+        <div class="row mb-4" id="idle-section" th:if="${idleCount != null && idleCount > 0}">
             <div class="col-12">
                 <div class="card shadow-sm border-danger border-opacity-25">
                     <div class="card-header bg-danger bg-opacity-10 text-center text-md-start">
@@ -998,26 +923,32 @@
                 <form th:action="@{/manager/tasks/add}" method="post" enctype="multipart/form-data">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label text-secondary">Select Employee <span
+                            <label class="form-label text-secondary">Select Team Lead <span
                                     class="text-danger">*</span></label>
                             <select class="form-select" name="employeeId" required>
-                                <option value="">-- Select Employee --</option>
-                                <option th:each="emp : ${allEmployees}" th:value="${emp.id}"
-                                    th:text="${emp.name + ' (' + emp.employeeId + ')'}"></option>
+                                <option value="">-- Select Team Lead --</option>
+                                <option th:each="emp : ${teamLeads}" th:value="${emp.id}"
+                                    th:text="${emp.name + ' (' + emp.employeeId + ' - ' + (emp.department != null ? emp.department : 'Lead') + ')'}"></option>
+                                <option th:if="${teamLeads == null || teamLeads.isEmpty()}" value="" disabled>-- No Team Leads Available --</option>
                             </select>
+                            <div th:if="${teamLeads == null || teamLeads.isEmpty()}" class="form-text text-danger mt-1 small">
+                                <i class="fas fa-info-circle me-1"></i> Tasks can only be assigned to designated Team Leads.
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-secondary">Task Title <span
                                     class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="title" required>
+                            <input type="text" class="form-control" name="title" required minlength="3" maxlength="255"
+                                placeholder="Enter task title (min 3 chars)">
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-secondary">Description</label>
-                            <textarea class="form-control" name="description" rows="3"></textarea>
+                            <textarea class="form-control" name="description" rows="3"
+                                placeholder="Enter task details or instructions..."></textarea>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label text-secondary">Priority</label>
-                            <select class="form-select" name="priority">
+                            <label class="form-label text-secondary">Priority <span class="text-danger">*</span></label>
+                            <select class="form-select" name="priority" required>
                                 <option value="LOW">Low</option>
                                 <option value="MEDIUM" selected>Medium</option>
                                 <option value="HIGH">High</option>
@@ -1025,7 +956,8 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-secondary">Due Date</label>
-                            <input type="date" class="form-control" name="dueDate">
+                            <input type="date" class="form-control" name="dueDate"
+                                th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-secondary">Attachment</label>

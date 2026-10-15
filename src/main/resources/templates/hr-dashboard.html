@@ -250,13 +250,13 @@
                 <a class="nav-link" th:href="@{/hr/performance}">📊 Performance</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" th:href="@{/admin/employees}">👨‍💼 Manage Employees</a>
+                <a class="nav-link" th:href="@{/hr/employees}">👨‍💼 Manage Employees</a>
             </li>
             <li class="nav-item mb-1">
                 <a class="nav-link" th:href="@{/reports}">📈 Reports</a>
             </li>
             <li class="nav-item mt-4">
-                <a class="nav-link text-danger" th:href="@{/logout}">🚪 Logout</a>
+                <a class="nav-link text-danger" th:href="@{/hr/logout}">🚪 Logout</a>
             </li>
         </ul>
     </div>
@@ -319,7 +319,7 @@
                         </li>
                     </ul>
                 </div>
-                <a th:href="@{/}" class="btn btn-light border shadow-sm text-secondary fw-medium">Home</a>
+                <a th:href="@{/hr/dashboard}" class="btn btn-light border shadow-sm text-secondary fw-medium">Home</a>
                 <button onclick="location.reload()"
                     class="btn btn-light border shadow-sm text-secondary">Refresh</button>
             </div>
@@ -538,12 +538,7 @@
                                 </thead>
                                 <tbody>
                                     <tr th:if="${attendanceReport.isEmpty()}">
-
-                                        <td colspan="6" class="text-center text-muted py-4">No attendance data available
-
-                                        <td colspan="7" class="text-center text-muted py-4">No attendance data available
-                                            >>>>>>> 9c3a4a5417c352bdd067f1ec0e3522a01955a4ec
-                                        </td>
+                                        <td colspan="7" class="text-center text-muted py-4">No attendance data available</td>
                                     </tr>
                                     <tr th:each="record : ${attendanceReport}">
                                         <td class="small text-muted" th:text="${record.id}">ID</td>
@@ -626,8 +621,12 @@
                                                 th:text="${leave.leaveType}">Sick</span></td>
                                         <td>
                                             <div class="small">
-                                                <span th:text="${#temporals.format(leave.startDate, 'MMM d')}"></span> -
-                                                <span th:text="${#temporals.format(leave.endDate, 'MMM d')}"></span>
+                                                <span th:if="${leave.numberOfDays == 1 or leave.startDate.isEqual(leave.endDate)}"
+                                                    th:text="${#temporals.format(leave.startDate, 'MMM d, yyyy')}"></span>
+                                                <span th:unless="${leave.numberOfDays == 1 or leave.startDate.isEqual(leave.endDate)}">
+                                                    <span th:text="${#temporals.format(leave.startDate, 'MMM d')}"></span> -
+                                                    <span th:text="${#temporals.format(leave.endDate, 'MMM d, yyyy')}"></span>
+                                                </span>
                                             </div>
                                         </td>
                                         <td th:text="${leave.numberOfDays}">1</td>
@@ -1026,14 +1025,15 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form th:action="@{/hr/holiday/add}" method="post">
+                    <form th:action="@{/hr/holiday/add}" method="post" id="addHolidayForm" onsubmit="return validateHolidayForm()">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Date</label>
-                            <input type="date" class="form-control" name="date" required>
+                            <label class="form-label small fw-bold">Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="date" id="holidayDateInput" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Holiday Name</label>
-                            <input type="text" class="form-control" name="name" placeholder="e.g. Christmas Day" required>
+                            <label class="form-label small fw-bold">Holiday Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" id="holidayNameInput" placeholder="e.g. Christmas Day" minlength="2" maxlength="100" required>
+                            <div class="form-text small">Enter holiday name (e.g. New Year, Diwali, Christmas).</div>
                         </div>
                         <div class="text-end mt-4">
                             <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -1314,6 +1314,22 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="historyModalBody">
+                    <!-- PDF Employee Info Header -->
+                    <div id="pdfEmployeeHeader" class="p-3 mb-3 bg-light rounded border">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1 text-primary fw-bold" id="pdfEmployeeName">Employee Name</h5>
+                                <div class="text-muted small">
+                                    <span>Employee ID: <strong class="text-dark" id="pdfEmployeeId">-</strong></span>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary px-3 py-2">Monthly Attendance Report</span>
+                                <div class="text-muted small mt-1">Generated: <span id="pdfGeneratedDate"></span></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Summary Table -->
                     <div class="mb-4">
                         <h6 class="fw-bold">Attendance Summary</h6>
@@ -1335,6 +1351,28 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Daily Records Table -->
+                    <div class="mb-2">
+                        <h6 class="fw-bold">Daily Records</h6>
+                        <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                            <table class="table table-striped table-sm">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Login</th>
+                                        <th>Logout</th>
+                                        <th>Total Time</th>
+                                        <th>Status</th>
+                                        <th>Mode</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recordsTableBody">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -1348,11 +1386,31 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
+        function validateHolidayForm() {
+            const name = document.getElementById('holidayNameInput').value.trim();
+            const date = document.getElementById('holidayDateInput').value.trim();
+            if (!name) {
+                alert('Please enter a valid holiday name.');
+                return false;
+            }
+            if (!date) {
+                alert('Please select a valid holiday date.');
+                return false;
+            }
+            return true;
+        }
+
         function showHistory(employeeId, employeeName) {
             document.getElementById('historyEmployeeName').textContent = employeeName;
+            document.getElementById('pdfEmployeeName').textContent = employeeName;
+            document.getElementById('pdfEmployeeId').textContent = employeeId;
+            document.getElementById('pdfGeneratedDate').textContent = new Date().toLocaleDateString();
+
             const summaryBody = document.getElementById('summaryTableBody');
+            const recordsBody = document.getElementById('recordsTableBody');
 
             summaryBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading...</td></tr>';
+            recordsBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading...</td></tr>';
 
             const modal = new bootstrap.Modal(document.getElementById('historyModal'));
             modal.show();
@@ -1369,6 +1427,12 @@
                     // Populate Summary
                     if (data.summary) {
                         const s = data.summary;
+                        if (s.employee_name) {
+                            document.getElementById('pdfEmployeeName').textContent = s.employee_name;
+                        }
+                        if (s.employee_code) {
+                            document.getElementById('pdfEmployeeId').textContent = s.employee_code;
+                        }
                         const summaryRow = `
                             <tr>
                                 <td>${s.month}/${s.year}</td>
@@ -1383,19 +1447,41 @@
                     } else {
                         summaryBody.innerHTML = '<tr><td colspan="6" class="text-center">No summary data</td></tr>';
                     }
+
+                    // Populate Daily Records
+                    if (data.records && data.records.length > 0) {
+                        let recordsHtml = '';
+                        data.records.forEach(r => {
+                            recordsHtml += `
+                                <tr>
+                                    <td>${r.date}</td>
+                                    <td>${r.login}</td>
+                                    <td>${r.logout}</td>
+                                    <td><strong>${r.totalTime}</strong></td>
+                                    <td><span class="badge ${r.status === 'LATE' ? 'bg-danger' : 'bg-success'}">${r.status || '-'}</span></td>
+                                    <td><span class="badge bg-light text-dark border">${r.workMode || 'OFFICE'}</span></td>
+                                </tr>
+                            `;
+                        });
+                        recordsBody.innerHTML = recordsHtml;
+                    } else {
+                        recordsBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No daily records for this month</td></tr>';
+                    }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     summaryBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">${error.message}</td></tr>`;
+                    recordsBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">-</td></tr>`;
                 });
         }
 
         function downloadPDF() {
             const element = document.getElementById('historyModalBody');
-            const employeeName = document.getElementById('historyEmployeeName').textContent;
+            const employeeName = document.getElementById('pdfEmployeeName').textContent || 'Employee';
+            const safeName = employeeName.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
             const opt = {
                 margin: 0.5,
-                filename: `attendance_history_${employeeName}.pdf`,
+                filename: `attendance_history_${safeName}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2 },
                 jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }

@@ -73,18 +73,31 @@
 </head>
 
 <body class="bg-light">
-    <nav class="navbar navbar-light p-3 sticky-top">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1 text-primary fw-bold">Employee Management</span>
+    <!-- Shared Admin Sidebar Fragment -->
+    <div th:replace="~{fragments/admin-sidebar :: sidebar('employees')}"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Mobile Header Bar -->
+        <div class="mobile-header-bar d-lg-none">
+            <button class="sidebar-toggle-btn" type="button" onclick="toggleAdminSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <span class="fw-bold text-primary">Employee Management</span>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <a th:href="@{${dashboardLink}}" class="btn btn-outline-primary btn-sm">Back to
-                    Dashboard</a>
+                <h3 class="fw-bold text-primary mb-1"><i class="fas fa-id-badge me-2"></i>Employee Management</h3>
+                <p class="text-secondary small mb-0">Register and manage organization employee profiles and access</p>
+            </div>
+            <div>
+                <a th:href="@{${dashboardLink}}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+                </a>
             </div>
         </div>
-    </nav>
 
-
-    <div class="container-fluid px-4 mt-4">
         <!-- Success/Error Messages -->
         <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm border-0" role="alert">
             <span th:text="${success}"></span>
@@ -105,7 +118,7 @@
                     <div class="card-body">
                         <p class="text-muted small mb-4">Add employees who can access the attendance dashboard. They
                             will login using their email, password and Employee ID.</p>
-                        <form th:action="@{/admin/employees/add}" th:object="${employee}" method="post">
+                        <form th:action="@{${baseEmployeesUrl != null ? baseEmployeesUrl : '/admin/employees'} + '/add'}" th:object="${employee}" method="post">
                             <div class="mb-3">
                                 <label class="form-label">Employee ID <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" th:field="*{employeeId}"
@@ -286,8 +299,11 @@
             <!-- Employee List -->
             <div class="col-md-8 mb-4">
                 <div class="card h-100">
-                    <div class="card-header bg-white">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="text-primary mb-0">All Employees</h5>
+                        <div style="max-width: 280px; width: 100%;">
+                            <input type="text" id="employeeFilterInput" class="form-control form-control-sm" placeholder="🔍 Search by name, ID, email...">
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
@@ -324,13 +340,13 @@
                                                 class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">OUT</span>
                                         </td>
                                         <td class="text-end pe-4">
-                                            <a th:href="@{/admin/employees/edit/{id}(id=${emp.id})}"
+                                            <a th:href="@{${baseEmployeesUrl != null ? baseEmployeesUrl : '/admin/employees'} + '/edit/' + ${emp.id}}"
                                                 class="btn btn-sm btn-outline-primary me-1">Edit</a>
                                             <span th:if="${emp.faceImage != null && !emp.faceImage.isEmpty()}"
                                                 class="badge bg-success me-1" title="Face Registered">👤</span>
                                             <span th:if="${emp.faceImage == null || emp.faceImage.isEmpty()}"
                                                 class="badge bg-warning me-1" title="No Face Registered">⚠️</span>
-                                            <a th:href="@{/admin/employees/delete/{id}(id=${emp.id})}"
+                                            <a th:href="@{${baseEmployeesUrl != null ? baseEmployeesUrl : '/admin/employees'} + '/delete/' + ${emp.id}}"
                                                 class="btn btn-sm btn-outline-danger"
                                                 onclick="return confirm('Are you sure you want to delete this employee?')"
                                                 title="Delete">🗑️</a>
@@ -438,6 +454,19 @@
             alert('Face captured successfully! You can capture again if needed.');
         }
         */
+        document.addEventListener('DOMContentLoaded', function () {
+            const filterInput = document.getElementById('employeeFilterInput');
+            if (filterInput) {
+                filterInput.addEventListener('input', function () {
+                    const q = this.value.toLowerCase().trim();
+                    const rows = document.querySelectorAll('tbody tr');
+                    rows.forEach(function (row) {
+                        const text = row.innerText.toLowerCase();
+                        row.style.display = text.includes(q) ? '' : 'none';
+                    });
+                });
+            }
+        });
     </script>
 </body>
 

@@ -94,7 +94,20 @@ public class AuthController {
             return "redirect:/admin/login";
         }
 
-        if (userRepository.findByEmail(email).isPresent()) {
+        if (name == null || name.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Full name is required!");
+            return "redirect:/register/admin";
+        }
+        if (email == null || !email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            redirectAttributes.addFlashAttribute("error", "A valid email address is required!");
+            return "redirect:/register/admin";
+        }
+        if (password == null || password.trim().length() < 6) {
+            redirectAttributes.addFlashAttribute("error", "Password must be at least 6 characters long!");
+            return "redirect:/register/admin";
+        }
+
+        if (userRepository.findByEmail(email.trim()).isPresent()) {
             redirectAttributes.addFlashAttribute("error", "Email already registered!");
             return "redirect:/register/admin";
         }

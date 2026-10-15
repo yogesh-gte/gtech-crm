@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
 
     <style>
         :root {
@@ -90,20 +91,27 @@
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg sticky-top mb-5">
-        <div class="container-fluid px-4">
-            <span class="navbar-brand mb-0 h1 fw-bold text-primary"><i class="fas fa-calendar-plus me-2"></i>Apply
-                Leave</span>
-            <div>
-                <a th:href="@{/employee/dashboard}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-arrow-left me-1"></i> Dashboard
-                </a>
-                <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm ms-2">Logout</a>
-            </div>
-        </div>
-    </nav>
+    <!-- Employee Portal Shared Sidebar -->
+    <div th:replace="~{fragments/employee-sidebar :: sidebar(activeTab='apply-leave')}"></div>
 
-    <div class="container pb-5">
+    <div class="main-content">
+        <nav class="navbar navbar-expand-lg rounded-3 mb-4 p-3 shadow-sm bg-white">
+            <div class="container-fluid px-2">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="sidebar-toggle-btn me-2" type="button" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="navbar-brand mb-0 h4 fw-bold text-primary mb-0">
+                        <i class="fas fa-calendar-plus me-2"></i>Apply Leave
+                    </span>
+                </div>
+                <div>
+                    <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm">Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid px-0 pb-5">
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="card shadow-sm">
@@ -156,9 +164,9 @@
                                 </select>
                             </div>
 
-                            <div class="row mb-4">
-                                <div class="col-md-6 mb-3 mb-md-0">
-                                    <label for="startDate" class="form-label">Start Date <span
+                            <div class="row mb-4" id="dateRow">
+                                <div class="col-md-6 mb-3 mb-md-0" id="colStartDate">
+                                    <label for="startDate" class="form-label" id="startDateLabel">Start Date <span
                                             class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-light text-secondary border-end-0"><i
@@ -166,9 +174,10 @@
                                         <input type="date" class="form-control border-start-0" id="startDate"
                                             name="startDate" required>
                                     </div>
+                                    <small id="startDateHelp" class="text-muted d-block mt-1"></small>
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="endDate" class="form-label">End Date <span
+                                <div class="col-md-6" id="colEndDate">
+                                    <label for="endDate" class="form-label" id="endDateLabel">End Date <span
                                             class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-light text-secondary border-end-0"><i
@@ -176,8 +185,12 @@
                                         <input type="date" class="form-control border-start-0" id="endDate"
                                             name="endDate" required>
                                     </div>
+                                    <small id="endDateHelp" class="text-muted d-block mt-1"></small>
                                 </div>
                             </div>
+
+                            <div id="leaveValidationAlert" class="alert alert-danger d-none py-2 px-3 small mb-3"></div>
+                            <div id="leaveDaysInfo" class="alert alert-info d-none py-2 px-3 small mb-3"></div>
 
                             <div class="mb-4">
                                 <label for="reason" class="form-label">Reason <span
@@ -187,7 +200,7 @@
                             </div>
 
                             <div class="d-grid gap-2 mt-5">
-                                <button type="submit" class="btn btn-primary btn-lg shadow-sm">
+                                <button type="submit" id="submitBtn" class="btn btn-primary btn-lg shadow-sm">
                                     <i class="fas fa-paper-plane me-2"></i> Submit Leave Request
                                 </button>
                                 <a th:href="@{/employee/dashboard}" class="btn btn-light text-secondary">Cancel</a>
@@ -220,8 +233,12 @@
                                         <td class="ps-4"><span class="badge bg-light text-dark border"
                                                 th:text="${leave.leaveType}"></span></td>
                                         <td class="small text-secondary">
-                                            <span th:text="${#temporals.format(leave.startDate, 'MMM dd')}"></span> -
-                                            <span th:text="${#temporals.format(leave.endDate, 'MMM dd')}"></span>
+                                            <span th:if="${leave.numberOfDays == 1 or leave.startDate.isEqual(leave.endDate)}"
+                                                th:text="${#temporals.format(leave.startDate, 'MMM dd, yyyy')}"></span>
+                                            <span th:unless="${leave.numberOfDays == 1 or leave.startDate.isEqual(leave.endDate)}">
+                                                <span th:text="${#temporals.format(leave.startDate, 'MMM dd')}"></span> -
+                                                <span th:text="${#temporals.format(leave.endDate, 'MMM dd, yyyy')}"></span>
+                                            </span>
                                         </td>
                                         <td class="text-dark fw-medium" th:text="${leave.numberOfDays}"></td>
                                         <td class="text-end pe-4">
@@ -237,28 +254,177 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> <!-- /main-content -->
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Set minimum date to today
         const today = new Date().toISOString().split('T')[0];
-        document.getElementById('startDate').setAttribute('min', today);
-        document.getElementById('endDate').setAttribute('min', today);
-
-        // Update end date minimum when start date changes
-        document.getElementById('startDate').addEventListener('change', function () {
-            document.getElementById('endDate').setAttribute('min', this.value);
-        });
-
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        const startDateLabel = document.getElementById('startDateLabel');
+        const startDateHelp = document.getElementById('startDateHelp');
+        const endDateHelp = document.getElementById('endDateHelp');
+        const colStartDate = document.getElementById('colStartDate');
+        const colEndDate = document.getElementById('colEndDate');
         const leaveTypeSelect = document.getElementById('leaveType');
         const balanceSpan = document.querySelector('.alert-primary span');
+        const validationAlert = document.getElementById('leaveValidationAlert');
+        const leaveDaysInfo = document.getElementById('leaveDaysInfo');
+        const submitBtn = document.getElementById('submitBtn');
+
+        startDateInput.setAttribute('min', today);
+        endDateInput.setAttribute('min', today);
+
+        function updateLeaveTypeUI() {
+            const selectedVal = leaveTypeSelect.value;
+            if (selectedVal === 'PAID') {
+                // LOG-EMP-005: Paid leave has single date field and 1-per-month limit
+                colEndDate.classList.add('d-none');
+                colStartDate.className = 'col-12 mb-3';
+                startDateLabel.innerHTML = 'Leave Date <span class="text-danger">*</span> <small class="text-muted fw-normal">(1 Paid Leave allowed per month)</small>';
+                startDateHelp.textContent = 'Paid leave is strictly limited to 1 day per calendar month.';
+                endDateInput.required = false;
+                if (startDateInput.value) {
+                    endDateInput.value = startDateInput.value;
+                }
+            } else {
+                colEndDate.classList.remove('d-none');
+                colStartDate.className = 'col-md-6 mb-3 mb-md-0';
+                startDateLabel.innerHTML = 'Start Date <span class="text-danger">*</span>';
+                startDateHelp.textContent = '';
+                endDateInput.required = true;
+            }
+        }
+
+        function getSelectedBalance() {
+            const selectedOption = leaveTypeSelect.options[leaveTypeSelect.selectedIndex];
+            if (!selectedOption || !selectedOption.value) return null;
+            const bal = selectedOption.getAttribute('data-balance');
+            return bal !== null ? parseInt(bal, 10) : 0;
+        }
+
+        function calculateBusinessDays(d1, d2) {
+            let count = 0;
+            let cur = new Date(d1);
+            const end = new Date(d2);
+            while (cur <= end) {
+                const day = cur.getDay();
+                if (day !== 0 && day !== 6) { // Not Sunday (0) or Saturday (6)
+                    count++;
+                }
+                cur.setDate(cur.getDate() + 1);
+            }
+            return count;
+        }
+
+        function validateForm() {
+            const bal = getSelectedBalance();
+            const startVal = startDateInput.value;
+            const isPaid = leaveTypeSelect.value === 'PAID';
+
+            validationAlert.classList.add('d-none');
+            leaveDaysInfo.classList.add('d-none');
+            submitBtn.disabled = false;
+
+            if (bal === null) {
+                return;
+            }
+
+            if (bal <= 0) {
+                validationAlert.textContent = "You have 0 days remaining for this leave type. Cannot apply.";
+                validationAlert.classList.remove('d-none');
+                submitBtn.disabled = true;
+                return;
+            }
+
+            if (startVal && startVal < today) {
+                validationAlert.textContent = "Leave date cannot be in the past.";
+                validationAlert.classList.remove('d-none');
+                submitBtn.disabled = true;
+                return;
+            }
+
+            if (isPaid) {
+                endDateInput.value = startVal;
+                if (startVal) {
+                    const dt = new Date(startVal + 'T00:00:00');
+                    const day = dt.getDay();
+                    if (day === 0 || day === 6) {
+                        validationAlert.textContent = "Selected date falls on a weekend. Please select a business working day.";
+                        validationAlert.classList.remove('d-none');
+                        submitBtn.disabled = true;
+                        return;
+                    }
+                    leaveDaysInfo.textContent = "1 Paid Leave day requested for approval. Remaining balance: " + (bal - 1) + " day(s).";
+                    leaveDaysInfo.classList.remove('d-none');
+                }
+                return;
+            }
+
+            // For non-paid leave types
+            if (bal === 1) {
+                endDateHelp.textContent = "Only 1 day leave available. End date is automatically locked to start date.";
+                if (startVal) {
+                    endDateInput.value = startVal;
+                    endDateInput.setAttribute('min', startVal);
+                    endDateInput.setAttribute('max', startVal);
+                    endDateInput.readOnly = true;
+                }
+            } else {
+                endDateInput.readOnly = false;
+                endDateInput.removeAttribute('max');
+                endDateHelp.textContent = "";
+                if (startVal) {
+                    endDateInput.setAttribute('min', startVal);
+                }
+            }
+
+            const currentEndVal = endDateInput.value;
+            if (startVal && currentEndVal) {
+                if (currentEndVal < startVal) {
+                    validationAlert.textContent = "End date cannot be before start date.";
+                    validationAlert.classList.remove('d-none');
+                    submitBtn.disabled = true;
+                    return;
+                }
+
+                const requestedDays = calculateBusinessDays(startVal, currentEndVal);
+                if (requestedDays === 0) {
+                    validationAlert.textContent = "Selected date range contains only weekends. Please select valid working days.";
+                    validationAlert.classList.remove('d-none');
+                    submitBtn.disabled = true;
+                    return;
+                }
+
+                if (requestedDays > bal) {
+                    validationAlert.textContent = `Requested ${requestedDays} working day(s), but only ${bal} day(s) available for this leave type!`;
+                    validationAlert.classList.remove('d-none');
+                    submitBtn.disabled = true;
+                    return;
+                }
+
+                leaveDaysInfo.textContent = `Requested: ${requestedDays} working day(s). Remaining balance after approval: ${bal - requestedDays} day(s).`;
+                leaveDaysInfo.classList.remove('d-none');
+            }
+        }
 
         leaveTypeSelect.addEventListener('change', function () {
-            const selectedOption = this.options[this.selectedIndex];
-            const bal = selectedOption.getAttribute('data-balance');
-            balanceSpan.innerText = bal ? bal : 0;
+            const bal = getSelectedBalance();
+            balanceSpan.innerText = bal !== null ? bal : 0;
+            updateLeaveTypeUI();
+            validateForm();
         });
+
+        startDateInput.addEventListener('change', function() {
+            if (leaveTypeSelect.value === 'PAID') {
+                endDateInput.value = startDateInput.value;
+            }
+            validateForm();
+        });
+        endDateInput.addEventListener('change', validateForm);
+
+        // Initial UI setup
+        updateLeaveTypeUI();
     </script>
 </body>
 

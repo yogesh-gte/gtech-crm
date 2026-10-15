@@ -6,51 +6,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teams - LogSphere</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f7ff; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); }
+    </style>
 </head>
 
-<body class="bg-light">
-    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
-        <a class="navbar-brand text-primary fw-bold" th:href="@{/admin/dashboard}">LogSphere</a>
-        <div>
-            <a th:href="@{/admin/organization}" class="btn btn-outline-secondary btn-sm me-2">Back to Organization</a>
-            <a th:href="@{/admin/organization/teams/add}" class="btn btn-success btn-sm">Add Team</a>
+<body>
+    <!-- Shared Admin Sidebar Fragment -->
+    <div th:replace="~{fragments/admin-sidebar :: sidebar('teams')}"></div>
+
+    <div class="main-content">
+        <!-- Mobile Header Bar -->
+        <div class="mobile-header-bar d-lg-none">
+            <button class="sidebar-toggle-btn" type="button" onclick="toggleAdminSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <span class="fw-bold text-primary">Teams</span>
         </div>
-    </nav>
 
-    <div class="container py-4">
-        <h4 class="mb-4">Teams</h4>
-        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" th:text="${success}"></div>
-        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" th:text="${error}"></div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold text-primary mb-1"><i class="fas fa-users-cog me-2"></i>Teams</h3>
+                <p class="text-secondary small mb-0">Manage functional teams and appointed Team Leads</p>
+            </div>
+            <div>
+                <a th:href="@{/admin/organization}" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="fas fa-arrow-left me-1"></i> Organization
+                </a>
+                <a th:href="@{/admin/organization/teams/add}" class="btn btn-success btn-sm">
+                    <i class="fas fa-plus me-1"></i> Add Team
+                </a>
+            </div>
+        </div>
 
-        <div class="card">
-            <div class="card-body">
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i><span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i><span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
                 <div th:if="${teams.isEmpty()}" class="text-center text-muted py-5">
+                    <i class="fas fa-users fs-3 d-block mb-2 text-secondary"></i>
                     No teams yet. Create departments first, then <a th:href="@{/admin/organization/teams/add}">Add team</a>
                 </div>
                 <div th:if="${!teams.isEmpty()}" class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
                             <tr>
-                                <th>Team</th>
+                                <th class="ps-4">Team</th>
                                 <th>Department</th>
                                 <th>Team Lead (TL)</th>
                                 <th>Members</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th class="text-end pe-4">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="t : ${teams}">
-                                <td th:text="${t.name}">-</td>
+                                <td class="ps-4 fw-medium" th:text="${t.name}">-</td>
                                 <td th:text="${t.department != null ? t.department.name : '-'}">-</td>
-                                <td th:text="${t.teamLead != null ? t.teamLead.name : '-'}">-</td>
-                                <td th:text="${t.members != null ? t.members.size() : 0}">0</td>
                                 <td>
-                                    <span class="badge bg-success" th:if="${t.isActive}">Active</span>
-                                    <span class="badge bg-secondary" th:unless="${t.isActive}">Inactive</span>
+                                    <span th:if="${t.teamLead != null}" class="badge bg-primary-subtle text-primary border" th:text="${t.teamLead.name + ' (' + t.teamLead.employeeId + ')'}">-</span>
+                                    <span th:if="${t.teamLead == null}" class="text-muted small">Not assigned</span>
                                 </td>
                                 <td>
-                                    <a th:href="@{/admin/organization/teams/edit/{id}(id=${t.id})}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                    <span class="badge bg-light text-dark border" th:text="${t.members != null ? t.members.size() : 0} + ' members'">0</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success-subtle text-success" th:if="${t.isActive}">Active</span>
+                                    <span class="badge bg-secondary-subtle text-secondary" th:unless="${t.isActive}">Inactive</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a th:href="@{/admin/organization/teams/edit/{id}(id=${t.id})}" class="btn btn-sm btn-outline-primary me-1">Edit</a>
                                     <form th:action="@{/admin/organization/teams/delete/{id}(id=${t.id})}" method="post" class="d-inline"
                                           th:if="${t.isActive}" onsubmit="return confirm('Deactivate this team?');">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
@@ -63,5 +98,7 @@
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

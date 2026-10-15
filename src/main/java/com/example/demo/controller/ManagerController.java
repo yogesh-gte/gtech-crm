@@ -80,6 +80,66 @@ public class ManagerController {
     @Autowired
     private com.example.demo.service.EmailService emailService;
 
+    @ModelAttribute
+    public void populateCommonManagerAttributes(Model model, HttpSession session) {
+        try {
+            List<com.example.demo.model.IdleIncident> activeIdleIncidents = idleIncidentRepository.findActiveIncidents();
+            model.addAttribute("idleIncidents", activeIdleIncidents != null ? activeIdleIncidents : Collections.emptyList());
+            model.addAttribute("idleCount", activeIdleIncidents != null ? activeIdleIncidents.size() : 0);
+        } catch (Exception e) {
+            model.addAttribute("idleIncidents", Collections.emptyList());
+            model.addAttribute("idleCount", 0);
+        }
+    }
+
+    public Map<Employee, String> calculateEmployeeAvailability(List<Employee> allEmployees) {
+        LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
+        List<LeaveRequest> activeLeaves = leaveRequestRepository.findActiveLeavesOnDate(today);
+        List<Meeting> todayMeetings = meetingRepository.findByDateRange(
+                now.withHour(0).withMinute(0),
+                now.withHour(23).withMinute(59));
+        List<Task> allTasks = taskRepository.findAll();
+
+        Map<Employee, String> employeeAvailability = new HashMap<>();
+        for (Employee emp : allEmployees) {
+            boolean onLeave = activeLeaves != null && activeLeaves.stream()
+                    .anyMatch(l -> l.getEmployee() != null && l.getEmployee().getId().equals(emp.getId()));
+
+            boolean inMeeting = todayMeetings != null && todayMeetings.stream().anyMatch(m -> {
+                if ("COMPLETED".equalsIgnoreCase(m.getStatus()) || "CANCELLED".equalsIgnoreCase(m.getStatus())) {
+                    return false;
+                }
+                boolean isTimeNow = "ONGOING".equalsIgnoreCase(m.getStatus()) ||
+                        (m.getStartTime() != null && !now.isBefore(m.getStartTime()) &&
+                        (m.getEndTime() == null || !now.isAfter(m.getEndTime())));
+                if (!isTimeNow) {
+                    return false;
+                }
+                boolean isOrganizer = m.getOrganizer() != null && m.getOrganizer().getId().equals(emp.getId());
+                boolean isAttendee = m.getAttendees() != null && m.getAttendees().stream()
+                        .anyMatch(a -> a != null && a.getId().equals(emp.getId()));
+                return isOrganizer || isAttendee;
+            });
+
+            long highPriorityTasks = allTasks.stream()
+                    .filter(t -> t.getEmployee() != null && t.getEmployee().getId().equals(emp.getId()) &&
+                            "HIGH".equalsIgnoreCase(t.getPriority()) && !"COMPLETED".equalsIgnoreCase(t.getStatus()))
+                    .count();
+
+            if (onLeave) {
+                employeeAvailability.put(emp, "ON_LEAVE");
+            } else if (inMeeting) {
+                employeeAvailability.put(emp, "IN_MEETING");
+            } else if (highPriorityTasks > 0) {
+                employeeAvailability.put(emp, "BUSY");
+            } else {
+                employeeAvailability.put(emp, "AVAILABLE");
+            }
+        }
+        return employeeAvailability;
+    }
+
     @RequestMapping(value = "/login", method = RequestMethod.GET)
     public String showManagerLoginForm(Model model, HttpSession session) {
         User user = (User) session.getAttribute("user");
@@ -221,32 +281,13 @@ public class ManagerController {
                 .sorted(Comparator.comparing(Feedback::getFollowUpDate))
                 .collect(Collectors.toList());
 
-        // 7. Team Availability Planner
+        // 7. Team Availability Planner (LOG-MGR-003)
         List<LeaveRequest> activeLeaves = leaveRequestRepository.findActiveLeavesOnDate(today);
         List<Meeting> todayMeetings = meetingRepository.findByDateRange(
                 now.withHour(0).withMinute(0),
                 now.withHour(23).withMinute(59));
 
-        Map<Employee, String> employeeAvailability = new HashMap<>();
-        for (Employee emp : allEmployees) {
-            boolean onLeave = activeLeaves.stream().anyMatch(l -> l.getEmployee().getId().equals(emp.getId()));
-            boolean inMeeting = todayMeetings.stream()
-                    .anyMatch(m -> m.getOrganizer() != null && m.getOrganizer().getId().equals(emp.getId()));
-            long highPriorityTasks = allTasks.stream()
-                    .filter(t -> t.getEmployee() != null && t.getEmployee().getId().equals(emp.getId()) &&
-                            "HIGH".equals(t.getPriority()) && !"COMPLETED".equals(t.getStatus()))
-                    .count();
-
-            if (onLeave) {
-                employeeAvailability.put(emp, "ON_LEAVE");
-            } else if (inMeeting) {
-                employeeAvailability.put(emp, "IN_MEETING");
-            } else if (highPriorityTasks > 0) {
-                employeeAvailability.put(emp, "BUSY");
-            } else {
-                employeeAvailability.put(emp, "AVAILABLE");
-            }
-        }
+        Map<Employee, String> employeeAvailability = calculateEmployeeAvailability(allEmployees);
 
         // 8. Behavioral Insights
         List<Attendance> recentAttendance = attendanceRepository.findByDateRange(today.minusDays(30), today);
@@ -323,6 +364,12 @@ public class ManagerController {
         // General
         model.addAttribute("allEmployees", allEmployees);
         model.addAttribute("presentEmployees", presentEmployees);
+
+        // LOG-MGR-001: Team leads list for task assignments
+        List<Employee> teamLeads = allEmployees.stream()
+                .filter(emp -> Boolean.TRUE.equals(emp.getIsTeamLead()) && (emp.getIsActive() == null || emp.getIsActive()))
+                .collect(Collectors.toList());
+        model.addAttribute("teamLeads", teamLeads);
 
         // Idle employee notifications
         List<com.example.demo.model.IdleIncident> activeIdleIncidents = idleIncidentRepository.findActiveIncidents();
@@ -412,32 +459,52 @@ public class ManagerController {
             return "redirect:/manager/login";
         }
 
-        if (title == null || title.isBlank()) {
-            redirectAttributes.addFlashAttribute("error", "Task title is required.");
+        if (title == null || title.trim().isEmpty() || title.trim().length() < 3) {
+            redirectAttributes.addFlashAttribute("error", "Task title is required and must be at least 3 characters.");
+            return "redirect:/manager/dashboard?tab=planning";
+        }
+        if (priority == null || priority.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Priority is required.");
+            return "redirect:/manager/dashboard?tab=planning";
+        }
+        if (employeeId == null) {
+            redirectAttributes.addFlashAttribute("error", "Please select a Team Lead.");
             return "redirect:/manager/dashboard?tab=planning";
         }
         Optional<Employee> employeeOpt = employeeRepository.findById(employeeId);
         if (employeeOpt.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Employee not found!");
-            return "redirect:/manager/dashboard";
+            return "redirect:/manager/dashboard?tab=planning";
         }
 
         Employee employee = employeeOpt.get();
+        // LOG-MGR-001: Task assignment restricted to Team Leads
+        if (!Boolean.TRUE.equals(employee.getIsTeamLead())) {
+            redirectAttributes.addFlashAttribute("error", "Task assignment is restricted to Team Leads only.");
+            return "redirect:/manager/dashboard?tab=planning";
+        }
+
         Task task = new Task();
-        task.setTitle(title);
-        task.setDescription(description);
+        task.setTitle(title.trim());
+        task.setDescription(description != null ? description.trim() : null);
         task.setPriority(priority);
         task.setEmployee(employee);
         task.setAssignedDate(LocalDate.now());
         task.setStatus("PENDING");
         task.setProgressPercentage(0);
 
-        // Parse due date if provided
-        if (dueDate != null && !dueDate.isEmpty()) {
+        // LOG-MGR-006: Parse & validate due date if provided
+        if (dueDate != null && !dueDate.trim().isEmpty()) {
             try {
-                task.setDueDate(LocalDate.parse(dueDate));
+                LocalDate parsedDueDate = LocalDate.parse(dueDate.trim());
+                if (parsedDueDate.isBefore(LocalDate.now())) {
+                    redirectAttributes.addFlashAttribute("error", "Due date cannot be in the past.");
+                    return "redirect:/manager/dashboard?tab=planning";
+                }
+                task.setDueDate(parsedDueDate);
             } catch (Exception e) {
-                // Invalid date format, ignore
+                redirectAttributes.addFlashAttribute("error", "Invalid due date format.");
+                return "redirect:/manager/dashboard?tab=planning";
             }
         }
 
@@ -462,6 +529,18 @@ public class ManagerController {
         }
 
         taskRepository.save(task);
+
+        // In-app notification for employee
+        try {
+            Notification notif = new Notification();
+            notif.setRecipient(employee);
+            notif.setMessage("New task assigned: " + task.getTitle() + (task.getDueDate() != null ? " (Due: " + task.getDueDate() + ")" : ""));
+            notif.setCreatedAt(LocalDateTime.now());
+            notif.setIsRead(false);
+            notificationRepository.save(notif);
+        } catch (Exception notifEx) {
+            System.err.println("Failed to create task notification: " + notifEx.getMessage());
+        }
 
         // Email notification
         if (employee.getEmail() != null && !employee.getEmail().isEmpty()) {
@@ -544,6 +623,15 @@ public class ManagerController {
             return "redirect:/manager/login";
         }
 
+        if (employeeId == null) {
+            redirectAttributes.addFlashAttribute("error", "Please select an employee.");
+            return "redirect:/manager/feedback/add";
+        }
+        if (notes == null || notes.trim().isEmpty() || notes.trim().length() < 5) {
+            redirectAttributes.addFlashAttribute("error", "Feedback notes are required (minimum 5 characters).");
+            return "redirect:/manager/feedback/add";
+        }
+
         try {
             Optional<Employee> employeeOpt = employeeRepository.findById(employeeId);
             if (!employeeOpt.isPresent()) {
@@ -555,11 +643,16 @@ public class ManagerController {
             feedback.setEmployee(employeeOpt.get());
             Optional<User> managerUser = userRepository.findById(user.getId());
             managerUser.ifPresent(feedback::setManager);
-            feedback.setNotes(notes);
-            feedback.setImprovementSuggestions(improvementSuggestions);
+            feedback.setNotes(notes.trim());
+            feedback.setImprovementSuggestions(improvementSuggestions != null ? improvementSuggestions.trim() : null);
 
-            if (followUpDate != null && !followUpDate.isEmpty()) {
-                feedback.setFollowUpDate(LocalDate.parse(followUpDate).atStartOfDay());
+            if (followUpDate != null && !followUpDate.trim().isEmpty()) {
+                LocalDate fDate = LocalDate.parse(followUpDate.trim());
+                if (fDate.isBefore(LocalDate.now())) {
+                    redirectAttributes.addFlashAttribute("error", "Follow-up date cannot be in the past.");
+                    return "redirect:/manager/feedback/add";
+                }
+                feedback.setFollowUpDate(fDate.atStartOfDay());
             }
 
             feedbackRepository.save(feedback);
@@ -596,6 +689,15 @@ public class ManagerController {
             return "redirect:/manager/login";
         }
 
+        if (employeeId == null) {
+            redirectAttributes.addFlashAttribute("error", "Please select an employee.");
+            return "redirect:/manager/badge/award";
+        }
+        if (badgeName == null || badgeName.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Badge name is required.");
+            return "redirect:/manager/badge/award";
+        }
+
         try {
             Optional<Employee> employeeOpt = employeeRepository.findById(employeeId);
             if (!employeeOpt.isPresent()) {
@@ -605,8 +707,8 @@ public class ManagerController {
 
             TeamBadge badge = new TeamBadge();
             badge.setEmployee(employeeOpt.get());
-            badge.setBadgeName(badgeName);
-            badge.setAppreciationNote(description != null ? description : "");
+            badge.setBadgeName(badgeName.trim());
+            badge.setAppreciationNote(description != null ? description.trim() : "");
             Optional<User> managerUser = userRepository.findById(user.getId());
             managerUser.ifPresent(badge::setAwardedBy);
             badge.setAwardedDate(LocalDateTime.now());
@@ -660,12 +762,25 @@ public class ManagerController {
             return "redirect:/manager/login";
         }
 
+        if (ruleName == null || ruleName.trim().isEmpty() || ruleName.trim().length() < 3) {
+            redirectAttributes.addFlashAttribute("error", "Rule name is required (minimum 3 characters).");
+            return "redirect:/manager/rule/create";
+        }
+        if (description == null || description.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Description is required.");
+            return "redirect:/manager/rule/create";
+        }
+        if (ruleType == null || ruleType.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Rule type is required.");
+            return "redirect:/manager/rule/create";
+        }
+
         try {
             TeamRule rule = new TeamRule();
-            rule.setRuleName(ruleName);
-            rule.setDescription(description);
-            rule.setRuleType(ruleType);
-            rule.setRuleValue(value);
+            rule.setRuleName(ruleName.trim());
+            rule.setDescription(description.trim());
+            rule.setRuleType(ruleType.trim());
+            rule.setRuleValue(value != null ? value.trim() : null);
             rule.setIsActive(true);
 
             Optional<User> managerUser = userRepository.findById(user.getId());
@@ -712,6 +827,19 @@ public class ManagerController {
             return "redirect:/manager/login";
         }
 
+        if (ruleName == null || ruleName.trim().isEmpty() || ruleName.trim().length() < 3) {
+            redirectAttributes.addFlashAttribute("error", "Rule name is required (minimum 3 characters).");
+            return "redirect:/manager/rule/edit/" + id;
+        }
+        if (description == null || description.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Description is required.");
+            return "redirect:/manager/rule/edit/" + id;
+        }
+        if (ruleType == null || ruleType.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Rule type is required.");
+            return "redirect:/manager/rule/edit/" + id;
+        }
+
         try {
             Optional<TeamRule> ruleOpt = teamRuleRepository.findById(id);
             if (!ruleOpt.isPresent()) {
@@ -720,10 +848,10 @@ public class ManagerController {
             }
 
             TeamRule rule = ruleOpt.get();
-            rule.setRuleName(ruleName);
-            rule.setDescription(description);
-            rule.setRuleType(ruleType);
-            rule.setRuleValue(value);
+            rule.setRuleName(ruleName.trim());
+            rule.setDescription(description.trim());
+            rule.setRuleType(ruleType.trim());
+            rule.setRuleValue(value != null ? value.trim() : null);
             // Checkbox sends "true" if checked, null if unchecked
             rule.setIsActive("true".equals(isActive));
 
@@ -774,6 +902,15 @@ public class ManagerController {
             return "redirect:/manager/login";
         }
 
+        if (response == null || response.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Response message cannot be empty.");
+            return "redirect:/manager/dashboard?tab=suggestions";
+        }
+        if (status == null || status.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Status is required.");
+            return "redirect:/manager/dashboard?tab=suggestions";
+        }
+
         try {
             Optional<com.example.demo.model.Suggestion> suggestionOpt = suggestionRepository.findById(id);
             if (!suggestionOpt.isPresent()) {
@@ -807,6 +944,8 @@ public class ManagerController {
 
         List<Employee> allEmployees = employeeRepository.findAll();
         model.addAttribute("employees", allEmployees);
+        // LOG-MGR-003: Provide real-time team availability for meeting scheduling
+        model.addAttribute("employeeAvailability", calculateEmployeeAvailability(allEmployees));
 
         return "manager-create-meeting";
     }
@@ -827,22 +966,54 @@ public class ManagerController {
             return "redirect:/manager/login";
         }
 
+        // LOG-MGR-006: Meeting form validations
+        if (title == null || title.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Meeting title is required.");
+            return "redirect:/manager/meetings/create";
+        }
+        if (date == null || date.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Meeting date is required.");
+            return "redirect:/manager/meetings/create";
+        }
+        LocalDate meetingDate;
+        try {
+            meetingDate = LocalDate.parse(date.trim());
+            if (meetingDate.isBefore(LocalDate.now())) {
+                redirectAttributes.addFlashAttribute("error", "Meeting date cannot be in the past.");
+                return "redirect:/manager/meetings/create";
+            }
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("error", "Invalid date format.");
+            return "redirect:/manager/meetings/create";
+        }
+        if (startTime == null || startTime.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Start time is required.");
+            return "redirect:/manager/meetings/create";
+        }
+        if (!addEveryone && (employeeIds == null || employeeIds.isEmpty())) {
+            redirectAttributes.addFlashAttribute("error", "Please select at least one attendee or check 'Invite All Active Employees'.");
+            return "redirect:/manager/meetings/create";
+        }
+
         try {
             Meeting meeting = new Meeting();
-            meeting.setTitle(title);
-            meeting.setDescription(description);
+            meeting.setTitle(title.trim());
+            meeting.setDescription(description != null ? description.trim() : null);
             meeting.setStatus("SCHEDULED");
             if (meetingType != null && !meetingType.isEmpty()) {
                 meeting.setMeetingType(meetingType);
             }
 
             // Handle Date and Time
-            LocalDate meetingDate = LocalDate.parse(date);
-            LocalDateTime startDateTime = meetingDate.atTime(java.time.LocalTime.parse(startTime));
+            LocalDateTime startDateTime = meetingDate.atTime(java.time.LocalTime.parse(startTime.trim()));
             meeting.setStartTime(startDateTime);
 
-            if (endTime != null && !endTime.isEmpty()) {
-                LocalDateTime endDateTime = meetingDate.atTime(java.time.LocalTime.parse(endTime));
+            if (endTime != null && !endTime.trim().isEmpty()) {
+                LocalDateTime endDateTime = meetingDate.atTime(java.time.LocalTime.parse(endTime.trim()));
+                if (!endDateTime.isAfter(startDateTime)) {
+                    redirectAttributes.addFlashAttribute("error", "End time must be after start time.");
+                    return "redirect:/manager/meetings/create";
+                }
                 meeting.setEndTime(endDateTime);
             }
 
@@ -857,21 +1028,14 @@ public class ManagerController {
             }
             meeting.setAttendees(attendees);
 
-            // Set organizer (optional, could be linked to manager user if User entity had
-            // link to Employee)
-            // For now, leaving organizer null or could fetch a specific "Manager" employee
-            // profile if it existed.
-
             meetingRepository.save(meeting);
 
-            // Create Notifications for Attendees
             // Create Notifications for Attendees
             for (Employee attendee : attendees) {
                 String message = "New Meeting: " + title + " on " + meetingDate + " at " + startTime;
                 com.example.demo.model.Notification notification = new com.example.demo.model.Notification(attendee,
                         message, meeting.getId());
                 notificationRepository.save(notification);
-
             }
 
             redirectAttributes.addFlashAttribute("success",
@@ -879,7 +1043,7 @@ public class ManagerController {
             return "redirect:/manager/dashboard?tab=planning";
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "Error creating meeting: " + e.getMessage());
-            return "redirect:/manager/dashboard?tab=planning";
+            return "redirect:/manager/meetings/create";
         }
     }
 

@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
 
     <style>
         :root {
@@ -200,44 +201,259 @@
                 font-size: 0.875rem;
             }
         }
+
+        /* Sidebar Navigation Styling */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #e3f2fd;
+            border-right: 1px solid #dcdfe6;
+            padding: 20px 14px;
+            z-index: 1040;
+            overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(13, 110, 253, 0.05);
+        }
+
+        /* Sidebar Brand */
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 10px 16px 10px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(13, 110, 253, 0.12);
+            text-decoration: none;
+        }
+
+        .sidebar-brand h3 {
+            color: #0d6efd;
+            font-weight: 800;
+            font-size: 1.4rem;
+            margin: 0;
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+        }
+
+        .sidebar-brand-sub {
+            font-size: 0.68rem;
+            letter-spacing: 1px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .sidebar-section-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #64748b;
+            padding: 12px 12px 6px 12px;
+            margin-top: 4px;
+        }
+
+        /* Navigation Links */
+        .sidebar .nav {
+            flex-grow: 1;
+        }
+
+        .sidebar .nav-link {
+            color: #334155;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 3px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .sidebar .nav-link i {
+            width: 20px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: #64748b;
+            transition: color 0.2s;
+        }
+
+        .sidebar .nav-link:hover {
+            background-color: rgba(13, 110, 253, 0.08);
+            color: #0d6efd;
+            transform: translateX(3px);
+        }
+
+        .sidebar .nav-link:hover i {
+            color: #0d6efd;
+        }
+
+        .sidebar .nav-link.active {
+            background-color: #ffffff;
+            color: #0d6efd;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .sidebar .nav-link.active i {
+            color: #0d6efd;
+        }
+
+        /* Sidebar User Profile at bottom */
+        .sidebar-user {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: auto;
+            border: 1px solid #dcdfe6;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+
+        .sidebar-user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #e3f2fd;
+            color: #0d6efd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            border: 1px solid #b6d4fe;
+            flex-shrink: 0;
+        }
+
+        /* Main Content Offset */
+        .main-content {
+            margin-left: 260px;
+            padding: 24px 30px;
+            min-height: 100vh;
+            background-color: #f3f7ff;
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        /* Toggle Button & Overlay for Mobile */
+        .sidebar-toggle-btn {
+            display: none;
+            background: #ffffff;
+            border: 1px solid #dcdfe6;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 1.1rem;
+            color: #475569;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .sidebar-toggle-btn:hover {
+            background-color: #f8fafc;
+            color: #0d6efd;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(15, 27, 45, 0.45);
+            backdrop-filter: blur(2px);
+            z-index: 1035;
+        }
+
+        .sidebar-overlay.active,
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active,
+            .sidebar.show {
+                transform: translateX(0);
+                box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 16px 12px;
+            }
+
+            .sidebar-toggle-btn {
+                display: inline-flex;
+            }
+        }
+
+        /* Custom Scrollbar for Sidebar */
+        .sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(13, 110, 253, 0.2);
+            border-radius: 4px;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(13, 110, 253, 0.4);
+        }
     </style>
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg sticky-top mb-4">
-        <div class="container-fluid px-4">
-            <span class="navbar-brand mb-0 h1"><i class="fas fa-cube me-2"></i>LogSphere</span>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item"><a th:href="@{/employee/tasks}" class="nav-link"><i
-                                class="fas fa-tasks me-1"></i> <span class="d-none d-md-inline">My</span>
-                            Tasks</a></li>
-                    <li class="nav-item"><a th:href="@{/issues}" class="nav-link"><i
-                                class="fas fa-bug me-1"></i> <span class="d-none d-md-inline">Issues</span></a></li>
-                    <li class="nav-item" th:if="${employee.isTeamLead == true and employee.team != null}"><a th:href="@{/employee/tl-dashboard}" class="nav-link"><i class="fas fa-users me-1"></i> <span class="d-none d-md-inline">TL Dashboard</span></a></li>
-                    <li class="nav-item"><a th:href="@{/employee/qrcode}" class="nav-link"><i
-                                class="fas fa-qrcode me-1"></i>
-                            <span class="d-none d-md-inline">My</span> QR</a></li>
-                    <li class="nav-item"><a th:href="@{/employee/attendance/history}" class="nav-link"><span class="d-none d-md-inline">Attendance</span><span class="d-md-none">Att.</span></a>
-                    </li>
-                    <li class="nav-item"><a th:href="@{/employee/payroll/history}" class="nav-link"><span class="d-none d-md-inline">Payslip</span><span class="d-md-none">Pay</span></a></li>
-                    <li class="nav-item"><a th:href="@{/employee/leave/apply}" class="nav-link"><span class="d-none d-md-inline">Apply</span> Leave</a></li>
-                    <li class="nav-item"><a th:href="@{/employee/leave/history}" class="nav-link"><span class="d-none d-md-inline">Leave</span> History</a></li>
-                    <li class="nav-item"><a th:href="@{/meetings/create}" class="nav-link"><span class="d-none d-md-inline">Create</span> Meeting</a></li>
-                    <li class="nav-item"><a th:href="@{/employee/suggestion/submit}" class="nav-link">Suggestion</a>
-                    </li>
+    <!-- Employee Portal Shared Sidebar -->
+    <div th:replace="~{fragments/employee-sidebar :: sidebar(activeTab='dashboard')}"></div>
 
-                    <li class="nav-item position-relative me-3 dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-bell"></i>
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <!-- Clean, Uncongested Navbar -->
+        <nav class="navbar navbar-expand-lg rounded-3 mb-4 p-3 shadow-sm bg-white">
+            <div class="container-fluid px-2">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="sidebar-toggle-btn me-2" type="button" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="navbar-brand mb-0 h4 fw-bold text-primary mb-0">
+                        <i class="fas fa-user-circle me-2"></i>Employee Portal
+                    </span>
+                </div>
+
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Status indicator -->
+                    <span th:if="${employee.status == 'IN'}" class="badge bg-success-subtle text-success border border-success d-none d-sm-inline-block px-3 py-2 rounded-pill">
+                        <i class="fas fa-circle me-1 small"></i> Clocked In
+                    </span>
+                    <span th:if="${employee.status != 'IN'}" class="badge bg-secondary-subtle text-secondary border d-none d-sm-inline-block px-3 py-2 rounded-pill">
+                        <i class="far fa-circle me-1 small"></i> Clocked Out
+                    </span>
+
+                    <!-- Notifications Dropdown -->
+                    <div class="position-relative dropdown">
+                        <a class="btn btn-light rounded-circle position-relative" href="#" id="notificationDropdown" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-bell text-secondary"></i>
                             <span th:if="${notifications != null && !notifications.isEmpty()}"
                                 class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle"
-                                style="font-size: 0.6rem;">
-                                <span th:text="${notifications.size()}"></span>
+                                style="font-size: 0.65rem;" th:text="${notifications.size()}">
                             </span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-0"
@@ -277,23 +493,28 @@
                                 </a>
                             </li>
                         </ul>
-                    </li>
+                    </div>
 
-                    <li class="nav-item position-relative">
-                        <a th:href="@{/employee/approvals}" class="nav-link">
-                            Approvals
-                            <span th:if="${pendingCount > 0}"
-                                class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle badge-sm"
-                                th:text="${pendingCount}"></span>
-                        </a>
-                    </li>
-                    <li class="nav-item ms-lg-3">
-                        <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm">Logout</a>
-                    </li>
-                </ul>
+                    <!-- Approvals link -->
+                    <a th:href="@{/employee/approvals}" class="btn btn-light rounded-pill position-relative px-3 py-1 text-secondary small fw-medium">
+                        Approvals
+                        <span th:if="${pendingCount > 0}"
+                            class="badge bg-danger rounded-pill ms-1"
+                            th:text="${pendingCount}"></span>
+                    </a>
+
+                    <!-- Employee Name Badge -->
+                    <span class="badge bg-light text-dark border px-3 py-2 d-none d-md-inline-block">
+                        <i class="fas fa-user me-1 text-primary"></i> <span th:text="${employee.name}">Employee</span>
+                    </span>
+
+                    <!-- Logout Button -->
+                    <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-sign-out-alt me-1"></i> Logout
+                    </a>
+                </div>
             </div>
-        </div>
-    </nav>
+        </nav>
 
     <div class="container-fluid px-4 py-4">
         <div class="row g-4 mb-4">
@@ -305,14 +526,6 @@
                             <span th:if="${onLeaveToday}" class="badge bg-info ms-2">On Leave Today</span>
                         </h2>
                         <p class="text-secondary mb-0">Here's your dashboard overview</p>
-                    </div>
-                    <div class="d-flex gap-2 justify-content-center justify-content-md-end">
-                        <button onclick="location.reload()" class="btn btn-outline-secondary shadow-sm">
-                            <i class="fas fa-sync-alt me-1"></i> Refresh
-                        </button>
-                        <a th:href="@{/logout}" class="btn btn-outline-danger shadow-sm">
-                            <i class="fas fa-sign-out-alt me-1"></i> Logout
-                        </a>
                     </div>
                 </div>
             </div>
@@ -413,6 +626,9 @@
                             <a th:if="${employee.isTeamLead == true and employee.team != null}" th:href="@{/employee/tl-dashboard}" class="btn btn-outline-info btn-sm">
                                 <i class="fas fa-users me-1"></i> TL Dashboard
                             </a>
+                            <a th:href="@{/employee/payroll/history}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-file-invoice-dollar me-1"></i> View Payslips
+                            </a>
                             <a th:href="@{/issues}" class="btn btn-outline-danger btn-sm">
                                 <i class="fas fa-bug me-1"></i> Issues
                             </a>
@@ -447,7 +663,7 @@
                         <span class="badge bg-primary" th:text="${todayTasks != null ? todayTasks.size() : 0}">0</span>
                     </div>
                     <div class="card-body">
-                        <div th:if="${todayTaskCompletionRate != null}" class="mb-2">
+                        <div th:if="${todayTasks != null && !todayTasks.isEmpty() && todayTaskCompletionRate != null}" class="mb-2">
                             <small class="text-muted">Completion: </small>
                             <div class="progress" style="height: 6px;">
                                 <div class="progress-bar bg-success" th:style="|width: ${todayTaskCompletionRate}%|" role="progressbar"></div>
@@ -639,7 +855,7 @@
         </div>
 
         <!-- Clock In/Out Actions -->
-        <div class="col-lg-6">
+        <div class="col-lg-6" id="attendanceSection">
             <div class="card h-100 shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0 text-primary"><i class="fas fa-stopwatch me-2"></i>Clock In/Out</h4>
@@ -763,10 +979,33 @@
                             </form>
                             */-->
 
-                        <!-- Direct Clock-Out Form (Face Auth Bypassed) -->
+                        <!-- Direct Clock-Out Form (LOG-EMP-003: Required input fields) -->
                         <form th:action="@{/employee/checkout}" method="post">
+                            <div class="mb-3 text-start">
+                                <label class="form-label text-secondary fw-bold small text-uppercase">Work Mode Confirmation</label>
+                                <select name="workMode" class="form-select form-select-sm">
+                                    <option value="OFFICE" th:selected="${employee.workMode == 'OFFICE' || employee.workMode == null}">Office</option>
+                                    <option value="WORK_FROM_HOME" th:selected="${employee.workMode == 'WORK_FROM_HOME'}">Work From Home (WFH)</option>
+                                    <option value="ON_SITE" th:selected="${employee.workMode == 'ON_SITE'}">On-Site / Field</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3 text-start">
+                                <label class="form-label text-secondary fw-bold small text-uppercase">
+                                    Daily Work Summary / Notes <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="dailySummary" class="form-control" rows="3"
+                                    placeholder="Enter summary of work completed today before checking out..." required></textarea>
+                                <small class="text-muted" style="font-size: 0.75rem;">Required: Record tasks and progress for today's shift.</small>
+                            </div>
+
+                            <div class="mb-3 text-start">
+                                <label class="form-label text-secondary fw-bold small text-uppercase">Tasks Completed Today</label>
+                                <input type="number" name="tasksCompleted" class="form-control form-control-sm" min="0" value="0" placeholder="Number of tasks finished">
+                            </div>
+
                             <button type="submit" class="btn btn-danger btn-lg w-100 mb-3 shadow-sm py-3">
-                                <i class="fas fa-sign-out-alt me-2"></i> Clock Out Now
+                                <i class="fas fa-sign-out-alt me-2"></i> Submit Summary & Clock Out
                             </button>
                         </form>
 
@@ -841,8 +1080,12 @@
                                     <td><span class="badge bg-light text-dark border"
                                             th:text="${leave.leaveType}"></span></td>
                                     <td>
-                                        <span th:text="${#temporals.format(leave.startDate, 'MMM dd')}"></span> -
-                                        <span th:text="${#temporals.format(leave.endDate, 'MMM dd')}"></span>
+                                        <span th:if="${leave.numberOfDays == 1 or leave.startDate.isEqual(leave.endDate)}"
+                                            th:text="${#temporals.format(leave.startDate, 'MMM dd, yyyy')}"></span>
+                                        <span th:unless="${leave.numberOfDays == 1 or leave.startDate.isEqual(leave.endDate)}">
+                                            <span th:text="${#temporals.format(leave.startDate, 'MMM dd')}"></span> -
+                                            <span th:text="${#temporals.format(leave.endDate, 'MMM dd, yyyy')}"></span>
+                                        </span>
                                     </td>
                                     <td th:text="${leave.numberOfDays}"></td>
                                     <td>
@@ -1241,7 +1484,35 @@
                 }
                 loadPrefs();
             })();
+
+            function toggleSidebar() {
+                const sidebar = document.getElementById('employeeSidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                if (sidebar) {
+                    sidebar.classList.toggle('active');
+                    sidebar.classList.toggle('show');
+                }
+                if (overlay) {
+                    overlay.classList.toggle('active');
+                    overlay.classList.toggle('show');
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                const sidebar = document.getElementById('employeeSidebar');
+                if (sidebar) {
+                    const links = sidebar.querySelectorAll('.nav-link');
+                    links.forEach(function(link) {
+                        link.addEventListener('click', function() {
+                            if (window.innerWidth < 992) {
+                                toggleSidebar();
+                            }
+                        });
+                    });
+                }
+            });
         </script>
+    </div> <!-- /main-content -->
 </body>
 
 </html>

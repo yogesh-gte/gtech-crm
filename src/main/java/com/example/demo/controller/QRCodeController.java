@@ -38,7 +38,18 @@ public class QRCodeController {
         }
 
         // Generate QR code data (fully qualified URL)
-        String baseUrl = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
+        String serverHost = request.getServerName();
+        if ("localhost".equalsIgnoreCase(serverHost) || "127.0.0.1".equals(serverHost) || "0:0:0:0:0:0:0:1".equals(serverHost)) {
+            try {
+                java.net.InetAddress localHost = java.net.InetAddress.getLocalHost();
+                String hostAddr = localHost.getHostAddress();
+                if (hostAddr != null && !hostAddr.startsWith("127.")) {
+                    serverHost = hostAddr;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        String baseUrl = request.getScheme() + "://" + serverHost + ":" + request.getServerPort() + request.getContextPath();
         String qrData = qrCodeService.generateQRCodeData(baseUrl, employee.getEmployeeId(), employee.getQrCodeToken());
         String qrCodeImage = qrCodeService.generateQRCodeImage(qrData);
 

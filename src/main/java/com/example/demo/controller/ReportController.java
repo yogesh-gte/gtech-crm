@@ -14,9 +14,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 
 @Controller
 @RequestMapping("/reports")
@@ -45,7 +44,7 @@ public class ReportController {
 
     @RequestMapping(method = RequestMethod.GET)
     public String reportsDashboard(Model model, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
             return "redirect:/login";
         }
         
@@ -91,10 +90,29 @@ public class ReportController {
         double monthlyTotalHours = monthlyAttendance.stream()
             .mapToDouble(a -> a.getTotalHours() != null ? a.getTotalHours() : 0.0)
             .sum();
+
+        long todayActiveEmployees = todayAttendance.stream()
+            .map(a -> a.getEmployee().getId()).distinct().count();
+        long weeklyActiveEmployees = weeklyAttendance.stream()
+            .map(a -> a.getEmployee().getId()).distinct().count();
+        long monthlyActiveEmployees = monthlyAttendance.stream()
+            .map(a -> a.getEmployee().getId()).distinct().count();
+
+        long daysInWeekSoFar = Math.max(1, ChronoUnit.DAYS.between(startOfWeek, today) + 1);
+        long daysInMonthSoFar = Math.max(1, ChronoUnit.DAYS.between(startOfMonth, today) + 1);
+
+        double weeklyAvgHours = weeklyTotalHours / daysInWeekSoFar;
+        double monthlyAvgHours = monthlyTotalHours / daysInMonthSoFar;
         
         model.addAttribute("todayTotalHours", todayTotalHours);
         model.addAttribute("weeklyTotalHours", weeklyTotalHours);
         model.addAttribute("monthlyTotalHours", monthlyTotalHours);
+
+        model.addAttribute("todayActiveEmployees", todayActiveEmployees);
+        model.addAttribute("weeklyActiveEmployees", weeklyActiveEmployees);
+        model.addAttribute("monthlyActiveEmployees", monthlyActiveEmployees);
+        model.addAttribute("weeklyAvgHours", weeklyAvgHours);
+        model.addAttribute("monthlyAvgHours", monthlyAvgHours);
         
         return "reports-dashboard";
     }
@@ -104,40 +122,91 @@ public class ReportController {
                                 @RequestParam(required = false) String startDate,
                                 @RequestParam(required = false) String endDate,
                                 Model model, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
             return "redirect:/login";
         }
         
+        LocalDate today = LocalDate.now();
         LocalDate start;
-        LocalDate end = LocalDate.now();
+        LocalDate end = today;
+        String detectedPeriod = (period != null && !period.isBlank()) ? period.trim().toLowerCase() : null;
         
-        if ("daily".equals(period)) {
-            start = end;
-        } else if ("weekly".equals(period)) {
-            start = end.minusDays(end.getDayOfWeek().getValue() - 1);
-        } else if ("monthly".equals(period)) {
-            start = end.withDayOfMonth(1);
-        } else if (startDate != null && endDate != null) {
+        if (startDate != null && !startDate.isBlank() && endDate != null && !endDate.isBlank()) {
             start = LocalDate.parse(startDate);
             end = LocalDate.parse(endDate);
+            if (detectedPeriod == null) {
+                detectedPeriod = "custom";
+            }
+        } else if ("weekly".equalsIgnoreCase(detectedPeriod)) {
+            start = today.minusDays(today.getDayOfWeek().getValue() - 1);
+            end = today;
+        } else if ("monthly".equalsIgnoreCase(detectedPeriod)) {
+            start = today.withDayOfMonth(1);
+            end = today;
         } else {
-            start = end;
+            detectedPeriod = "daily";
+            start = today;
+            end = today;
         }
         
         List<Attendance> attendanceList = attendanceRepository.findByDateRange(start, end);
-        Map<String, Double> employeeHours = new HashMap<>();
+        Map<String, Map<String, Object>> employeeSummary = new LinkedHashMap<>();
+        double totalWorkHours = 0.0;
+        long daysInPeriod = ChronoUnit.DAYS.between(start, end) + 1;
         
         for (Attendance att : attendanceList) {
+            if (att.getEmployee() == null) continue;
             String empName = att.getEmployee().getName();
             double hours = att.getTotalHours() != null ? att.getTotalHours() : 0.0;
-            employeeHours.put(empName, employeeHours.getOrDefault(empName, 0.0) + hours);
+            totalWorkHours += hours;
+
+            Map<String, Object> data = employeeSummary.computeIfAbsent(empName, k -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("name", empName);
+                map.put("employeeId", att.getEmployee().getEmployeeId());
+                map.put("totalHours", 0.0);
+                map.put("daysPresent", 0L);
+                return map;
+            });
+
+            data.put("totalHours", ((Double) data.get("totalHours")) + hours);
+            data.put("daysPresent", ((Long) data.get("daysPresent")) + 1L);
         }
         
+        Map<String, Double> employeeHours = new LinkedHashMap<>();
+        for (Map.Entry<String, Map<String, Object>> entry : employeeSummary.entrySet()) {
+            double th = (Double) entry.getValue().get("totalHours");
+            employeeHours.put(entry.getKey(), th);
+            long dp = (Long) entry.getValue().get("daysPresent");
+            double avg = dp > 0 ? th / dp : 0.0;
+            entry.getValue().put("avgHoursPerDay", avg);
+        }
+
+        double overallDailyAvg = daysInPeriod > 0 ? totalWorkHours / daysInPeriod : 0.0;
+        
+        String periodTitle;
+        if ("daily".equals(detectedPeriod)) {
+            periodTitle = "Daily Work Hours (" + start + ")";
+        } else if ("weekly".equals(detectedPeriod)) {
+            periodTitle = "Weekly Work Hours (" + start + " to " + end + ")";
+        } else if ("monthly".equals(detectedPeriod)) {
+            periodTitle = "Monthly Work Hours (" + start.getMonth().name() + " " + start.getYear() + ")";
+        } else {
+            periodTitle = "Custom Work Hours (" + start + " to " + end + ")";
+        }
+
         model.addAttribute("attendanceList", attendanceList);
         model.addAttribute("employeeHours", employeeHours);
+        model.addAttribute("employeeSummary", employeeSummary.values());
+        model.addAttribute("totalWorkHours", totalWorkHours);
+        model.addAttribute("activeEmployeesCount", employeeSummary.size());
+        model.addAttribute("totalRecordsCount", attendanceList.size());
+        model.addAttribute("daysInPeriod", daysInPeriod);
+        model.addAttribute("overallDailyAvg", overallDailyAvg);
+        model.addAttribute("periodTitle", periodTitle);
         model.addAttribute("startDate", start);
         model.addAttribute("endDate", end);
-        model.addAttribute("period", period);
+        model.addAttribute("period", detectedPeriod);
         
         return "employee-report";
     }
@@ -147,24 +216,31 @@ public class ReportController {
                                @RequestParam(required = false) String startDate,
                                @RequestParam(required = false) String endDate,
                                Model model, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
             return "redirect:/login";
         }
         
+        LocalDate today = LocalDate.now();
         LocalDate start;
-        LocalDate end = LocalDate.now();
+        LocalDate end = today;
+        String detectedPeriod = (period != null && !period.isBlank()) ? period.trim().toLowerCase() : null;
         
-        if ("daily".equals(period)) {
-            start = end;
-        } else if ("weekly".equals(period)) {
-            start = end.minusDays(end.getDayOfWeek().getValue() - 1);
-        } else if ("monthly".equals(period)) {
-            start = end.withDayOfMonth(1);
-        } else if (startDate != null && endDate != null) {
+        if (startDate != null && !startDate.isBlank() && endDate != null && !endDate.isBlank()) {
             start = LocalDate.parse(startDate);
             end = LocalDate.parse(endDate);
+            if (detectedPeriod == null) {
+                detectedPeriod = "custom";
+            }
+        } else if ("weekly".equalsIgnoreCase(detectedPeriod)) {
+            start = today.minusDays(today.getDayOfWeek().getValue() - 1);
+            end = today;
+        } else if ("monthly".equalsIgnoreCase(detectedPeriod)) {
+            start = today.withDayOfMonth(1);
+            end = today;
         } else {
-            start = end;
+            detectedPeriod = "daily";
+            start = today;
+            end = today;
         }
         
         List<Visitor> visitors = visitorRepository.findByCheckInTimeBetween(
@@ -172,25 +248,45 @@ public class ReportController {
             end.atTime(23, 59, 59)
         );
         
-        Map<String, Long> visitorFlow = new HashMap<>();
+        Map<String, Long> visitorFlow = new TreeMap<>();
         for (Visitor v : visitors) {
-            String date = v.getCheckInTime().toLocalDate().toString();
-            visitorFlow.put(date, visitorFlow.getOrDefault(date, 0L) + 1);
+            if (v.getCheckInTime() != null) {
+                String date = v.getCheckInTime().toLocalDate().toString();
+                visitorFlow.put(date, visitorFlow.getOrDefault(date, 0L) + 1L);
+            }
+        }
+
+        long daysInPeriod = ChronoUnit.DAYS.between(start, end) + 1;
+        double avgVisitorsPerDay = daysInPeriod > 0 ? (double) visitors.size() / daysInPeriod : 0.0;
+
+        String periodTitle;
+        if ("daily".equals(detectedPeriod)) {
+            periodTitle = "Daily Visitor Flow (" + start + ")";
+        } else if ("weekly".equals(detectedPeriod)) {
+            periodTitle = "Weekly Visitor Flow (" + start + " to " + end + ")";
+        } else if ("monthly".equals(detectedPeriod)) {
+            periodTitle = "Monthly Visitor Flow (" + start.getMonth().name() + " " + start.getYear() + ")";
+        } else {
+            periodTitle = "Custom Visitor Flow (" + start + " to " + end + ")";
         }
         
         model.addAttribute("visitors", visitors);
         model.addAttribute("visitorFlow", visitorFlow);
+        model.addAttribute("totalVisitors", visitors.size());
+        model.addAttribute("daysInPeriod", daysInPeriod);
+        model.addAttribute("avgVisitorsPerDay", avgVisitorsPerDay);
+        model.addAttribute("periodTitle", periodTitle);
         model.addAttribute("startDate", start);
         model.addAttribute("endDate", end);
-        model.addAttribute("period", period);
+        model.addAttribute("period", detectedPeriod);
         
         return "visitor-report";
     }
 
     @GetMapping("/export/performance")
     public void exportPerformance(HttpServletResponse response, HttpSession session) throws IOException {
-        if (session.getAttribute("user") == null) {
-            response.sendRedirect("/admin/login");
+        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
+            response.sendRedirect("/login");
             return;
         }
         response.setContentType("text/csv");
@@ -219,8 +315,8 @@ public class ReportController {
 
     @GetMapping("/export/tasks")
     public void exportTasks(HttpServletResponse response, HttpSession session) throws IOException {
-        if (session.getAttribute("user") == null) {
-            response.sendRedirect("/admin/login");
+        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
+            response.sendRedirect("/login");
             return;
         }
         response.setContentType("text/csv");
@@ -238,8 +334,8 @@ public class ReportController {
 
     @GetMapping("/export/issues")
     public void exportIssues(HttpServletResponse response, HttpSession session) throws IOException {
-        if (session.getAttribute("user") == null) {
-            response.sendRedirect("/admin/login");
+        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
+            response.sendRedirect("/login");
             return;
         }
         response.setContentType("text/csv");

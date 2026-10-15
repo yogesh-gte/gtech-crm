@@ -32,6 +32,12 @@ public class TaskController {
     @Autowired
     private TaskCommentRepository taskCommentRepository;
 
+    @Autowired
+    private com.example.demo.repository.NotificationRepository notificationRepository;
+
+    @Autowired
+    private com.example.demo.repository.UserRepository userRepository;
+
     @RequestMapping(method = RequestMethod.GET)
     public String myTasks(Model model, HttpSession session) {
         Employee employee = (Employee) session.getAttribute("employee");
@@ -79,6 +85,18 @@ public class TaskController {
         
         taskRepository.save(task);
 
+        // In-app notification for employee
+        try {
+            com.example.demo.model.Notification notif = new com.example.demo.model.Notification();
+            notif.setRecipient(employee);
+            notif.setMessage("New task created: " + task.getTitle() + (task.getDueDate() != null ? " (Due: " + task.getDueDate() + ")" : ""));
+            notif.setCreatedAt(LocalDateTime.now());
+            notif.setIsRead(false);
+            notificationRepository.save(notif);
+        } catch (Exception notifEx) {
+            System.err.println("Failed to create task notification: " + notifEx.getMessage());
+        }
+
         // Update last activity time
         employee.setLastActivityTime(LocalDateTime.now());
         employeeRepository.save(employee);
@@ -118,19 +136,45 @@ public class TaskController {
         employee.setLastActivityTime(LocalDateTime.now());
         employeeRepository.save(employee);
 
+        // Notify managers about task update (LOG-MGR-008)
+        try {
+            List<User> managerUsers = userRepository.findByRole("MANAGER");
+            for (User mgr : managerUsers) {
+                com.example.demo.model.Notification notif = new com.example.demo.model.Notification();
+                notif.setUserRecipient(mgr);
+                notif.setMessage("Task Update: " + employee.getName() + " updated '" + task.getTitle() + "' (" + (status != null ? status : "Progress: " + (progress != null ? progress : 0) + "%") + ")");
+                notif.setActionUrl("/manager/tasks/details/" + task.getId());
+                notif.setCreatedAt(LocalDateTime.now());
+                notif.setIsRead(false);
+                notificationRepository.save(notif);
+            }
+        } catch (Exception notifEx) {
+            System.err.println("Failed to send manager notification for task update: " + notifEx.getMessage());
+        }
+
         redirectAttributes.addFlashAttribute("success", "Task updated successfully!");
         return "redirect:/employee/tasks";
     }
 
     @RequestMapping(value = "/delete/{id}", method = RequestMethod.GET)
     public String deleteTask(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
+        User user = (User) session.getAttribute("user");
         Employee employee = (Employee) session.getAttribute("employee");
-        if (employee == null) {
+        if (user == null && employee == null) {
             return "redirect:/employee/login";
         }
 
+        // LOG-EMP-012: Regular employees are not authorized to delete assigned tasks
+        boolean isAuthorized = (user != null && ("ADMIN".equals(user.getRole()) || "MANAGER".equals(user.getRole())))
+                || (employee != null && Boolean.TRUE.equals(employee.getIsTeamLead()));
+
+        if (!isAuthorized) {
+            redirectAttributes.addFlashAttribute("error", "Unauthorized: Employees cannot delete assigned tasks. Please contact your manager or Team Lead.");
+            return "redirect:/employee/tasks";
+        }
+
         Optional<Task> taskOpt = taskRepository.findById(id);
-        if (taskOpt.isPresent() && taskOpt.get().getEmployee().getId().equals(employee.getId())) {
+        if (taskOpt.isPresent()) {
             taskRepository.deleteById(id);
             redirectAttributes.addFlashAttribute("success", "Task deleted successfully!");
         } else {
@@ -179,6 +223,22 @@ public class TaskController {
         if (content != null && !content.trim().isEmpty()) {
             TaskComment comment = new TaskComment(taskOpt.get(), employee.getName(), "EMPLOYEE", content);
             taskCommentRepository.save(comment);
+
+            // Notify managers about new task comment (LOG-MGR-008)
+            try {
+                List<User> managerUsers = userRepository.findByRole("MANAGER");
+                for (User mgr : managerUsers) {
+                    com.example.demo.model.Notification notif = new com.example.demo.model.Notification();
+                    notif.setUserRecipient(mgr);
+                    notif.setMessage("New Comment: " + employee.getName() + " commented on task '" + taskOpt.get().getTitle() + "'");
+                    notif.setActionUrl("/manager/tasks/details/" + taskId);
+                    notif.setCreatedAt(LocalDateTime.now());
+                    notif.setIsRead(false);
+                    notificationRepository.save(notif);
+                }
+            } catch (Exception notifEx) {
+                System.err.println("Failed to send manager notification for comment: " + notifEx.getMessage());
+            }
         }
 
         return "redirect:/employee/tasks/details/" + taskId;

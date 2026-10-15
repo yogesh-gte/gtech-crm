@@ -31,6 +31,9 @@ public class Notification {
     @Column(name = "meeting_id")
     private Long meetingId;
 
+    @Column(name = "action_url")
+    private String actionUrl;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -55,6 +58,13 @@ public class Notification {
         this.userRecipient = userRecipient;
         this.message = message;
         this.meetingId = meetingId;
+    }
+
+    public Notification(User userRecipient, String message, Long meetingId, String actionUrl) {
+        this.userRecipient = userRecipient;
+        this.message = message;
+        this.meetingId = meetingId;
+        this.actionUrl = actionUrl;
     }
 
     // Getters and Setters
@@ -112,5 +122,37 @@ public class Notification {
 
     public void setMeetingId(Long meetingId) {
         this.meetingId = meetingId;
+    }
+
+    public String getActionUrl() {
+        if (actionUrl != null && !actionUrl.isBlank()) {
+            return actionUrl;
+        }
+        if (meetingId != null) {
+            return "#";
+        }
+        if (message != null) {
+            String lower = message.toLowerCase();
+            if (lower.contains("suggestion")) {
+                return "/manager/dashboard?tab=suggestions";
+            }
+            if (lower.contains("task")) {
+                return "/manager/dashboard?tab=planning";
+            }
+            if (lower.contains("leave")) {
+                return "/manager/dashboard?tab=availability";
+            }
+            if (lower.contains("idle")) {
+                return "/manager/dashboard?tab=idle";
+            }
+            if (lower.contains("rule")) {
+                return "/manager/dashboard?tab=rules";
+            }
+        }
+        return "/manager/dashboard";
+    }
+
+    public void setActionUrl(String actionUrl) {
+        this.actionUrl = actionUrl;
     }
 }

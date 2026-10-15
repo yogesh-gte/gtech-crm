@@ -6,76 +6,121 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team Performance - LogSphere</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f7ff;
+            color: #333;
+            overflow-x: hidden;
+        }
+    </style>
 </head>
 
-<body class="bg-light">
-    <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
-        <a class="navbar-brand text-primary fw-bold" th:href="@{/manager/dashboard}">LogSphere</a>
-        <div>
-            <a th:href="@{/reports/export/performance}" class="btn btn-success btn-sm me-2"><i class="fas fa-file-csv me-1"></i> Export CSV</a>
-            <button type="button" class="btn btn-danger btn-sm me-2" onclick="window.print()"><i class="fas fa-file-pdf me-1"></i> Print / PDF</button>
-            <a th:href="@{/manager/dashboard}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+<body class="bg-light text-dark">
+    <!-- Shared Manager Sidebar (LOG-MGR-002, LOG-MGR-004) -->
+    <div th:replace="~{fragments/manager-sidebar :: sidebar('performance')}"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <button class="sidebar-toggle-btn me-2" onclick="toggleManagerSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2 class="fw-bold mb-0 text-primary">Team Performance Analytics</h2>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a th:href="@{/reports/export/performance}" class="btn btn-success btn-sm shadow-sm">
+                    <i class="fas fa-file-csv me-1"></i> Export CSV
+                </a>
+                <button type="button" class="btn btn-danger btn-sm shadow-sm" onclick="window.print()">
+                    <i class="fas fa-file-pdf me-1"></i> Print / PDF
+                </button>
+                <a th:href="@{/manager/dashboard}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Dashboard
+                </a>
+            </div>
         </div>
-    </nav>
-    <div class="container py-4">
-            <h4 class="mb-4">Team Performance</h4>
 
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-success text-white"><h6 class="mb-0">Top Performers</h6></div>
-                        <div class="list-group list-group-flush">
-                            <div th:each="r, i : ${topPerformers}" class="list-group-item d-flex justify-content-between">
-                                <span><span th:text="${i.count}">1</span>. <span th:text="${r.employee.name}">-</span></span>
-                                <span class="badge bg-success" th:text="${r.compositeScore != null ? #numbers.formatDecimal(r.compositeScore, 1, 1) : '-'}">-</span>
-                            </div>
-                            <div th:if="${topPerformers == null || topPerformers.isEmpty()}" class="list-group-item text-muted">No data yet.</div>
-                        </div>
-                    </div>
+        <!-- LOG-MGR-005: Idle Alert Banner if idle employees exist -->
+        <div th:if="${idleCount != null && idleCount > 0}" class="alert alert-danger d-flex justify-content-between align-items-center shadow-sm py-2 px-3 mb-4 rounded-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fas fa-exclamation-triangle text-danger fs-5"></i>
+                <div>
+                    <strong>Team Alert:</strong> <span th:text="${idleCount}">1</span> employee(s) currently marked as idle.
                 </div>
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-warning"><h6 class="mb-0">Needs Attention</h6></div>
-                        <div class="list-group list-group-flush">
-                            <div th:each="r : ${lowPerformers}" class="list-group-item d-flex justify-content-between">
-                                <span th:text="${r.employee.name}">-</span>
-                                <span class="badge bg-warning text-dark" th:text="${r.compositeScore != null ? #numbers.formatDecimal(r.compositeScore, 1, 1) : '-'}">-</span>
-                            </div>
-                            <div th:if="${lowPerformers == null || lowPerformers.isEmpty()}" class="list-group-item text-muted">No data yet.</div>
+            </div>
+            <button class="btn btn-sm btn-danger py-1 px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#idleEmployeesModal">
+                <i class="fas fa-eye me-1"></i> View Idle List
+            </button>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3 mb-md-0">
+                <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+                    <div class="card-header bg-success bg-opacity-10 py-3 border-0">
+                        <h6 class="mb-0 text-success fw-bold"><i class="fas fa-trophy me-2"></i> Top Performers</h6>
+                    </div>
+                    <div class="list-group list-group-flush rounded-bottom-4">
+                        <div th:each="r, i : ${topPerformers}" class="list-group-item d-flex justify-content-between align-items-center py-3">
+                            <span class="fw-medium text-dark"><span class="badge bg-light text-dark border me-2" th:text="${i.count}">1</span> <span th:text="${r.employee.name}">-</span></span>
+                            <span class="badge bg-success rounded-pill px-3 py-2" th:text="${r.compositeScore != null ? #numbers.formatDecimal(r.compositeScore, 1, 1) : '-'}">-</span>
                         </div>
+                        <div th:if="${topPerformers == null || topPerformers.isEmpty()}" class="list-group-item text-muted py-4 text-center">No data yet.</div>
                     </div>
                 </div>
             </div>
-
-            <div class="card">
-                <div class="card-header"><h6 class="mb-0">Full Team Performance (This Week)</h6></div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Employee</th>
-                                <th>Score</th>
-                                <th>Tasks</th>
-                                <th>Issues</th>
-                                <th>Attendance</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="r : ${teamPerformance}">
-                                <td th:text="${r.employee.name}">-</td>
-                                <td><span class="badge" th:classappend="${r.compositeScore != null && r.compositeScore >= 70} ? 'bg-success' : 'bg-warning'" th:text="${r.compositeScore != null ? #numbers.formatDecimal(r.compositeScore, 1, 1) : '-'}">-</span></td>
-                                <td th:text="|${r.tasksCompleted}/${r.tasksTotal}|">-</td>
-                                <td th:text="|${r.issuesCompleted}/${r.issuesTotal}|">-</td>
-                                <td th:text="${r.attendanceScore != null ? #numbers.formatDecimal(r.attendanceScore, 1, 1) + '%' : '-'}">-</td>
-                            </tr>
-                            <tr th:if="${teamPerformance == null || teamPerformance.isEmpty()}">
-                                <td colspan="5" class="text-center text-muted py-4">No performance data yet.</td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+                    <div class="card-header bg-warning bg-opacity-10 py-3 border-0">
+                        <h6 class="mb-0 text-warning text-dark fw-bold"><i class="fas fa-chart-line me-2"></i> Needs Attention</h6>
+                    </div>
+                    <div class="list-group list-group-flush rounded-bottom-4">
+                        <div th:each="r : ${lowPerformers}" class="list-group-item d-flex justify-content-between align-items-center py-3">
+                            <span class="fw-medium text-dark" th:text="${r.employee.name}">-</span>
+                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2" th:text="${r.compositeScore != null ? #numbers.formatDecimal(r.compositeScore, 1, 1) : '-'}">-</span>
+                        </div>
+                        <div th:if="${lowPerformers == null || lowPerformers.isEmpty()}" class="list-group-item text-muted py-4 text-center">No data yet.</div>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 bg-white mb-5">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-users text-primary me-2"></i> Full Team Performance (This Week)</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Employee</th>
+                            <th>Composite Score</th>
+                            <th>Tasks (Done/Total)</th>
+                            <th>Issues (Resolved/Total)</th>
+                            <th>Attendance Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="r : ${teamPerformance}">
+                            <td class="ps-4 fw-semibold text-dark" th:text="${r.employee.name}">-</td>
+                            <td><span class="badge rounded-pill px-3 py-2" th:classappend="${r.compositeScore != null && r.compositeScore >= 70} ? 'bg-success' : 'bg-warning text-dark'" th:text="${r.compositeScore != null ? #numbers.formatDecimal(r.compositeScore, 1, 1) : '-'}">-</span></td>
+                            <td class="text-secondary fw-medium" th:text="|${r.tasksCompleted}/${r.tasksTotal}|">-</td>
+                            <td class="text-secondary fw-medium" th:text="|${r.issuesCompleted}/${r.issuesTotal}|">-</td>
+                            <td class="text-secondary fw-medium" th:text="${r.attendanceScore != null ? #numbers.formatDecimal(r.attendanceScore, 1, 1) + '%' : '-'}">-</td>
+                        </tr>
+                        <tr th:if="${teamPerformance == null || teamPerformance.isEmpty()}">
+                            <td colspan="5" class="text-center text-muted py-4">No performance data yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

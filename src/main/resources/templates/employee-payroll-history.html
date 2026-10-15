@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Payslips - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+
+    <style>
+        :root {
+            --primary-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #0f1b2d;
+            --text-secondary: #64748b;
+            --brand-primary: #0d6efd;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .table thead th {
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Employee Portal Shared Sidebar -->
+    <div th:replace="~{fragments/employee-sidebar :: sidebar(activeTab='payslips')}"></div>
+
+    <div class="main-content">
+        <nav class="navbar navbar-expand-lg rounded-3 mb-4 p-3 shadow-sm bg-white">
+            <div class="container-fluid px-2">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="sidebar-toggle-btn me-2" type="button" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="navbar-brand mb-0 h4 fw-bold text-primary mb-0">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>My Payslips
+                    </span>
+                </div>
+                <div>
+                    <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm">Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid px-0 py-2">
+        <div class="row justify-content-center">
+            <div class="col-12">
+                <!-- Success/Error Messages -->
+                <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i> <span th:text="${success}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i> <span th:text="${error}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0 fw-bold text-dark">Payroll History</h5>
+                            <small class="text-secondary">View and download your monthly salary statements</small>
+                        </div>
+                        <span class="badge bg-primary bg-opacity-10 text-primary py-2 px-3 fw-semibold"
+                            th:text="|Employee: ${employee.name} (${employee.employeeId})|">
+                        </span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="ps-4">Period</th>
+                                        <th>Gross Salary</th>
+                                        <th>Deductions</th>
+                                        <th>Net Pay</th>
+                                        <th>Status</th>
+                                        <th class="text-end pe-4">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${payrolls == null || payrolls.isEmpty()}">
+                                        <td colspan="6" class="text-center text-muted py-5">
+                                            <i class="fas fa-receipt fa-2x mb-2 d-block text-secondary opacity-50"></i>
+                                            No payslips available yet.
+                                        </td>
+                                    </tr>
+                                    <tr th:each="p : ${payrolls}">
+                                        <td class="ps-4">
+                                            <div class="fw-bold text-dark" th:text="${p.month + ' / ' + p.year}">01 / 2026</div>
+                                            <small class="text-muted" th:if="${p.payPeriodStart != null and p.payPeriodEnd != null}"
+                                                th:text="${#temporals.format(p.payPeriodStart, 'dd MMM') + ' - ' + #temporals.format(p.payPeriodEnd, 'dd MMM yyyy')}"></small>
+                                        </td>
+                                        <td class="fw-medium" th:text="'₹' + ${#numbers.formatDecimal(p.grossSalary != null ? p.grossSalary : 0, 0, 2)}">₹0.00</td>
+                                        <td class="text-danger" th:text="'₹' + ${#numbers.formatDecimal(p.totalDeductions != null ? p.totalDeductions : 0, 0, 2)}">₹0.00</td>
+                                        <td class="fw-bold text-success" th:text="'₹' + ${#numbers.formatDecimal(p.netPay != null ? p.netPay : 0, 0, 2)}">₹0.00</td>
+                                        <td>
+                                            <span class="badge"
+                                                th:classappend="${p.payrollStatus.name() == 'PAID' or p.payrollStatus.name() == 'SENT' ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary'}"
+                                                th:text="${p.payrollStatus}">
+                                            </span>
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <a th:href="@{/employee/payroll/view/{id}(id=${p.id})}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye me-1"></i> View Payslip
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- /main-content -->
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

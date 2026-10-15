@@ -136,66 +136,18 @@
     </style>
 </head>
 
-<body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <h3>LogSphere</h3>
-        <ul class="nav flex-column">
-            <li class="nav-item">
-                <a class="nav-link" th:href="@{/}">
-                    <span>🏠</span> Home
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:href="@{/admin/dashboard}">
-                    <span>📊</span> Dashboard
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:href="@{/visitors/dashboard}">
-                    <span>👥</span> All Visitors
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:href="@{/meetings/list}">
-                    <span>🗓️</span> All Meetings
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:href="@{/reports}">
-                    <span>📈</span> View Reports
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:href="@{/meetings/create}">
-                    <span>📅</span> Create Meeting
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:href="@{/admin/employees}">
-                    <span>👨‍💼</span> Manage Employees
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link active" th:href="@{/admin/payroll}">
-                    <span>💰</span> Payroll
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:href="@{/employee/logs}">
-                    <span>📋</span> Employee Logs
-                </a>
-            </li>
-            <li class="nav-item mt-5 pt-3 border-top">
-                <a class="nav-link text-danger" th:href="@{/logout}">
-                    <span>🚪</span> Logout
-                </a>
-            </li>
-        </ul>
-    </div>
+    <!-- Shared Admin Sidebar Fragment -->
+    <div th:replace="~{fragments/admin-sidebar :: sidebar('payroll')}"></div>
 
     <!-- Main Content -->
     <div class="main-content">
+        <!-- Mobile Header Bar -->
+        <div class="mobile-header-bar d-lg-none">
+            <button class="sidebar-toggle-btn" type="button" onclick="toggleAdminSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <span class="fw-bold text-primary">Admin Payroll</span>
+        </div>
 
         <!-- Processed Stats Card -->
         <div class="row mb-4">
@@ -273,29 +225,42 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="addPayrollForm">
+                    <form id="addPayrollForm" onsubmit="return false;">
                         <div class="mb-3">
-                            <label for="employeeSelect" class="form-label">Employee</label>
-                            <select class="form-select" id="employeeSelect" required>
-                                <option value="" selected disabled>Select Employee</option>
-                                <!-- Options will be populated via JS -->
+                            <label for="employeeSearchInput" class="form-label fw-semibold">Employee <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                                <input type="text" class="form-control" id="employeeSearchInput" list="employeeDatalist"
+                                       placeholder="Type name or ID to search..." autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" id="clearEmployeeSearch" title="Clear search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <datalist id="employeeDatalist"></datalist>
+                            <select class="form-select mt-2" id="employeeSelect" required>
+                                <option value="" selected disabled>-- Select or search employee above --</option>
                             </select>
+                            <div class="form-text text-muted">Type manually to search by name/ID, or select directly from the list.</div>
                         </div>
                         <div class="mb-3">
                             <label for="employeeName" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="employeeName" readonly>
+                            <input type="text" class="form-control bg-light" id="employeeName" readonly>
                         </div>
                         <div class="mb-3">
                             <label for="employeeEmail" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="employeeEmail" readonly>
+                            <input type="email" class="form-control bg-light" id="employeeEmail" readonly>
                         </div>
                         <div class="mb-3">
                             <label for="employeeId" class="form-label">Employee ID</label>
-                            <input type="text" class="form-control" id="employeeId" readonly>
+                            <input type="text" class="form-control bg-light" id="employeeId" readonly>
                         </div>
                         <div class="mb-3">
-                            <label for="baseSalary" class="form-label">Base Salary</label>
-                            <input type="number" class="form-control" id="baseSalary" required>
+                            <label for="baseSalary" class="form-label fw-semibold">Base Salary <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="baseSalary" min="1" step="0.01" placeholder="Enter base salary (e.g. 50000)" required>
+                            </div>
+                            <div class="form-text text-muted">Base salary must be greater than zero.</div>
                         </div>
                     </form>
                 </div>
@@ -318,11 +283,27 @@
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const employeeSearchInput = document.getElementById('employeeSearchInput');
+            const clearEmployeeSearch = document.getElementById('clearEmployeeSearch');
+            const employeeDatalist = document.getElementById('employeeDatalist');
             const employeeSelect = document.getElementById('employeeSelect');
             const employeeName = document.getElementById('employeeName');
             const employeeEmail = document.getElementById('employeeEmail');
             const employeeId = document.getElementById('employeeId');
             const savePayrollBtn = document.getElementById('savePayrollBtn');
+            const baseSalaryInput = document.getElementById('baseSalary');
+
+            let allEmployeesList = [];
+
+            function populateSelectOptions(employees) {
+                employeeSelect.innerHTML = '<option value="" selected disabled>-- Select or search employee above --</option>';
+                employees.forEach(emp => {
+                    const opt = document.createElement('option');
+                    opt.value = emp.id;
+                    opt.textContent = emp.name + (emp.employeeId ? ' (' + emp.employeeId + ')' : '');
+                    employeeSelect.appendChild(opt);
+                });
+            }
 
             // Load employees when modal is opened
             const addPayrollModal = document.getElementById('addPayrollModal');
@@ -335,20 +316,27 @@
                         return response.json();
                     })
                     .then(data => {
-                        console.log('Fetched employees:', data);
-                        employeeSelect.innerHTML = '<option value="" selected disabled>Select Employee</option>';
-                        if (data && data.length > 0) {
-                            data.forEach(emp => {
+                        allEmployeesList = data || [];
+                        employeeDatalist.innerHTML = '';
+                        employeeSelect.innerHTML = '<option value="" selected disabled>-- Select or search employee above --</option>';
+
+                        if (allEmployeesList.length > 0) {
+                            allEmployeesList.forEach(emp => {
                                 if (emp && emp.id && emp.name) {
-                                    const option = document.createElement('option');
-                                    option.value = emp.id;
-                                    option.text = emp.name + (emp.employeeId ? ' (' + emp.employeeId + ')' : '');
-                                    employeeSelect.appendChild(option);
+                                    // Datalist option
+                                    const dlOpt = document.createElement('option');
+                                    dlOpt.value = emp.name + (emp.employeeId ? ' (' + emp.employeeId + ')' : '');
+                                    dlOpt.setAttribute('data-id', emp.id);
+                                    employeeDatalist.appendChild(dlOpt);
+
+                                    // Select option
+                                    const selOpt = document.createElement('option');
+                                    selOpt.value = emp.id;
+                                    selOpt.textContent = emp.name + (emp.employeeId ? ' (' + emp.employeeId + ')' : '');
+                                    employeeSelect.appendChild(selOpt);
                                 }
                             });
-                            console.log('Loaded ' + employeeSelect.options.length + ' employees');
                         } else {
-                            console.warn('No employees returned from API');
                             const option = document.createElement('option');
                             option.text = 'No employees available';
                             option.disabled = true;
@@ -362,18 +350,65 @@
 
                 // Reset form fields
                 document.getElementById('addPayrollForm').reset();
+                employeeSearchInput.value = '';
                 employeeName.value = '';
                 employeeEmail.value = '';
                 employeeId.value = '';
-                document.getElementById('baseSalary').value = '';
+                baseSalaryInput.value = '';
+            });
+
+            // Search and Manual Typing handler
+            employeeSearchInput.addEventListener('input', function () {
+                const query = this.value.trim().toLowerCase();
+                if (!query) {
+                    populateSelectOptions(allEmployeesList);
+                    employeeSelect.value = '';
+                    employeeSelect.dispatchEvent(new Event('change'));
+                    return;
+                }
+
+                // Check exact or partial matches
+                const matched = allEmployeesList.find(emp => {
+                    const full = (emp.name + ' (' + emp.employeeId + ')').toLowerCase();
+                    const name = (emp.name || '').toLowerCase();
+                    const eid = (emp.employeeId || '').toLowerCase();
+                    return full === query || name === query || eid === query;
+                });
+
+                if (matched) {
+                    populateSelectOptions(allEmployeesList);
+                    employeeSelect.value = matched.id;
+                    employeeSelect.dispatchEvent(new Event('change'));
+                } else {
+                    // Filter dropdown options dynamically based on query
+                    const filtered = allEmployeesList.filter(emp => {
+                        const name = (emp.name || '').toLowerCase();
+                        const eid = (emp.employeeId || '').toLowerCase();
+                        return name.includes(query) || eid.includes(query);
+                    });
+                    populateSelectOptions(filtered);
+                }
+            });
+
+            // Clear search button
+            clearEmployeeSearch.addEventListener('click', function () {
+                employeeSearchInput.value = '';
+                populateSelectOptions(allEmployeesList);
+                employeeSelect.value = '';
+                employeeSelect.dispatchEvent(new Event('change'));
+                employeeSearchInput.focus();
             });
 
             // Fetch employee details on selection
             employeeSelect.addEventListener('change', function () {
                 const empId = this.value;
-                const baseSalaryInput = document.getElementById('baseSalary');
                 if (empId) {
-                    // First get employee details
+                    const selectedEmp = allEmployeesList.find(e => String(e.id) === String(empId));
+                    if (selectedEmp && employeeSearchInput.value !== (selectedEmp.name + ' (' + selectedEmp.employeeId + ')')) {
+                        employeeSearchInput.value = selectedEmp.name + (selectedEmp.employeeId ? ' (' + selectedEmp.employeeId + ')' : '');
+                    }
+
+                    // Get employee details
                     const employeeApiUrl = contextPath.endsWith('/')
                         ? contextPath + 'admin/api/employees/' + empId
                         : contextPath + '/admin/api/employees/' + empId;
@@ -385,67 +420,56 @@
                                 employeeEmail.value = data.email || '';
                                 employeeId.value = data.employeeId || '';
 
-                                // Try to fetch base salary from payroll table first
+                                // Fetch base salary
                                 const payrollApiUrl = contextPath.endsWith('/')
                                     ? contextPath + 'admin/api/payroll/base-salary/' + empId
                                     : contextPath + '/admin/api/payroll/base-salary/' + empId;
                                 fetch(payrollApiUrl)
                                     .then(response => response.json())
                                     .then(payrollData => {
-                                        console.log('Payroll data:', payrollData);
                                         if (payrollData && payrollData.success && payrollData.baseSalary && payrollData.baseSalary > 0) {
                                             baseSalaryInput.value = payrollData.baseSalary;
-                                            // Admin should be able to edit the base salary
-                                            baseSalaryInput.removeAttribute('readonly');
-                                            baseSalaryInput.readOnly = false;
-                                            baseSalaryInput.classList.remove('bg-light');
                                         } else if (data.salary && data.salary > 0) {
-                                            // Fallback to employee's salary field
                                             baseSalaryInput.value = data.salary;
-                                            baseSalaryInput.removeAttribute('readonly');
-                                            baseSalaryInput.readOnly = false;
-                                            baseSalaryInput.classList.remove('bg-light');
                                         } else {
                                             baseSalaryInput.value = '';
-                                            baseSalaryInput.removeAttribute('readonly');
-                                            baseSalaryInput.readOnly = false;
-                                            baseSalaryInput.classList.remove('bg-light');
                                         }
                                     })
                                     .catch(error => {
                                         console.error('Error fetching payroll data:', error);
-                                        // Fallback to employee salary
                                         if (data.salary && data.salary > 0) {
                                             baseSalaryInput.value = data.salary;
                                         } else {
                                             baseSalaryInput.value = '';
                                         }
-                                        baseSalaryInput.removeAttribute('readonly');
-                                        baseSalaryInput.readOnly = false;
-                                        baseSalaryInput.classList.remove('bg-light');
                                     });
                             }
                         })
                         .catch(error => console.error('Error fetching employee details:', error));
                 } else {
-                    // Reset fields when no employee selected
+                    // Reset fields
                     employeeName.value = '';
                     employeeEmail.value = '';
                     employeeId.value = '';
                     baseSalaryInput.value = '';
-                    baseSalaryInput.removeAttribute('readonly');
-                    baseSalaryInput.readOnly = false;
-                    baseSalaryInput.classList.remove('bg-light');
                 }
             });
 
-            // Save Payroll
+            // Save Payroll with proper field validation
             savePayrollBtn.addEventListener('click', function () {
                 const empId = employeeSelect.value;
-                const salary = document.getElementById('baseSalary').value;
+                const salaryStr = baseSalaryInput.value.trim();
+                const salary = parseFloat(salaryStr);
 
-                if (!empId || !salary) {
-                    alert('Please fill in all required fields.');
+                if (!empId) {
+                    alert('Please select or search for an employee.');
+                    employeeSearchInput.focus();
+                    return;
+                }
+
+                if (!salaryStr || isNaN(salary) || salary <= 0) {
+                    alert('Please enter a valid base salary greater than 0.');
+                    baseSalaryInput.focus();
                     return;
                 }
 
@@ -461,7 +485,7 @@
                     .then(data => {
                         if (data.success) {
                             alert('Payroll saved successfully!');
-                            location.reload(); // Reload to show the new entry
+                            location.reload();
                         } else {
                             alert('Error: ' + data.message);
                         }

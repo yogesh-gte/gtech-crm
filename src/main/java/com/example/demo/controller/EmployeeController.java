@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -78,6 +79,9 @@ public class EmployeeController {
     private com.example.demo.service.PerformanceScoreService performanceScoreService;
 
     @Autowired
+    private com.example.demo.service.EffortScoreService effortScoreService;
+
+    @Autowired
     private com.example.demo.repository.TeamRepository teamRepository;
 
     @Autowired
@@ -89,13 +93,17 @@ public class EmployeeController {
     @Autowired
     private com.example.demo.repository.IssueRepository issueRepository;
 
-    @RequestMapping(value = "/dashboard", method = RequestMethod.GET)
+    @Autowired
+    private com.example.demo.repository.UserRepository userRepository;
 
+    @RequestMapping(value = "/dashboard", method = RequestMethod.GET)
     public String employeeDashboard(Model model, HttpSession session) {
-        Employee employee = (Employee) session.getAttribute("employee");
-        if (employee == null) {
+        Employee sessionEmp = (Employee) session.getAttribute("employee");
+        if (sessionEmp == null) {
             return "redirect:/employee/login";
         }
+        Employee employee = employeeRepository.findById(sessionEmp.getId()).orElse(sessionEmp);
+        session.setAttribute("employee", employee);
 
         // Check if employee has face image registered
         // Bypassing mandatory face registration for now
@@ -188,9 +196,10 @@ public class EmployeeController {
         List<Attendance> attendanceHistory = attendanceRepository.findByEmployee(employee);
 
         // Get pending visitor approvals count
+        final String currentEmpEmail = employee.getEmail();
         long pendingCount = visitorRepository.findAll().stream()
                 .filter(v -> "PENDING".equals(v.getApprovalStatus()) &&
-                        employee.getEmail().equals(v.getEmployeeEmail()))
+                        currentEmpEmail != null && currentEmpEmail.equals(v.getEmployeeEmail()))
                 .count();
 
         // Get leave requests for employee
@@ -206,8 +215,24 @@ public class EmployeeController {
         boolean onLeaveToday = approvedLeaves.stream()
                 .anyMatch(lr -> !today.isBefore(lr.getStartDate()) && !today.isAfter(lr.getEndDate()));
 
-        // Get leave balance
-        Integer leaveBalance = employee.getLeaveBalance() != null ? employee.getLeaveBalance() : 0;
+        // Dynamically recalculate leave balance (LOG-EMP-011)
+        int dynamicLeaveBalance = (employee.getPaidLeave() != null ? employee.getPaidLeave() : 0)
+                + (employee.getSickLeave() != null ? employee.getSickLeave() : 0)
+                + (employee.getCasualLeave() != null ? employee.getCasualLeave() : 0);
+        if (employee.getCustomLeaves() != null) {
+            for (Integer customCount : employee.getCustomLeaves().values()) {
+                if (customCount != null) dynamicLeaveBalance += customCount;
+            }
+        }
+        employee.setLeaveBalance(dynamicLeaveBalance);
+
+        // Dynamically calculate effort score including performance metrics (LOG-EMP-010)
+        double compositeEffortScore = effortScoreService.calculateEffortScore(employee, todayAttendance);
+        employee.setEffortScore(compositeEffortScore);
+        employee = employeeRepository.save(employee);
+        session.setAttribute("employee", employee);
+
+        Integer leaveBalance = dynamicLeaveBalance;
 
         // Get today's activities
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
@@ -463,6 +488,8 @@ public class EmployeeController {
 
     @RequestMapping(value = "/checkout", method = RequestMethod.POST)
     public String checkOut(@RequestParam(required = false) String workMode,
+            @RequestParam(required = false) String dailySummary,
+            @RequestParam(required = false) Integer tasksCompleted,
             HttpSession session, RedirectAttributes redirectAttributes) {
         // Get employee ID from session
         String employeeId = (String) session.getAttribute("employeeId");
@@ -571,8 +598,142 @@ public class EmployeeController {
         employee.setIdleAlertSent(false); // Reset idle alert when checking in
         employeeRepository.save(employee);
 
+        // Record Daily Summary Activity (LOG-EMP-003)
+        if (dailySummary != null && !dailySummary.trim().isEmpty()) {
+            try {
+                com.example.demo.model.EmployeeActivity act = new com.example.demo.model.EmployeeActivity();
+                act.setEmployee(employee);
+                act.setActivityType("DAILY_SUMMARY");
+                String desc = dailySummary.trim();
+                if (tasksCompleted != null && tasksCompleted > 0) {
+                    desc += " [Tasks Completed: " + tasksCompleted + "]";
+                }
+                act.setActivityDescription(desc);
+                act.setIsProductive(true);
+                act.setStartedAt(now);
+                employeeActivityRepository.save(act);
+            } catch (Exception e) {
+                System.err.println("Could not save daily summary: " + e.getMessage());
+            }
+        }
+
         redirectAttributes.addFlashAttribute("success", "Clocked out successfully at " + now.toLocalTime());
         return "redirect:/employee/dashboard";
+    }
+
+    @RequestMapping(value = {"/attendance/manual", "/manual-attendance", "/attendance"}, method = RequestMethod.GET)
+    public String manualAttendance(Model model, HttpSession session) {
+        Employee sessionEmp = (Employee) session.getAttribute("employee");
+        if (sessionEmp == null) {
+            return "redirect:/employee/login";
+        }
+        Employee employee = employeeRepository.findById(sessionEmp.getId()).orElse(sessionEmp);
+        session.setAttribute("employee", employee);
+
+        LocalDate today = LocalDate.now();
+        List<Attendance> todayAttendances = attendanceRepository.findByEmployeeAndAttendanceDate(employee, today);
+        Attendance todayAttendance = todayAttendances.isEmpty() ? null : todayAttendances.get(0);
+        List<Attendance> attendanceHistory = attendanceRepository.findByEmployee(employee);
+
+        model.addAttribute("employee", employee);
+        model.addAttribute("todayAttendance", todayAttendance);
+        model.addAttribute("attendanceHistory", attendanceHistory);
+        model.addAttribute("recentAttendance", attendanceHistory);
+        model.addAttribute("today", today.toString());
+        model.addAttribute("notifications", notificationRepository.findByRecipientAndIsReadFalseOrderByCreatedAtDesc(employee));
+
+        return "employee-manual-attendance";
+    }
+
+    @RequestMapping(value = {"/attendance/manual", "/manual-attendance"}, method = RequestMethod.POST)
+    public String submitManualAttendance(@RequestParam String attendanceDate,
+                                         @RequestParam String checkInTime,
+                                         @RequestParam(required = false) String checkOutTime,
+                                         @RequestParam(required = false, defaultValue = "OFFICE") String workMode,
+                                         @RequestParam(required = false) String reason,
+                                         HttpSession session,
+                                         RedirectAttributes redirectAttributes) {
+        Employee sessionEmp = (Employee) session.getAttribute("employee");
+        if (sessionEmp == null) {
+            return "redirect:/employee/login";
+        }
+        Employee employee = employeeRepository.findById(sessionEmp.getId()).orElse(sessionEmp);
+
+        try {
+            LocalDate date = LocalDate.parse(attendanceDate);
+            if (date.isAfter(LocalDate.now())) {
+                redirectAttributes.addFlashAttribute("error", "Attendance date cannot be in the future!");
+                return "redirect:/employee/attendance/manual";
+            }
+
+            LocalTime inTime = LocalTime.parse(checkInTime);
+            LocalDateTime inDateTime = LocalDateTime.of(date, inTime);
+            LocalDateTime outDateTime = null;
+            Double totalHours = 0.0;
+
+            if (checkOutTime != null && !checkOutTime.trim().isEmpty()) {
+                LocalTime outTime = LocalTime.parse(checkOutTime);
+                if (outTime.isBefore(inTime)) {
+                    redirectAttributes.addFlashAttribute("error", "Check-out time cannot be before check-in time!");
+                    return "redirect:/employee/attendance/manual";
+                }
+                outDateTime = LocalDateTime.of(date, outTime);
+                long minutes = ChronoUnit.MINUTES.between(inDateTime, outDateTime);
+                totalHours = minutes / 60.0;
+            }
+
+            List<Attendance> existingList = attendanceRepository.findByEmployeeAndAttendanceDate(employee, date);
+            Attendance attendance = existingList.isEmpty() ? new Attendance(employee, date) : existingList.get(0);
+
+            attendance.setCheckInTime(inDateTime);
+            attendance.setCheckOutTime(outDateTime);
+            attendance.setWorkMode(workMode);
+            attendance.setTotalHours(totalHours);
+
+            LocalTime scheduledStart = LocalTime.of(9, 0);
+            if (employee.getScheduledStartTime() != null && !employee.getScheduledStartTime().isEmpty()) {
+                try {
+                    scheduledStart = LocalTime.parse(employee.getScheduledStartTime());
+                } catch (Exception ignored) {}
+            }
+            if (inTime.isAfter(scheduledStart)) {
+                attendance.setStatus("LATE");
+            } else {
+                attendance.setStatus("PRESENT");
+            }
+
+            attendanceRepository.save(attendance);
+
+            if (reason != null && !reason.trim().isEmpty()) {
+                com.example.demo.model.EmployeeActivity act = new com.example.demo.model.EmployeeActivity();
+                act.setEmployee(employee);
+                act.setActivityType("MANUAL_ATTENDANCE");
+                act.setActivityDescription("Manual Attendance Entry for " + date + ": " + reason.trim());
+                act.setIsProductive(true);
+                act.setStartedAt(LocalDateTime.now());
+                employeeActivityRepository.save(act);
+            }
+
+            // If today, also update employee status
+            if (date.equals(LocalDate.now())) {
+                if (outDateTime != null) {
+                    employee.setStatus("OUT");
+                    employee.setCurrentCheckOut(outDateTime);
+                } else {
+                    employee.setStatus("IN");
+                    employee.setCurrentCheckIn(inDateTime);
+                }
+                employee.setWorkMode(workMode);
+                employeeRepository.save(employee);
+                session.setAttribute("employee", employee);
+            }
+
+            redirectAttributes.addFlashAttribute("success", "Manual attendance for " + date + " recorded successfully!");
+            return "redirect:/employee/attendance/manual";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Failed to record manual attendance: " + e.getMessage());
+            return "redirect:/employee/attendance/manual";
+        }
     }
 
     @RequestMapping(value = "/attendance/history", method = RequestMethod.GET)
@@ -595,7 +756,7 @@ public class EmployeeController {
         return "employee-attendance-history";
     }
 
-    @RequestMapping(value = "/payroll/history", method = RequestMethod.GET)
+    @RequestMapping(value = {"/payroll/history", "/payroll", "/payslip", "/payslips"}, method = RequestMethod.GET)
     public String payrollHistory(Model model, HttpSession session) {
         Employee employee = (Employee) session.getAttribute("employee");
         if (employee == null) {
@@ -604,8 +765,13 @@ public class EmployeeController {
 
         List<com.example.demo.model.Payroll> payrolls = payrollRepository
                 .findByEmployee(employee).stream()
-                .filter(p -> p.getPayrollStatus() == com.example.demo.model.Payroll.PayrollStatus.SENT)
-                .sorted((p1, p2) -> p2.getPayPeriodStart().compareTo(p1.getPayPeriodStart()))
+                .filter(p -> p.getPayrollStatus() == com.example.demo.model.Payroll.PayrollStatus.SENT
+                        || p.getPayrollStatus() == com.example.demo.model.Payroll.PayrollStatus.APPROVED
+                        || p.getPayrollStatus() == com.example.demo.model.Payroll.PayrollStatus.PAID)
+                .sorted((p1, p2) -> {
+                    if (p1.getPayPeriodStart() == null || p2.getPayPeriodStart() == null) return 0;
+                    return p2.getPayPeriodStart().compareTo(p1.getPayPeriodStart());
+                })
                 .collect(java.util.stream.Collectors.toList());
 
         model.addAttribute("employee", employee);
@@ -616,7 +782,7 @@ public class EmployeeController {
         return "employee-payroll-history";
     }
 
-    @RequestMapping(value = "/payroll/view/{id}", method = RequestMethod.GET)
+    @RequestMapping(value = {"/payroll/view/{id}", "/payslip/view/{id}", "/payslip/{id}"}, method = RequestMethod.GET)
     public String viewPayslip(@PathVariable Long id, Model model, HttpSession session,
             RedirectAttributes redirectAttributes) {
         Employee employee = (Employee) session.getAttribute("employee");
@@ -632,8 +798,7 @@ public class EmployeeController {
 
         com.example.demo.model.Payroll payroll = payrollOpt.get();
 
-        if (!payroll.getEmployee().getId().equals(employee.getId())
-                || payroll.getPayrollStatus() != com.example.demo.model.Payroll.PayrollStatus.SENT) {
+        if (!payroll.getEmployee().getId().equals(employee.getId())) {
             redirectAttributes.addFlashAttribute("error", "Unauthorized access to payslip.");
             return "redirect:/employee/payroll/history";
         }
@@ -662,21 +827,41 @@ public class EmployeeController {
         }
 
         List<Attendance> allLogs;
+        LocalDate parsedStart = null;
+        LocalDate parsedEnd = null;
 
-        if (employeeId != null && !employeeId.isEmpty()) {
-            Optional<Employee> emp = employeeRepository.findByEmployeeId(employeeId);
+        if (startDate != null && !startDate.trim().isEmpty()) {
+            try {
+                parsedStart = LocalDate.parse(startDate.trim());
+            } catch (Exception e) {
+                model.addAttribute("error", "Invalid start date format");
+            }
+        }
+        if (endDate != null && !endDate.trim().isEmpty()) {
+            try {
+                parsedEnd = LocalDate.parse(endDate.trim());
+            } catch (Exception e) {
+                model.addAttribute("error", "Invalid end date format");
+            }
+        }
+
+        if (parsedStart != null && parsedEnd != null && parsedStart.isAfter(parsedEnd)) {
+            model.addAttribute("error", "Start date cannot be after end date");
+            allLogs = java.util.Collections.emptyList();
+        } else if (employeeId != null && !employeeId.trim().isEmpty()) {
+            Optional<Employee> emp = employeeRepository.findByEmployeeId(employeeId.trim());
             if (emp.isPresent()) {
-                if (startDate != null && endDate != null && !startDate.isEmpty() && !endDate.isEmpty()) {
+                if (parsedStart != null && parsedEnd != null) {
                     allLogs = attendanceRepository.findByEmployeeAndDateRange(
-                            emp.get(), LocalDate.parse(startDate), LocalDate.parse(endDate));
+                            emp.get(), parsedStart, parsedEnd);
                 } else {
                     allLogs = attendanceRepository.findByEmployee(emp.get());
                 }
             } else {
-                allLogs = attendanceRepository.findAll();
+                allLogs = java.util.Collections.emptyList();
             }
-        } else if (startDate != null && endDate != null && !startDate.isEmpty() && !endDate.isEmpty()) {
-            allLogs = attendanceRepository.findByDateRange(LocalDate.parse(startDate), LocalDate.parse(endDate));
+        } else if (parsedStart != null && parsedEnd != null) {
+            allLogs = attendanceRepository.findByDateRange(parsedStart, parsedEnd);
         } else {
             allLogs = attendanceRepository.findAll();
         }
@@ -1070,17 +1255,29 @@ public class EmployeeController {
 
     @RequestMapping(value = "/leave/apply", method = RequestMethod.GET)
     public String showLeaveApplicationForm(Model model, HttpSession session) {
-        Employee employee = (Employee) session.getAttribute("employee");
-        if (employee == null) {
+        Employee sessionEmp = (Employee) session.getAttribute("employee");
+        if (sessionEmp == null) {
             return "redirect:/employee/login";
         }
+        Employee employee = employeeRepository.findById(sessionEmp.getId()).orElse(sessionEmp);
+
+        int dynamicBal = (employee.getPaidLeave() != null ? employee.getPaidLeave() : 0)
+                + (employee.getSickLeave() != null ? employee.getSickLeave() : 0)
+                + (employee.getCasualLeave() != null ? employee.getCasualLeave() : 0);
+        if (employee.getCustomLeaves() != null) {
+            for (Integer cVal : employee.getCustomLeaves().values()) {
+                if (cVal != null) dynamicBal += cVal;
+            }
+        }
+        employee.setLeaveBalance(dynamicBal);
+        employee = employeeRepository.save(employee);
+        session.setAttribute("employee", employee);
 
         List<com.example.demo.model.LeaveRequest> leaveRequests = leaveRequestRepository.findByEmployee(employee);
-        Integer leaveBalance = employee.getLeaveBalance() != null ? employee.getLeaveBalance() : 0;
 
         model.addAttribute("employee", employee);
         model.addAttribute("leaveRequests", leaveRequests);
-        model.addAttribute("leaveBalance", leaveBalance);
+        model.addAttribute("leaveBalance", dynamicBal);
 
         return "employee-leave-apply";
     }
@@ -1088,22 +1285,60 @@ public class EmployeeController {
     @RequestMapping(value = "/leave/apply", method = RequestMethod.POST)
     public String applyForLeave(@RequestParam String leaveType,
             @RequestParam String startDate,
-            @RequestParam String endDate,
+            @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String reason,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
-        Employee employee = (Employee) session.getAttribute("employee");
-        if (employee == null) {
+        Employee sessionEmp = (Employee) session.getAttribute("employee");
+        if (sessionEmp == null) {
             return "redirect:/employee/login";
         }
+        Employee employee = employeeRepository.findById(sessionEmp.getId()).orElse(sessionEmp);
 
         try {
+            // If paid leave, endDate can be omitted or same as startDate (LOG-EMP-005)
+            if ("PAID".equalsIgnoreCase(leaveType)) {
+                if (endDate == null || endDate.trim().isEmpty()) {
+                    endDate = startDate;
+                }
+            } else if (endDate == null || endDate.trim().isEmpty()) {
+                endDate = startDate;
+            }
+
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
+
+            // LOG-EMP-006: Calendar date validation
+            if (start.isBefore(LocalDate.now())) {
+                redirectAttributes.addFlashAttribute("error", "Leave date cannot be in the past!");
+                return "redirect:/employee/leave/apply";
+            }
 
             if (end.isBefore(start)) {
                 redirectAttributes.addFlashAttribute("error", "End date cannot be before start date!");
                 return "redirect:/employee/leave/apply";
+            }
+
+            // LOG-EMP-005: Enforce single date and 1-per-month limit for Paid Leave
+            if ("PAID".equalsIgnoreCase(leaveType)) {
+                if (!start.isEqual(end)) {
+                    redirectAttributes.addFlashAttribute("error", "Paid Leave is strictly limited to 1 single day per month!");
+                    return "redirect:/employee/leave/apply";
+                }
+
+                List<com.example.demo.model.LeaveRequest> existingLeaves = leaveRequestRepository.findByEmployee(employee);
+                boolean alreadyUsedThisMonth = existingLeaves.stream()
+                        .filter(lr -> "PAID".equalsIgnoreCase(lr.getLeaveType()))
+                        .filter(lr -> !"REJECTED".equalsIgnoreCase(lr.getStatus()))
+                        .anyMatch(lr -> lr.getStartDate() != null &&
+                                lr.getStartDate().getYear() == start.getYear() &&
+                                lr.getStartDate().getMonthValue() == start.getMonthValue());
+
+                if (alreadyUsedThisMonth) {
+                    redirectAttributes.addFlashAttribute("error", "You have already applied for or used your 1 Paid Leave for " 
+                            + start.getMonth().name() + " " + start.getYear() + "!");
+                    return "redirect:/employee/leave/apply";
+                }
             }
 
             // Calculate requested days excluding weekends and holidays
@@ -1112,7 +1347,6 @@ public class EmployeeController {
                 .map(com.example.demo.model.CompanyHoliday::getDate)
                 .collect(java.util.stream.Collectors.toSet());
 
-            
             long daysRequested = 0;
             LocalDate currentDate = start;
             while (!currentDate.isAfter(end)) {
@@ -1128,6 +1362,11 @@ public class EmployeeController {
                 return "redirect:/employee/leave/apply";
             }
 
+            if ("PAID".equalsIgnoreCase(leaveType) && daysRequested > 1) {
+                redirectAttributes.addFlashAttribute("error", "Paid leave is limited to 1 day per month!");
+                return "redirect:/employee/leave/apply";
+            }
+
             int availableBalance = 0;
 
             if ("PAID".equals(leaveType)) {
@@ -1140,15 +1379,7 @@ public class EmployeeController {
                 availableBalance = employee.getCustomLeaves().get(leaveType);
             } else if ("EMERGENCY".equals(leaveType) || "MATERNITY".equals(leaveType)
                     || "PATERNITY".equals(leaveType)) {
-                // These might not have strict limits or tracked differently, defaulting to
-                // allow for now or check if they exist in custom leaves if migrated
-                // For now, if it's not one of the standard tracked ones and not in custom, we
-                // might assume it's special/unlimited or 0.
-                // Let's assume 0 if not found, unless it is a special type that doesn't consume
-                // balance.
-                // But wait, the user's issue is specific to fetching leaves.
-                // Let's allow EMERGENCY for now as it was before.
-                availableBalance = 100; // Arbitrary high number or handling logic
+                availableBalance = 100;
             }
 
             if (daysRequested > availableBalance) {
@@ -1163,11 +1394,56 @@ public class EmployeeController {
             leaveRequest.setLeaveType(leaveType);
             leaveRequest.setStartDate(start);
             leaveRequest.setEndDate(end);
-            leaveRequest.setNumberOfDays((int) daysRequested); // Ensure this field exists or sets correctly
+            leaveRequest.setNumberOfDays((int) daysRequested);
             leaveRequest.setReason(reason);
             leaveRequest.setStatus("PENDING");
 
             leaveRequestRepository.save(leaveRequest);
+
+            // Notify HR and Manager users about new leave application (LOG-MGR-008)
+            try {
+                List<com.example.demo.model.User> recipients = new ArrayList<>();
+                recipients.addAll(userRepository.findByRole("HR"));
+                recipients.addAll(userRepository.findByRole("MANAGER"));
+                for (com.example.demo.model.User userRecipient : recipients) {
+                    com.example.demo.model.Notification notif = new com.example.demo.model.Notification();
+                    notif.setUserRecipient(userRecipient);
+                    notif.setMessage("Leave Request: " + employee.getName() + " applied for " + leaveType + " (" + daysRequested + " day" + (daysRequested > 1 ? "s" : "") + ")");
+                    notif.setActionUrl("/manager/dashboard?tab=availability");
+                    notif.setCreatedAt(java.time.LocalDateTime.now());
+                    notif.setIsRead(false);
+                    notificationRepository.save(notif);
+                }
+            } catch (Exception notifEx) {
+                System.err.println("Failed to send notification for leave: " + notifEx.getMessage());
+            }
+
+            // Deduct leave balance immediately so it reflects on the dashboard (LOG-EMP-011)
+            if ("PAID".equals(leaveType)) {
+                int current = employee.getPaidLeave() != null ? employee.getPaidLeave() : 0;
+                employee.setPaidLeave(Math.max(0, current - (int) daysRequested));
+            } else if ("SICK".equals(leaveType)) {
+                int current = employee.getSickLeave() != null ? employee.getSickLeave() : 0;
+                employee.setSickLeave(Math.max(0, current - (int) daysRequested));
+            } else if ("CASUAL".equals(leaveType)) {
+                int current = employee.getCasualLeave() != null ? employee.getCasualLeave() : 0;
+                employee.setCasualLeave(Math.max(0, current - (int) daysRequested));
+            } else if (employee.getCustomLeaves() != null && employee.getCustomLeaves().containsKey(leaveType)) {
+                int current = employee.getCustomLeaves().get(leaveType);
+                employee.getCustomLeaves().put(leaveType, Math.max(0, current - (int) daysRequested));
+            }
+
+            int curTotal = (employee.getPaidLeave() != null ? employee.getPaidLeave() : 0)
+                    + (employee.getSickLeave() != null ? employee.getSickLeave() : 0)
+                    + (employee.getCasualLeave() != null ? employee.getCasualLeave() : 0);
+            if (employee.getCustomLeaves() != null) {
+                for (Integer customCount : employee.getCustomLeaves().values()) {
+                    if (customCount != null) curTotal += customCount;
+                }
+            }
+            employee.setLeaveBalance(Math.max(0, curTotal));
+            employee = employeeRepository.save(employee);
+            session.setAttribute("employee", employee);
 
             redirectAttributes.addFlashAttribute("success",
                     "Leave application submitted successfully! It will be reviewed by HR.");
@@ -1185,6 +1461,18 @@ public class EmployeeController {
             return "redirect:/employee/login";
         }
 
+        int dynamicBal = (employee.getPaidLeave() != null ? employee.getPaidLeave() : 0)
+                + (employee.getSickLeave() != null ? employee.getSickLeave() : 0)
+                + (employee.getCasualLeave() != null ? employee.getCasualLeave() : 0);
+        if (employee.getCustomLeaves() != null) {
+            for (Integer cVal : employee.getCustomLeaves().values()) {
+                if (cVal != null) dynamicBal += cVal;
+            }
+        }
+        employee.setLeaveBalance(dynamicBal);
+        employee = employeeRepository.save(employee);
+        session.setAttribute("employee", employee);
+
         List<com.example.demo.model.LeaveRequest> leaveRequests = leaveRequestRepository.findByEmployee(employee);
         List<com.example.demo.model.LeaveRequest> pendingLeaves = leaveRequests.stream()
                 .filter(lr -> "PENDING".equals(lr.getStatus()))
@@ -1192,13 +1480,12 @@ public class EmployeeController {
         List<com.example.demo.model.LeaveRequest> approvedLeaves = leaveRequests.stream()
                 .filter(lr -> "APPROVED".equals(lr.getStatus()))
                 .collect(java.util.stream.Collectors.toList());
-        Integer leaveBalance = employee.getLeaveBalance() != null ? employee.getLeaveBalance() : 0;
 
         model.addAttribute("employee", employee);
         model.addAttribute("leaveRequests", leaveRequests);
         model.addAttribute("pendingLeaves", pendingLeaves);
         model.addAttribute("approvedLeaves", approvedLeaves);
-        model.addAttribute("leaveBalance", leaveBalance);
+        model.addAttribute("leaveBalance", dynamicBal);
 
         return "employee-leave-history";
     }
@@ -1238,6 +1525,24 @@ public class EmployeeController {
             suggestion.setStatus("PENDING");
 
             suggestionRepository.save(suggestion);
+
+            // Notify HR and Manager users about new suggestion (LOG-MGR-008)
+            try {
+                List<com.example.demo.model.User> recipients = new ArrayList<>();
+                recipients.addAll(userRepository.findByRole("HR"));
+                recipients.addAll(userRepository.findByRole("MANAGER"));
+                for (com.example.demo.model.User userRecipient : recipients) {
+                    com.example.demo.model.Notification notif = new com.example.demo.model.Notification();
+                    notif.setUserRecipient(userRecipient);
+                    notif.setMessage("New Suggestion from " + employee.getName() + ": " + title);
+                    notif.setActionUrl("/manager/dashboard?tab=suggestions");
+                    notif.setCreatedAt(java.time.LocalDateTime.now());
+                    notif.setIsRead(false);
+                    notificationRepository.save(notif);
+                }
+            } catch (Exception notifEx) {
+                System.err.println("Failed to send notification for suggestion: " + notifEx.getMessage());
+            }
 
             redirectAttributes.addFlashAttribute("success",
                     "Suggestion submitted successfully! It will be reviewed by HR and Management.");

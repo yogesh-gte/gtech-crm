@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Attendance - LogSphere</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f7ff;
+            color: #0f1b2d;
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            background-color: #ffffff;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1.25rem;
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #334155;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            border: 1px solid #cbd5e1;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <!-- Employee Portal Shared Sidebar -->
+    <div th:replace="~{fragments/employee-sidebar :: sidebar(activeTab='manual-attendance')}"></div>
+
+    <div class="main-content">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg rounded-3 mb-4 p-3 shadow-sm bg-white">
+            <div class="container-fluid px-2">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="sidebar-toggle-btn me-2" type="button" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="navbar-brand mb-0 h4 fw-bold text-primary mb-0">
+                        <i class="fas fa-edit me-2"></i>Manual Attendance
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <a th:href="@{/employee/attendance/history}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-history me-1"></i> Attendance History
+                    </a>
+                    <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-sign-out-alt me-1"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid px-0 pb-5">
+        <!-- Alerts -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-check-circle me-2"></i> <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i> <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row g-4">
+            <!-- Manual Entry Form -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="fas fa-edit me-2 text-primary"></i>Log Manual Attendance
+                        </h5>
+                        <small class="text-muted">Submit attendance for approval or record correction</small>
+                    </div>
+                    <div class="card-body p-4">
+                        <form th:action="@{/employee/attendance/manual}" method="post" id="manualAttendanceForm" onsubmit="return validateManualForm()">
+                            <div class="mb-3">
+                                <label for="attendanceDate" class="form-label">Attendance Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="attendanceDate" name="attendanceDate" 
+                                       th:value="${today}" th:max="${today}" required>
+                                <small class="text-muted">Cannot select future dates.</small>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label for="checkInTime" class="form-label">Check-In Time <span class="text-danger">*</span></label>
+                                    <input type="time" class="form-control" id="checkInTime" name="checkInTime" value="09:00" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="checkOutTime" class="form-label">Check-Out Time</label>
+                                    <input type="time" class="form-control" id="checkOutTime" name="checkOutTime" value="18:00">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Work Mode <span class="text-danger">*</span></label>
+                                <select class="form-select" name="workMode" id="workMode" required>
+                                    <option value="OFFICE" selected>Office</option>
+                                    <option value="WORK_FROM_HOME">Work From Home (WFH)</option>
+                                    <option value="ON_SITE">On-Site Client Location</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="reason" class="form-label">Reason / Work Done Summary <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="reason" name="reason" rows="3" 
+                                          placeholder="Explain why manual attendance was needed and summary of tasks completed..." required minlength="5"></textarea>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg py-2">
+                                    <i class="fas fa-check-circle me-1"></i> Submit Manual Attendance
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today's Status & Overview -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="fas fa-info-circle me-2 text-info"></i>Today's Attendance Status
+                        </h5>
+                    </div>
+                    <div class="card-body p-4 text-center">
+                        <div class="mb-3">
+                            <span th:if="${employee.status == 'IN'}" class="badge bg-success bg-opacity-10 text-success fs-5 px-4 py-2 border border-success">
+                                <i class="fas fa-check-circle me-1"></i> CLOCKED IN
+                            </span>
+                            <span th:if="${employee.status == 'OUT'}" class="badge bg-secondary bg-opacity-10 text-secondary fs-5 px-4 py-2 border border-secondary">
+                                <i class="fas fa-circle me-1"></i> CLOCKED OUT
+                            </span>
+                        </div>
+                        <div class="row g-2 text-start mt-3">
+                            <div class="col-6">
+                                <div class="p-3 bg-light rounded">
+                                    <small class="text-muted d-block">Employee ID</small>
+                                    <span class="fw-bold" th:text="${employee.employeeId}"></span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-3 bg-light rounded">
+                                    <small class="text-muted d-block">Department</small>
+                                    <span class="fw-bold" th:text="${employee.department}"></span>
+                                </div>
+                            </div>
+                            <div class="col-6 mt-2">
+                                <div class="p-3 bg-light rounded">
+                                    <small class="text-muted d-block">Shift Schedule</small>
+                                    <span class="fw-bold" th:text="${employee.scheduledStartTime != null ? employee.scheduledStartTime + ' - ' + employee.scheduledEndTime : '09:00 - 18:00'}"></span>
+                                </div>
+                            </div>
+                            <div class="col-6 mt-2">
+                                <div class="p-3 bg-light rounded">
+                                    <small class="text-muted d-block">Work Mode</small>
+                                    <span class="fw-bold" th:text="${employee.workMode != null ? employee.workMode : 'OFFICE'}"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Attendance Records -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-dark">Recent Records</h5>
+                        <a th:href="@{/employee/attendance/history}" class="btn btn-sm btn-link text-decoration-none">View All</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Date</th>
+                                        <th>In</th>
+                                        <th>Out</th>
+                                        <th>Hours</th>
+                                        <th>Mode</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${recentAttendance == null || recentAttendance.isEmpty()}">
+                                        <td colspan="5" class="text-center text-muted py-3">No attendance records found</td>
+                                    </tr>
+                                    <tr th:each="att, iterStat : ${recentAttendance}" th:if="${iterStat.index < 5}">
+                                        <td class="ps-3 fw-medium" th:text="${att.attendanceDate}"></td>
+                                        <td class="text-success" th:text="${att.checkInTime != null ? #temporals.format(att.checkInTime, 'HH:mm') : '-'}"></td>
+                                        <td class="text-danger" th:text="${att.checkOutTime != null ? #temporals.format(att.checkOutTime, 'HH:mm') : '-'}"></td>
+                                        <td th:text="${att.totalHours != null ? #numbers.formatDecimal(att.totalHours, 1, 1) + 'h' : '-'}"></td>
+                                        <td><span class="badge bg-light text-dark border" th:text="${att.workMode != null ? att.workMode : 'OFFICE'}"></span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- /main-content -->
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function validateManualForm() {
+            const inTime = document.getElementById('checkInTime').value;
+            const outTime = document.getElementById('checkOutTime').value;
+            if (inTime && outTime && outTime < inTime) {
+                alert('Check-Out time cannot be earlier than Check-In time.');
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+
+</html>
