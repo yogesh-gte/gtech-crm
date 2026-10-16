@@ -9,6 +9,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,6 +36,9 @@ public class HRController {
 
     @Autowired(required = false)
     private com.example.demo.service.SessionSecurityService sessionSecurityService;
+
+    @Autowired(required = false)
+    private com.example.demo.service.RateLimiterService rateLimiterService;
 
     @Autowired
     private AttendanceRepository attendanceRepository;
@@ -95,11 +100,15 @@ public class HRController {
             HttpSession session,
             RedirectAttributes redirectAttributes) {
 
+        String clientIp = rateLimiterService != null ? rateLimiterService.resolveClientIp(request) : (request != null ? request.getRemoteAddr() : "127.0.0.1");
         Optional<User> userOptional = userRepository.findByEmail(email);
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             if (!"HR".equals(user.getRole())) {
+                if (rateLimiterService != null) {
+                    rateLimiterService.recordLoginFailure(clientIp, email);
+                }
                 redirectAttributes.addFlashAttribute("error", "Access denied. HR login only.");
                 return "redirect:/hr/login";
             }
@@ -109,6 +118,10 @@ public class HRController {
             });
 
             if (passwordMatches) {
+                if (rateLimiterService != null) {
+                    rateLimiterService.recordLoginSuccess(clientIp, email);
+                }
+
                 HttpSession activeSession;
                 if (sessionSecurityService != null && request != null) {
                     activeSession = sessionSecurityService.rotateSession(request);
@@ -132,10 +145,16 @@ public class HRController {
                 }
                 return "redirect:/hr/dashboard";
             } else {
+                if (rateLimiterService != null) {
+                    rateLimiterService.recordLoginFailure(clientIp, email);
+                }
                 redirectAttributes.addFlashAttribute("error", "Invalid email or password!");
                 return "redirect:/hr/login";
             }
         } else {
+            if (rateLimiterService != null) {
+                rateLimiterService.recordLoginFailure(clientIp, email);
+            }
             redirectAttributes.addFlashAttribute("error", "Invalid email or password!");
             return "redirect:/hr/login";
         }
@@ -605,6 +624,7 @@ public class HRController {
         return "redirect:/hr/dashboard";
     }
 
+    @Transactional
     @RequestMapping(value = "/leave/approve/{id}", method = RequestMethod.POST)
     public String approveLeave(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
         User user = (User) session.getAttribute("user");
@@ -663,6 +683,7 @@ public class HRController {
         return "redirect:/hr/dashboard";
     }
 
+    @Transactional
     @RequestMapping(value = "/leave/reject/{id}", method = RequestMethod.POST)
     public String rejectLeave(@PathVariable Long id,
             @RequestParam(required = false) String rejectionReason,
@@ -1067,6 +1088,7 @@ public class HRController {
         return "hr-add-payroll";
     }
 
+    @Transactional
     @RequestMapping(value = "/payroll/add", method = RequestMethod.POST)
     public String addPayroll(@RequestParam Long employeeId,
             @RequestParam Integer month,
@@ -1164,6 +1186,7 @@ public class HRController {
         return "hr-edit-payroll";
     }
 
+    @Transactional
     @RequestMapping(value = "/payroll/update", method = RequestMethod.POST)
     public String updatePayroll(@RequestParam Long id,
             @RequestParam Double grossSalary,

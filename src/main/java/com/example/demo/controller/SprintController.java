@@ -8,6 +8,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -161,6 +162,7 @@ public class SprintController {
         return "sprint-board";
     }
 
+    @Transactional
     @PostMapping("/start/{id}")
     public String startSprint(@PathVariable Long id, RedirectAttributes ra, HttpSession session) {
         if (!isLoggedIn(session)) return "redirect:/login";
@@ -175,6 +177,7 @@ public class SprintController {
         return "redirect:/sprints/board/" + id;
     }
 
+    @Transactional
     @PostMapping("/close/{id}")
     public String closeSprint(@PathVariable Long id, RedirectAttributes ra, HttpSession session) {
         if (!isLoggedIn(session)) return "redirect:/login";
@@ -189,6 +192,7 @@ public class SprintController {
         return "redirect:/sprints/board/" + id;
     }
 
+    @Transactional
     @PostMapping("/add-issue")
     public String addIssueToSprint(@RequestParam Long sprintId, @RequestParam Long issueId,
             RedirectAttributes ra, HttpSession session) {
@@ -209,6 +213,7 @@ public class SprintController {
         return "redirect:/sprints/board/" + sprintId;
     }
 
+    @Transactional
     @PostMapping("/remove-issue")
     public String removeIssueFromSprint(@RequestParam Long sprintId, @RequestParam Long issueId,
             RedirectAttributes ra, HttpSession session) {

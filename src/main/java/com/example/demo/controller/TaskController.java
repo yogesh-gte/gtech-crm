@@ -159,7 +159,7 @@ public class TaskController {
         return "redirect:/employee/tasks";
     }
 
-    @RequestMapping(value = "/delete/{id}", method = {RequestMethod.GET, RequestMethod.POST})
+    @PostMapping("/delete/{id}")
     public String deleteTask(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
         User user = (User) session.getAttribute("user");
         Employee employee = (Employee) session.getAttribute("employee");

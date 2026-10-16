@@ -10,6 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,6 +48,9 @@ public class IssueController {
 
     @Autowired
     private com.example.demo.service.EmailService emailService;
+
+    @Autowired
+    private com.example.demo.service.FileStorageService fileStorageService;
 
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
@@ -220,6 +224,7 @@ public class IssueController {
         return "issue-form";
     }
 
+    @Transactional
     @PostMapping("/save")
     public String saveIssue(@RequestParam(required = false) Long id,
             @RequestParam String title,
@@ -368,6 +373,7 @@ public class IssueController {
         return "issue-view";
     }
 
+    @Transactional
     @PostMapping("/comment")
     public String addComment(@RequestParam Long issueId,
             @RequestParam String content,
@@ -403,6 +409,7 @@ public class IssueController {
         return "redirect:/issues/view/" + issueId;
     }
 
+    @Transactional
     @PostMapping("/status")
     public String updateStatus(@RequestParam Long issueId,
             @RequestParam String status,
@@ -438,6 +445,7 @@ public class IssueController {
         return "redirect:/issues/view/" + issueId;
     }
 
+    @Transactional
     @PostMapping("/attachment")
     public String addAttachment(@RequestParam Long issueId,
             @RequestParam MultipartFile file,
@@ -457,19 +465,20 @@ public class IssueController {
             return "redirect:/issues/view/" + issueId;
         }
         try {
-            Path uploadPath = Paths.get(uploadDir, "issues");
-            if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
-            String storedName = UUID.randomUUID().toString() + "_" + (file.getOriginalFilename() != null ? file.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_") : "file");
-            Path filePath = uploadPath.resolve(storedName);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            com.example.demo.service.FileStorageService.StoredFileInfo storedInfo = fileStorageService.storeFile(
+                    file, "issues", com.example.demo.service.FileStorageService.ALLOWED_ISSUE_EXTENSIONS,
+                    com.example.demo.service.FileStorageService.MAX_ISSUE_FILE_SIZE);
+
             IssueAttachment att = new IssueAttachment();
             att.setIssue(issue);
-            att.setFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : storedName);
-            att.setFilePath("/uploads/issues/" + storedName);
-            att.setFileSize(file.getSize());
+            att.setFileName(storedInfo.originalFilename());
+            att.setFilePath("/attachments/issues/" + storedInfo.storedFilename());
+            att.setFileSize(storedInfo.fileSize());
             att.setUploadedBy(getCurrentUserName(session));
             issueAttachmentRepository.save(att);
-            redirectAttributes.addFlashAttribute("success", "Attachment added");
+            redirectAttributes.addFlashAttribute("success", "Attachment added successfully");
+        } catch (IllegalArgumentException | SecurityException e) {
+            redirectAttributes.addFlashAttribute("error", "Invalid file: " + e.getMessage());
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "Failed to upload: " + e.getMessage());
         }

@@ -14,6 +14,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -98,6 +100,9 @@ public class EmployeeController {
 
     @Autowired
     private com.example.demo.repository.UserRepository userRepository;
+
+    @Autowired(required = false)
+    private com.example.demo.service.InputValidationService inputValidationService;
 
     @RequestMapping(value = "/dashboard", method = RequestMethod.GET)
     public String employeeDashboard(Model model, HttpSession session) {
@@ -358,6 +363,7 @@ public class EmployeeController {
         return "tl-dashboard";
     }
 
+    @Transactional
     @RequestMapping(value = "/checkin", method = RequestMethod.POST)
     public String checkIn(@RequestParam(required = false) String workMode,
             HttpSession session, RedirectAttributes redirectAttributes) {
@@ -489,6 +495,7 @@ public class EmployeeController {
         return "redirect:/employee/dashboard";
     }
 
+    @Transactional
     @RequestMapping(value = "/checkout", method = RequestMethod.POST)
     public String checkOut(@RequestParam(required = false) String workMode,
             @RequestParam(required = false) String dailySummary,
@@ -910,6 +917,15 @@ public class EmployeeController {
     @RequestMapping(value = "/register-face", method = RequestMethod.POST)
     public String registerFace(@RequestParam String faceImage, HttpSession session,
             RedirectAttributes redirectAttributes) {
+        if (inputValidationService != null) {
+            try {
+                inputValidationService.validateBase64ImagePayload(faceImage, 5 * 1024 * 1024);
+            } catch (IllegalArgumentException e) {
+                redirectAttributes.addFlashAttribute("error", e.getMessage());
+                return "redirect:/employee/face-capture";
+            }
+        }
+
         Employee employee = (Employee) session.getAttribute("employee");
         if (employee == null) {
             return "redirect:/employee/login";
@@ -924,11 +940,16 @@ public class EmployeeController {
         return "redirect:/employee/dashboard";
     }
 
+    @Transactional
     @RequestMapping(value = "/checkin-face", method = RequestMethod.POST)
     @ResponseBody
     public ResponseEntity<String> checkInByFace(@RequestParam String faceImage,
             @RequestParam(required = false) String workMode,
             HttpSession session) {
+        if (inputValidationService != null) {
+            inputValidationService.validateBase64ImagePayload(faceImage, 5 * 1024 * 1024);
+        }
+
         // Get logged-in employee from session (logged in using email and employee ID)
         Employee sessionEmployee = (Employee) session.getAttribute("employee");
         if (sessionEmployee == null) {
@@ -1052,9 +1073,14 @@ public class EmployeeController {
         return ResponseEntity.ok(statusMessage);
     }
 
+    @Transactional
     @RequestMapping(value = "/checkout-face", method = RequestMethod.POST)
     @ResponseBody
     public ResponseEntity<String> checkOutByFace(@RequestParam String faceImage, HttpSession session) {
+        if (inputValidationService != null) {
+            inputValidationService.validateBase64ImagePayload(faceImage, 5 * 1024 * 1024);
+        }
+
         // Get logged-in employee from session (logged in using email and employee ID)
         Employee sessionEmployee = (Employee) session.getAttribute("employee");
         if (sessionEmployee == null) {
@@ -1317,6 +1343,7 @@ public class EmployeeController {
         return "employee-leave-apply";
     }
 
+    @Transactional
     @RequestMapping(value = "/leave/apply", method = RequestMethod.POST)
     public String applyForLeave(@RequestParam String leaveType,
             @RequestParam String startDate,
@@ -1521,6 +1548,9 @@ public class EmployeeController {
                     "Leave application submitted successfully! It will be reviewed by HR.");
             return "redirect:/employee/dashboard";
         } catch (Exception e) {
+            try {
+                TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            } catch (Exception ignored) {}
             redirectAttributes.addFlashAttribute("error", "Error submitting leave request: " + e.getMessage());
             return "redirect:/employee/leave/apply";
         }

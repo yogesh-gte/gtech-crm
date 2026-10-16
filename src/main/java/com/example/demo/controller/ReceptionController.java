@@ -29,6 +29,9 @@ public class ReceptionController {
     @Autowired
     private EmailService emailService;
 
+    @Autowired(required = false)
+    private com.example.demo.service.InputValidationService inputValidationService;
+
     @RequestMapping(value = "/dashboard", method = RequestMethod.GET)
     public String receptionDashboard(Model model, HttpSession session) {
         // Allow access to admin, employee, or public (reception can be accessed without login)
@@ -219,19 +222,26 @@ public class ReceptionController {
         List<Visitor> results;
 
         if (name != null && !name.isEmpty()) {
+            String safeName = inputValidationService != null ? inputValidationService.validateSearchQuery(name, 100) : name;
             results = visitorRepository.findAll().stream()
-                .filter(v -> v.getName().toLowerCase().contains(name.toLowerCase()))
+                .filter(v -> v.getName().toLowerCase().contains(safeName.toLowerCase()))
                 .toList();
         } else if (date != null && !date.isEmpty()) {
-            java.time.LocalDate searchDate = java.time.LocalDate.parse(date);
-            results = visitorRepository.findAll().stream()
-                .filter(v -> v.getCheckInTime() != null &&
-                           v.getCheckInTime().toLocalDate().equals(searchDate))
-                .toList();
+            try {
+                java.time.LocalDate searchDate = java.time.LocalDate.parse(date.trim());
+                results = visitorRepository.findAll().stream()
+                    .filter(v -> v.getCheckInTime() != null &&
+                               v.getCheckInTime().toLocalDate().equals(searchDate))
+                    .toList();
+            } catch (java.time.format.DateTimeParseException e) {
+                model.addAttribute("error", "Invalid date format. Expected YYYY-MM-DD.");
+                results = java.util.Collections.emptyList();
+            }
         } else if (employeeName != null && !employeeName.isEmpty()) {
+            String safeEmp = inputValidationService != null ? inputValidationService.validateSearchQuery(employeeName, 100) : employeeName;
             results = visitorRepository.findAll().stream()
                 .filter(v -> v.getPersonToMeet() != null &&
-                           v.getPersonToMeet().toLowerCase().contains(employeeName.toLowerCase()))
+                           v.getPersonToMeet().toLowerCase().contains(safeEmp.toLowerCase()))
                 .toList();
         } else {
             results = visitorRepository.findAllOrderByCheckInTimeDesc();

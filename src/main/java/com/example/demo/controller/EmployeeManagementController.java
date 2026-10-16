@@ -9,6 +9,8 @@ import com.example.demo.service.QRCodeService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -425,7 +427,8 @@ public class EmployeeManagementController {
         return getEmployeesRedirect(session);
     }
 
-    @RequestMapping(value = "/delete/{id}", method = {RequestMethod.GET, RequestMethod.POST})
+    @Transactional
+    @PostMapping("/delete/{id}")
     public String deleteEmployee(@PathVariable Long id, RedirectAttributes redirectAttributes, HttpSession session) {
         if (!isAuthorizedStaff(session)) {
             return "redirect:/login";
@@ -583,10 +586,12 @@ public class EmployeeManagementController {
             redirectAttributes.addFlashAttribute("success",
                     "Employee deleted successfully! All related records have been removed.");
         } catch (Exception e) {
+            try {
+                TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            } catch (Exception ignored) {}
             redirectAttributes.addFlashAttribute("error",
                     "Failed to delete employee: " + e.getMessage() + ". Please try again or contact support.");
             System.err.println("Error deleting employee: " + e.getMessage());
-            e.printStackTrace();
         }
  
         return getEmployeesRedirect(session);

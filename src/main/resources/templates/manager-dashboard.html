@@ -921,6 +921,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form th:action="@{/manager/tasks/add}" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="_csrf" th:value="${_csrf_token}" />
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label text-secondary">Select Team Lead <span
@@ -961,8 +962,8 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-secondary">Attachment</label>
-                            <input type="file" class="form-control" name="attachment">
-                            <small class="text-muted">Optional: Upload any file (Image, PDF, XML, WAR, etc.)</small>
+                            <input type="file" class="form-control" name="attachment" accept=".png,.jpg,.jpeg,.pdf,.txt,.doc,.docx,.xlsx,.zip">
+                            <small class="text-muted">Optional: Upload Image (PNG, JPG), PDF, Document (TXT, DOC, DOCX, XLSX), or ZIP (Max 25MB)</small>
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-top-0 rounded-bottom">

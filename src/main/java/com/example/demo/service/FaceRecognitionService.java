@@ -46,8 +46,9 @@ public class FaceRecognitionService {
             byte[] storedBytes = Base64.getDecoder().decode(storedFaceImage);
             byte[] capturedBytes = Base64.getDecoder().decode(capturedFaceImage);
             
-            // Basic validation - images should have reasonable size
-            if (storedBytes.length < 1000 || capturedBytes.length < 1000) {
+            // Basic validation - images should have reasonable size (between 1KB and 5MB)
+            if (storedBytes.length < 1000 || capturedBytes.length < 1000
+                    || storedBytes.length > 5 * 1024 * 1024 || capturedBytes.length > 5 * 1024 * 1024) {
                 return false;
             }
             
@@ -267,13 +268,27 @@ public class FaceRecognitionService {
         if (base64Image == null || base64Image.isEmpty()) {
             return false;
         }
-        
+
+        // Limit raw base64 string length to ~7MB (~5MB decoded) to prevent memory exhaustion
+        if (base64Image.length() > 7_000_000) {
+            return false;
+        }
+
         try {
             String cleanImage = removeDataUrlPrefix(base64Image);
             byte[] decoded = Base64.getDecoder().decode(cleanImage);
-            
-            // Image should be at least 1KB to be valid
-            return decoded.length >= 1000;
+
+            // Image must be between 1KB and 5MB
+            if (decoded.length < 1000 || decoded.length > 5 * 1024 * 1024) {
+                return false;
+            }
+
+            // Verify image signature: JPEG (FF D8 FF) or PNG (89 50 4E 47)
+            boolean isJpeg = (decoded[0] & 0xFF) == 0xFF && (decoded[1] & 0xFF) == 0xD8 && (decoded[2] & 0xFF) == 0xFF;
+            boolean isPng = decoded.length >= 8 && (decoded[0] & 0xFF) == 0x89 && (decoded[1] & 0xFF) == 0x50
+                    && (decoded[2] & 0xFF) == 0x4E && (decoded[3] & 0xFF) == 0x47;
+
+            return isJpeg || isPng;
         } catch (IllegalArgumentException e) {
             return false;
         }

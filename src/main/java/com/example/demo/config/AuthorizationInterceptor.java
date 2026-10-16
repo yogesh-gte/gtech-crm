@@ -54,7 +54,7 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
     private boolean isPublicRoute(String uri) {
         // Static resources
         if (uri.startsWith("/css/") || uri.startsWith("/js/") || uri.startsWith("/images/")
-                || uri.startsWith("/static/") || uri.startsWith("/uploads/") || "/favicon.ico".equals(uri)) {
+                || uri.startsWith("/static/") || "/favicon.ico".equals(uri)) {
             return true;
         }
 

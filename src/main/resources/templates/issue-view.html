@@ -82,13 +82,17 @@
             <div class="card-header"><h6 class="mb-0">Attachments</h6></div>
             <div class="card-body">
                 <div th:each="a : ${attachments}" class="mb-2">
-                    <a th:href="@{${a.filePath}}" target="_blank" th:text="${a.fileName}">file</a>
+                    <a th:href="@{${a.filePath}}" target="_blank" download class="fw-semibold text-decoration-none" th:text="${a.fileName}">file</a>
                     <small class="text-muted ms-2" th:text="${a.uploadedBy + ' - ' + a.uploadedAt}"></small>
                 </div>
                 <form th:if="${canUpdateStatus}" th:action="@{/issues/attachment}" method="post" enctype="multipart/form-data" class="mt-2">
+                    <input type="hidden" name="_csrf" th:value="${_csrf_token}" />
                     <input type="hidden" name="issueId" th:value="${issue.id}">
-                    <input type="file" name="file" class="form-control form-control-sm d-inline-block w-auto">
-                    <button type="submit" class="btn btn-sm btn-outline-primary ms-1">Upload</button>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="file" name="file" class="form-control form-control-sm d-inline-block w-auto" accept=".png,.jpg,.jpeg,.pdf,.txt,.log,.csv,.docx,.xlsx" required>
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Upload</button>
+                    </div>
+                    <div class="form-text small text-muted">Allowed: PNG, JPG, PDF, TXT, LOG, CSV, DOCX, XLSX (Max 10MB)</div>
                 </form>
             </div>
         </div>

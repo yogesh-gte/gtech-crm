@@ -5,7 +5,9 @@ import jakarta.persistence.*;
 import java.util.Date;
 
 @Entity
-@Table(name = "payroll")
+@Table(name = "payroll", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_payroll_emp_month_year", columnNames = {"employee_id", "payroll_month", "payroll_year"})
+})
 public class Payroll {
 
     @Id

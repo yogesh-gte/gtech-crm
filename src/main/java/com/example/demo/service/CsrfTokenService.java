@@ -80,7 +80,23 @@ public class CsrfTokenService {
         if (token == null || token.trim().isEmpty()) {
             token = request.getParameter(CSRF_PARAM_NAME);
         }
+        if ((token == null || token.trim().isEmpty()) && request.getQueryString() != null) {
+            token = extractParamFromQuery(request.getQueryString(), CSRF_PARAM_NAME);
+        }
         return (token != null && !token.trim().isEmpty()) ? token.trim() : null;
+    }
+
+    private String extractParamFromQuery(String query, String paramName) {
+        if (query == null || query.isBlank()) return null;
+        for (String pair : query.split("&")) {
+            int idx = pair.indexOf('=');
+            if (idx > 0 && pair.substring(0, idx).trim().equals(paramName)) {
+                try {
+                    return java.net.URLDecoder.decode(pair.substring(idx + 1).trim(), StandardCharsets.UTF_8);
+                } catch (Exception ignored) {}
+            }
+        }
+        return null;
     }
 
     /**

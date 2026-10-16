@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Entity
-@Table(name = "employees")
+@Table(name = "employees", uniqueConstraints = @UniqueConstraint(name = "uk_employee_id", columnNames = {"employee_id"}))
 public class Employee {
 
     @Id
@@ -21,7 +21,7 @@ public class Employee {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "employee_id", nullable = false, unique = true)
     private String employeeId;
 
     @Column(nullable = false)
@@ -93,6 +93,7 @@ public class Employee {
     private String password;
 
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(name = "face_image", columnDefinition = "LONGTEXT")
     private String faceImage; // Base64 encoded face image for face recognition
 

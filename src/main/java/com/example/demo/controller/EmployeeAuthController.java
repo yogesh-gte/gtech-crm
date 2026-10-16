@@ -26,6 +26,9 @@ public class EmployeeAuthController {
     @Autowired(required = false)
     private com.example.demo.service.RedirectSecurityService redirectSecurityService;
 
+    @Autowired(required = false)
+    private com.example.demo.service.RateLimiterService rateLimiterService;
+
     private String sanitizeRedirect(String url, String fallback) {
         if (redirectSecurityService != null) {
             return redirectSecurityService.sanitizeRedirectUrl(url, fallback);
@@ -69,6 +72,7 @@ public class EmployeeAuthController {
                                HttpSession session,
                                RedirectAttributes redirectAttributes) {
         
+        String clientIp = rateLimiterService != null ? rateLimiterService.resolveClientIp(request) : (request != null ? request.getRemoteAddr() : "127.0.0.1");
         Optional<Employee> employeeOpt = employeeRepository.findByEmail(email != null ? email.trim() : "");
         
         if (employeeOpt.isPresent()) {
@@ -80,6 +84,10 @@ public class EmployeeAuthController {
             });
 
             if (idMatches && passwordMatches) {
+                if (rateLimiterService != null) {
+                    rateLimiterService.recordLoginSuccess(clientIp, employee.getEmail());
+                }
+
                 // Prevent session fixation by rotating session ID
                 HttpSession activeSession;
                 if (sessionSecurityService != null && request != null) {
@@ -114,10 +122,16 @@ public class EmployeeAuthController {
                 }
                 return "redirect:/employee/dashboard";
             } else {
+                if (rateLimiterService != null) {
+                    rateLimiterService.recordLoginFailure(clientIp, email != null && !email.isBlank() ? email : employeeId);
+                }
                 redirectAttributes.addFlashAttribute("error", "Invalid email / password / employee ID!");
                 return "redirect:/employee/login";
             }
         } else {
+            if (rateLimiterService != null) {
+                rateLimiterService.recordLoginFailure(clientIp, email != null && !email.isBlank() ? email : employeeId);
+            }
             redirectAttributes.addFlashAttribute("error", "Employee not found! Please contact admin to add your account.");
             return "redirect:/employee/login";
         }

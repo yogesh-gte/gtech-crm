@@ -20,7 +20,11 @@
 
         /* Sidebar Styling */
         .sidebar {
-            min-height: 100vh;
+            height: 100vh;
+            max-height: 100vh;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
             background: #e3f2fd;
             color: #0f1b2d;
             border-right: 1px solid #dcdfe6;
@@ -30,6 +34,12 @@
             left: 0;
             padding: 20px;
             z-index: 1000;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            background: transparent;
         }
 
         .sidebar .nav-link {
@@ -241,16 +251,7 @@
             </li>
 
             <li class="nav-item mb-1">
-                <a class="nav-link" th:href="@{/issues}">📋 Issues</a>
-            </li>
-            <li class="nav-item mb-1">
-                <a class="nav-link" th:href="@{/sprints}">🏃 Sprints</a>
-            </li>
-            <li class="nav-item mb-1">
                 <a class="nav-link" th:href="@{/hr/performance}">📊 Performance</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:href="@{/hr/employees}">👨‍💼 Manage Employees</a>
             </li>
             <li class="nav-item mb-1">
                 <a class="nav-link" th:href="@{/reports}">📈 Reports</a>
@@ -1488,6 +1489,18 @@
             };
             html2pdf().set(opt).from(element).save();
         }
+
+        // Auto-activate tab from URL hash (e.g. #attendance, #leave, #payroll)
+        document.addEventListener("DOMContentLoaded", function () {
+            if (window.location.hash) {
+                const targetHash = window.location.hash;
+                const tabTrigger = document.querySelector(`[data-bs-target="${targetHash}"]`);
+                if (tabTrigger) {
+                    const tab = new bootstrap.Tab(tabTrigger);
+                    tab.show();
+                }
+            }
+        });
     </script>
 </body>
 

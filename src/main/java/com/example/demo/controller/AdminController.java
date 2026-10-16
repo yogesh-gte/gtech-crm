@@ -13,6 +13,7 @@ import org.springframework.ui.Model;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.List;
@@ -227,6 +228,7 @@ public class AdminController {
         return response;
     }
 
+    @Transactional
     @RequestMapping(value = "/payroll/save", method = RequestMethod.POST)
     @org.springframework.web.bind.annotation.ResponseBody
     public java.util.Map<String, Object> savePayroll(
@@ -313,6 +315,7 @@ public class AdminController {
         return "admin-register-hr";
     }
 
+    @Transactional
     @RequestMapping(value = "/register/hr", method = RequestMethod.POST)
     public String registerHr(@org.springframework.web.bind.annotation.ModelAttribute com.example.demo.model.User user,
             org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes,
@@ -365,6 +368,7 @@ public class AdminController {
         return "admin-register-manager";
     }
 
+    @Transactional
     @RequestMapping(value = "/register/manager", method = RequestMethod.POST)
     public String registerManager(
             @org.springframework.web.bind.annotation.ModelAttribute com.example.demo.model.User user,

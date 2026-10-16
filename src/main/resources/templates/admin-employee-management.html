@@ -346,10 +346,11 @@
                                                 class="badge bg-success me-1" title="Face Registered">👤</span>
                                             <span th:if="${emp.faceImage == null || emp.faceImage.isEmpty()}"
                                                 class="badge bg-warning me-1" title="No Face Registered">⚠️</span>
-                                            <a th:href="@{${baseEmployeesUrl != null ? baseEmployeesUrl : '/admin/employees'} + '/delete/' + ${emp.id}}"
-                                                class="btn btn-sm btn-outline-danger"
-                                                onclick="return confirm('Are you sure you want to delete this employee?')"
-                                                title="Delete">🗑️</a>
+                                            <form th:action="@{${baseEmployeesUrl != null ? baseEmployeesUrl : '/admin/employees'} + '/delete/' + ${emp.id}}" method="post" class="d-inline"
+                                                onsubmit="return confirm('Are you sure you want to delete this employee?');">
+                                                <input type="hidden" name="_csrf" th:value="${_csrf_token}"/>
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">🗑️</button>
+                                            </form>
                                         </td>
                                     </tr>
                                 </tbody>

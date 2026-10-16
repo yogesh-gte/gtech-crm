@@ -27,6 +27,12 @@ public class AuthController {
     @Autowired(required = false)
     private com.example.demo.service.SessionSecurityService sessionSecurityService;
 
+    @Autowired(required = false)
+    private com.example.demo.service.RateLimiterService rateLimiterService;
+
+    @Autowired(required = false)
+    private com.example.demo.service.InputValidationService inputValidationService;
+
     @RequestMapping(value = "/admin/login", method = RequestMethod.GET)
     public String showLoginForm(Model model, HttpSession session) {
         return "login";
@@ -39,6 +45,7 @@ public class AuthController {
             HttpSession session,
             RedirectAttributes redirectAttributes) {
 
+        String clientIp = rateLimiterService != null ? rateLimiterService.resolveClientIp(request) : (request != null ? request.getRemoteAddr() : "127.0.0.1");
         Optional<User> userOptional = userRepository.findByEmail(email);
 
         if (userOptional.isPresent()) {
@@ -49,6 +56,10 @@ public class AuthController {
             });
 
             if (passwordMatches) {
+                if (rateLimiterService != null) {
+                    rateLimiterService.recordLoginSuccess(clientIp, email);
+                }
+
                 HttpSession activeSession;
                 if (sessionSecurityService != null && request != null) {
                     activeSession = sessionSecurityService.rotateSession(request);
@@ -83,10 +94,16 @@ public class AuthController {
                     return "redirect:/dashboard";
                 }
             } else {
+                if (rateLimiterService != null) {
+                    rateLimiterService.recordLoginFailure(clientIp, email);
+                }
                 redirectAttributes.addFlashAttribute("error", "Invalid email or password!");
                 return "redirect:/admin/login";
             }
         } else {
+            if (rateLimiterService != null) {
+                rateLimiterService.recordLoginFailure(clientIp, email);
+            }
             redirectAttributes.addFlashAttribute("error", "Invalid email or password!");
             return "redirect:/admin/login";
         }

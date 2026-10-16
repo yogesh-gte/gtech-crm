@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="sidebar(activeTab)">
+    <style>
+        /* Shared HR Sidebar Styling */
+        .sidebar {
+            height: 100vh;
+            max-height: 100vh;
+            overflow-y: auto;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+            background: #e3f2fd;
+            color: #0f1b2d;
+            border-right: 1px solid #dcdfe6;
+            width: 260px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+            width: 0;
+            background: transparent;
+        }
+
+        .sidebar .nav-link {
+            color: #4a5568;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            border: none;
+            background: transparent;
+        }
+
+        .sidebar .nav-link:hover {
+            background: #d0e6fb;
+            color: #0d6efd;
+        }
+
+        .sidebar .nav-link.active {
+            background: #ffffff;
+            color: #0d6efd;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            font-weight: 600;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+
+    <div class="sidebar">
+        <h3 class="text-primary mb-4 px-3 fw-bold">LogSphere</h3>
+        <ul class="nav flex-column">
+            <!-- 1. Overview -->
+            <li class="nav-item mb-1">
+                <a th:if="${activeTab == 'dashboard'}" class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" href="#">👥 Overview</a>
+                <a th:unless="${activeTab == 'dashboard'}" class="nav-link" th:href="@{/hr/dashboard}">👥 Overview</a>
+            </li>
+
+            <!-- 2. Attendance -->
+            <li class="nav-item mb-1">
+                <button th:if="${activeTab == 'dashboard'}" class="nav-link w-100 text-start" id="attendance-tab" data-bs-toggle="pill" data-bs-target="#attendance" type="button">🕒 Attendance</button>
+                <a th:unless="${activeTab == 'dashboard'}" class="nav-link" th:href="@{/hr/dashboard#attendance}">🕒 Attendance</a>
+            </li>
+
+            <!-- 3. Leave Mgmt -->
+            <li class="nav-item mb-1">
+                <button th:if="${activeTab == 'dashboard'}" class="nav-link w-100 text-start" id="leave-tab" data-bs-toggle="pill" data-bs-target="#leave" type="button">📅 Leave Mgmt</button>
+                <a th:unless="${activeTab == 'dashboard'}" class="nav-link" th:href="@{/hr/dashboard#leave}">📅 Leave Mgmt</a>
+            </li>
+
+            <!-- 4. Tasks -->
+            <li class="nav-item mb-1">
+                <button th:if="${activeTab == 'dashboard'}" class="nav-link w-100 text-start" id="task-tab" data-bs-toggle="pill" data-bs-target="#task" type="button">✅ Tasks</button>
+                <a th:unless="${activeTab == 'dashboard'}" class="nav-link" th:href="@{/hr/dashboard#task}">✅ Tasks</a>
+            </li>
+
+            <!-- 5. Recruitment -->
+            <li class="nav-item mb-1">
+                <button th:if="${activeTab == 'dashboard'}" class="nav-link w-100 text-start" id="recruitment-tab" data-bs-toggle="pill" data-bs-target="#recruitment" type="button">👥 Recruitment</button>
+                <a th:unless="${activeTab == 'dashboard'}" class="nav-link" th:href="@{/hr/dashboard#recruitment}">👥 Recruitment</a>
+            </li>
+
+            <!-- 6. Payroll -->
+            <li class="nav-item mb-1">
+                <button th:if="${activeTab == 'dashboard'}" class="nav-link w-100 text-start" id="payroll-tab" data-bs-toggle="pill" data-bs-target="#payroll" type="button">💰 Payroll</button>
+                <a th:unless="${activeTab == 'dashboard'}" class="nav-link" th:href="@{/hr/dashboard#payroll}">💰 Payroll</a>
+            </li>
+
+            <!-- 7. Holidays -->
+            <li class="nav-item mb-1">
+                <button th:if="${activeTab == 'dashboard'}" class="nav-link w-100 text-start" id="holiday-tab" data-bs-toggle="pill" data-bs-target="#holiday" type="button">🌴 Holidays</button>
+                <a th:unless="${activeTab == 'dashboard'}" class="nav-link" th:href="@{/hr/dashboard#holiday}">🌴 Holidays</a>
+            </li>
+
+            <!-- 8. Schedule Meeting -->
+            <li class="nav-item mb-1">
+                <a class="nav-link" th:classappend="${activeTab == 'schedule-employee' || activeTab == 'schedule-manager'} ? 'active' : ''"
+                   data-bs-toggle="collapse" href="#meetingSubmenu" role="button"
+                   th:aria-expanded="${activeTab == 'schedule-employee' || activeTab == 'schedule-manager' ? 'true' : 'false'}"
+                   aria-controls="meetingSubmenu">
+                    📅 Schedule Meeting
+                </a>
+                <div class="collapse" th:classappend="${activeTab == 'schedule-employee' || activeTab == 'schedule-manager'} ? 'show' : ''" id="meetingSubmenu">
+                    <ul class="nav flex-column ms-3">
+                        <li class="nav-item">
+                            <a class="nav-link small py-1" th:classappend="${activeTab == 'schedule-employee'} ? 'active fw-bold text-primary' : ''" th:href="@{/hr/meeting/schedule/employee}">Employees</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small py-1" th:classappend="${activeTab == 'schedule-manager'} ? 'active fw-bold text-primary' : ''" th:href="@{/hr/meeting/schedule/manager}">Managers</a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- 9. Suggestions -->
+            <li class="nav-item mb-1">
+                <button th:if="${activeTab == 'dashboard'}" class="nav-link w-100 text-start" id="suggestions-tab" data-bs-toggle="pill" data-bs-target="#suggestions" type="button">
+                    💡 Suggestions
+                    <span th:if="${suggestionCount != null && suggestionCount > 0}" class="badge bg-warning text-dark ms-auto" th:text="${suggestionCount}"></span>
+                </button>
+                <a th:unless="${activeTab == 'dashboard'}" class="nav-link" th:href="@{/hr/dashboard#suggestions}">
+                    💡 Suggestions
+                </a>
+            </li>
+
+            <!-- 10. Performance -->
+            <li class="nav-item mb-1">
+                <a class="nav-link" th:classappend="${activeTab == 'performance'} ? 'active' : ''" th:href="@{/hr/performance}">📊 Performance</a>
+            </li>
+
+            <!-- 11. Reports -->
+            <li class="nav-item mb-1">
+                <a class="nav-link" th:classappend="${activeTab == 'reports'} ? 'active' : ''" th:href="@{/reports}">📈 Reports</a>
+            </li>
+
+            <!-- 12. Logout -->
+            <li class="nav-item mt-4">
+                <a class="nav-link text-danger" th:href="@{/hr/logout}">🚪 Logout</a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+</body>
+</html>

@@ -31,6 +31,8 @@
 	<properties>
 		<java.version>17</java.version>
 		<repackage.outputDir>${project.build.directory}</repackage.outputDir>
+		<war.webappDirectory>${project.build.directory}/${project.build.finalName}</war.webappDirectory>
+		<war.workDirectory>${project.build.directory}/war/work</war.workDirectory>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -63,12 +65,12 @@
 		<dependency>
 			<groupId>com.google.zxing</groupId>
 			<artifactId>core</artifactId>
-			<version>3.5.2</version>
+			<version>3.5.3</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.zxing</groupId>
 			<artifactId>javase</artifactId>
-			<version>3.5.2</version>
+			<version>3.5.3</version>
 		</dependency>
 
 		<dependency>
@@ -80,7 +82,6 @@
 		<dependency>
 			<groupId>com.mysql</groupId>
 			<artifactId>mysql-connector-j</artifactId>
-			<version>8.0.33</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -103,11 +104,39 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-war-plugin</artifactId>
+				<configuration>
+					<outputDirectory>${repackage.outputDir}</outputDirectory>
+					<webappDirectory>${war.webappDirectory}</webappDirectory>
+					<workDirectory>${war.workDirectory}</workDirectory>
+					<packagingExcludes>
+						**/.env*,
+						**/.git*,
+						**/application-dev*.properties,
+						**/tomcat-users*.xml
+					</packagingExcludes>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
 					<outputDirectory>${repackage.outputDir}</outputDirectory>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.cyclonedx</groupId>
+				<artifactId>cyclonedx-maven-plugin</artifactId>
+				<version>2.9.1</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>makeBom</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

@@ -27,6 +27,7 @@ public class DataInitializer implements CommandLineRunner {
     private boolean seedDemoUsers;
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void run(String... args) throws Exception {
         if (departmentRepository.count() == 0) {
             List<Department> departments = Arrays.asList(

@@ -44,7 +44,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
                                                 "/css/**",
                                                 "/js/**",
                                                 "/images/**",
-                                                "/uploads/**",
                                                 "/favicon.ico"
                                 );
         }
@@ -60,10 +59,5 @@ public class WebMvcConfig implements WebMvcConfigurer {
                                 .addResourceLocations("classpath:/static/js/");
                 registry.addResourceHandler("/images/**")
                                 .addResourceLocations("classpath:/static/images/");
-
-                // Add resource handler for uploaded task files - External Directory
-                String uploadAbsolutePath = java.nio.file.Paths.get(uploadDir).toFile().getAbsolutePath();
-                registry.addResourceHandler("/uploads/**")
-                                .addResourceLocations("file:" + uploadAbsolutePath + "/", "classpath:/static/uploads/");
         }
 }

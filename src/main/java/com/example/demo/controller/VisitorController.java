@@ -22,6 +22,9 @@ public class VisitorController {
     @Autowired
     private com.example.demo.service.EmailService emailService;
 
+    @Autowired(required = false)
+    private com.example.demo.service.InputValidationService inputValidationService;
+
     @RequestMapping(value = "/register", method = RequestMethod.GET)
     public String showRegistrationForm(Model model) {
         model.addAttribute("visitor", new Visitor());
@@ -189,7 +192,7 @@ public class VisitorController {
         return "redirect:/visitors/dashboard";
     }
 
-    @RequestMapping(value = "/delete/{id}", method = {RequestMethod.GET, RequestMethod.POST})
+    @PostMapping("/delete/{id}")
     public String deleteVisitor(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
         Object userObj = session.getAttribute("user");
         boolean isAdmin = false;
@@ -217,19 +220,26 @@ public class VisitorController {
         List<Visitor> results;
         
         if (name != null && !name.isEmpty()) {
+            String safeName = inputValidationService != null ? inputValidationService.validateSearchQuery(name, 100) : name;
             results = visitorRepository.findAll().stream()
-                .filter(v -> v.getName().toLowerCase().contains(name.toLowerCase()))
+                .filter(v -> v.getName().toLowerCase().contains(safeName.toLowerCase()))
                 .toList();
         } else if (date != null && !date.isEmpty()) {
-            java.time.LocalDate searchDate = java.time.LocalDate.parse(date);
-            results = visitorRepository.findAll().stream()
-                .filter(v -> v.getCheckInTime() != null && 
-                           v.getCheckInTime().toLocalDate().equals(searchDate))
-                .toList();
+            try {
+                java.time.LocalDate searchDate = java.time.LocalDate.parse(date.trim());
+                results = visitorRepository.findAll().stream()
+                    .filter(v -> v.getCheckInTime() != null && 
+                               v.getCheckInTime().toLocalDate().equals(searchDate))
+                    .toList();
+            } catch (java.time.format.DateTimeParseException e) {
+                model.addAttribute("error", "Invalid date format. Expected YYYY-MM-DD.");
+                results = java.util.Collections.emptyList();
+            }
         } else if (employeeName != null && !employeeName.isEmpty()) {
+            String safeEmp = inputValidationService != null ? inputValidationService.validateSearchQuery(employeeName, 100) : employeeName;
             results = visitorRepository.findAll().stream()
                 .filter(v -> v.getPersonToMeet() != null && 
-                           v.getPersonToMeet().toLowerCase().contains(employeeName.toLowerCase()))
+                           v.getPersonToMeet().toLowerCase().contains(safeEmp.toLowerCase()))
                 .toList();
         } else {
             results = visitorRepository.findAllOrderByCheckInTimeDesc();

@@ -86,6 +86,9 @@ public class ManagerController {
     @Autowired
     private com.example.demo.service.EmailService emailService;
 
+    @Autowired
+    private com.example.demo.service.FileStorageService fileStorageService;
+
     @ModelAttribute
     public void populateCommonManagerAttributes(Model model, HttpSession session) {
         try {
@@ -565,20 +568,15 @@ public class ManagerController {
         // Handle file upload
         if (attachment != null && !attachment.isEmpty()) {
             try {
-                // Use external uploads directory
-                Path uploadPath = Paths.get(uploadDir, "tasks");
-                if (!Files.exists(uploadPath)) {
-                    Files.createDirectories(uploadPath);
-                }
-
-                String fileName = UUID.randomUUID().toString() + "_" + attachment.getOriginalFilename();
-                Path filePath = uploadPath.resolve(fileName);
-                Files.copy(attachment.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-                task.setAttachmentUrl("/uploads/tasks/" + fileName);
+                com.example.demo.service.FileStorageService.StoredFileInfo storedInfo = fileStorageService.storeFile(
+                        attachment, "tasks", com.example.demo.service.FileStorageService.ALLOWED_TASK_EXTENSIONS,
+                        com.example.demo.service.FileStorageService.MAX_TASK_FILE_SIZE);
+                task.setAttachmentUrl("/attachments/tasks/" + storedInfo.storedFilename());
+            } catch (IllegalArgumentException | SecurityException e) {
+                redirectAttributes.addFlashAttribute("error", "Invalid attachment: " + e.getMessage());
+                return "redirect:/manager/dashboard?tab=planning";
             } catch (Exception e) {
                 System.err.println("Error creating task attachment: " + e.getMessage());
-                // Continue creating task without attachment
             }
         }
 
