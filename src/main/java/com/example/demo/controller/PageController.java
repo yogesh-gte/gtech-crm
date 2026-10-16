@@ -19,17 +19,26 @@ public class PageController {
     }
 
     @RequestMapping(value = "/dashboard", method = RequestMethod.GET)
-    public String dashboard() {
+    public String dashboard(jakarta.servlet.http.HttpSession session) {
+        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
+            return "redirect:/login";
+        }
         return "dashboard";
     }
 
     @RequestMapping(value = "/timelog", method = RequestMethod.GET)
-    public String timelog() {
+    public String timelog(jakarta.servlet.http.HttpSession session) {
+        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
+            return "redirect:/login";
+        }
         return "timelog";
     }
 
     @RequestMapping(value = "/qr-scanner", method = RequestMethod.GET)
-    public String qrScanner() {
+    public String qrScanner(jakarta.servlet.http.HttpSession session) {
+        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
+            return "redirect:/login";
+        }
         return "qr-scanner";
     }
 }

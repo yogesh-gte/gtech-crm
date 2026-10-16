@@ -42,9 +42,28 @@ public class ReportController {
     @Autowired
     private PerformanceScoreService performanceScoreService;
 
+    @Autowired(required = false)
+    private com.example.demo.service.AuthorizationService authorizationService;
+
+    private boolean isStaffUser(HttpSession session) {
+        if (session == null) return false;
+        if (authorizationService != null) {
+            return authorizationService.isStaff(session);
+        }
+        Object userObj = session.getAttribute("user");
+        if (userObj instanceof com.example.demo.model.User user) {
+            String role = user.getRole();
+            return "ADMIN".equalsIgnoreCase(role) || "HR".equalsIgnoreCase(role) || "MANAGER".equalsIgnoreCase(role);
+        }
+        return false;
+    }
+
     @RequestMapping(method = RequestMethod.GET)
     public String reportsDashboard(Model model, HttpSession session) {
-        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
+        if (!isStaffUser(session)) {
+            if (session != null && session.getAttribute("employee") != null) {
+                return "redirect:/employee/dashboard";
+            }
             return "redirect:/login";
         }
         
@@ -122,7 +141,10 @@ public class ReportController {
                                 @RequestParam(required = false) String startDate,
                                 @RequestParam(required = false) String endDate,
                                 Model model, HttpSession session) {
-        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
+        if (!isStaffUser(session)) {
+            if (session != null && session.getAttribute("employee") != null) {
+                return "redirect:/employee/dashboard";
+            }
             return "redirect:/login";
         }
         
@@ -216,7 +238,10 @@ public class ReportController {
                                @RequestParam(required = false) String startDate,
                                @RequestParam(required = false) String endDate,
                                Model model, HttpSession session) {
-        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
+        if (!isStaffUser(session)) {
+            if (session != null && session.getAttribute("employee") != null) {
+                return "redirect:/employee/dashboard";
+            }
             return "redirect:/login";
         }
         
@@ -285,10 +310,22 @@ public class ReportController {
 
     @GetMapping("/export/performance")
     public void exportPerformance(HttpServletResponse response, HttpSession session) throws IOException {
-        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
-            response.sendRedirect("/login");
+        boolean canExport = false;
+        if (authorizationService != null) {
+            canExport = authorizationService.hasAnyRole(session, com.example.demo.service.AuthorizationService.ROLE_ADMIN, com.example.demo.service.AuthorizationService.ROLE_HR);
+        } else if (session != null) {
+            Object userObj = session.getAttribute("user");
+            if (userObj instanceof com.example.demo.model.User user) {
+                String role = user.getRole();
+                canExport = "ADMIN".equalsIgnoreCase(role) || "HR".equalsIgnoreCase(role);
+            }
+        }
+
+        if (!canExport) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied: Performance export restricted to ADMIN and HR");
             return;
         }
+
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=\"Performance_Report_" + LocalDate.now() + ".csv\"");
         try (PrintWriter w = response.getWriter()) {
@@ -315,8 +352,8 @@ public class ReportController {
 
     @GetMapping("/export/tasks")
     public void exportTasks(HttpServletResponse response, HttpSession session) throws IOException {
-        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
-            response.sendRedirect("/login");
+        if (!isStaffUser(session)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied: Restricted to Staff");
             return;
         }
         response.setContentType("text/csv");
@@ -334,8 +371,8 @@ public class ReportController {
 
     @GetMapping("/export/issues")
     public void exportIssues(HttpServletResponse response, HttpSession session) throws IOException {
-        if (session.getAttribute("user") == null && session.getAttribute("employee") == null) {
-            response.sendRedirect("/login");
+        if (!isStaffUser(session)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied: Restricted to Staff");
             return;
         }
         response.setContentType("text/csv");

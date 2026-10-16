@@ -21,6 +21,7 @@
         </div>
         
         <form th:action="@{/employee/login}" method="post">
+            <input type="hidden" name="_csrf" th:value="${_csrf_token}"/>
             <div class="mb-3">
                 <label for="email">Email</label>
                 <input type="email" class="form-control bg-dark text-light" id="email" 

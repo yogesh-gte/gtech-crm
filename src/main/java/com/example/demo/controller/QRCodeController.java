@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.model.Employee;
 import com.example.demo.repository.EmployeeRepository;
 import com.example.demo.service.QRCodeService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +11,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
+import java.net.*;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/employee/qrcode")
@@ -23,11 +26,18 @@ public class QRCodeController {
     private QRCodeService qrCodeService;
 
     @RequestMapping(method = RequestMethod.GET)
-    public String showQRCode(HttpSession session, Model model, jakarta.servlet.http.HttpServletRequest request) {
-        Employee employee = (Employee) session.getAttribute("employee");
-        if (employee == null) {
+    public String showQRCode(
+            @RequestParam(name = "host", required = false) String requestedHost,
+            @RequestParam(name = "port", required = false) Integer requestedPort,
+            HttpSession session,
+            Model model,
+            HttpServletRequest request) {
+
+        Employee sessionEmp = (Employee) session.getAttribute("employee");
+        if (sessionEmp == null) {
             return "redirect:/employee/login";
         }
+        Employee employee = employeeRepository.findById(sessionEmp.getId()).orElse(sessionEmp);
 
         // Generate or retrieve QR code token
         if (employee.getQrCodeToken() == null || employee.getQrCodeToken().isEmpty()) {
@@ -37,27 +47,110 @@ public class QRCodeController {
             session.setAttribute("employee", employee);
         }
 
-        // Generate QR code data (fully qualified URL)
-        String serverHost = request.getServerName();
-        if ("localhost".equalsIgnoreCase(serverHost) || "127.0.0.1".equals(serverHost) || "0:0:0:0:0:0:0:1".equals(serverHost)) {
-            try {
-                java.net.InetAddress localHost = java.net.InetAddress.getLocalHost();
-                String hostAddr = localHost.getHostAddress();
-                if (hostAddr != null && !hostAddr.startsWith("127.")) {
-                    serverHost = hostAddr;
-                }
-            } catch (Exception ignored) {
+        // Detect all available IPv4 network addresses on the host machine
+        List<String> availableIps = getAvailableIpv4Addresses();
+        String detectedLanIp = availableIps.isEmpty() ? "127.0.0.1" : availableIps.get(0);
+
+        // Determine server host
+        String serverHost;
+        if (requestedHost != null && !requestedHost.trim().isEmpty()) {
+            serverHost = requestedHost.trim();
+        } else {
+            String reqHost = request.getServerName();
+            if ("localhost".equalsIgnoreCase(reqHost) || "127.0.0.1".equals(reqHost) || "0:0:0:0:0:0:0:1".equals(reqHost) || reqHost.contains(":")) {
+                serverHost = detectedLanIp;
+            } else {
+                serverHost = reqHost;
             }
         }
-        String baseUrl = request.getScheme() + "://" + serverHost + ":" + request.getServerPort() + request.getContextPath();
+
+        int serverPort = (requestedPort != null && requestedPort > 0) ? requestedPort : request.getServerPort();
+        String scheme = request.getScheme();
+        String contextPath = request.getContextPath();
+
+        String portSuffix = ((scheme.equalsIgnoreCase("http") && serverPort == 80) || (scheme.equalsIgnoreCase("https") && serverPort == 443))
+                ? "" : (":" + serverPort);
+
+        String baseUrl = scheme + "://" + serverHost + portSuffix + contextPath;
         String qrData = qrCodeService.generateQRCodeData(baseUrl, employee.getEmployeeId(), employee.getQrCodeToken());
         String qrCodeImage = qrCodeService.generateQRCodeImage(qrData);
 
         model.addAttribute("employee", employee);
         model.addAttribute("qrCodeImage", qrCodeImage);
         model.addAttribute("qrData", qrData);
+        model.addAttribute("activeHost", serverHost);
+        model.addAttribute("activePort", serverPort);
+        model.addAttribute("detectedLanIp", detectedLanIp);
+        model.addAttribute("availableIps", availableIps);
+        model.addAttribute("empId", employee.getEmployeeId());
+        model.addAttribute("token", employee.getQrCodeToken());
 
         return "employee-qrcode";
+    }
+
+    public static List<String> getAvailableIpv4Addresses() {
+        LinkedHashSet<String> ips = new LinkedHashSet<>();
+
+        // Priority 1: outbound route lookup via UDP dummy connect (does not transmit packets)
+        try (DatagramSocket socket = new DatagramSocket()) {
+            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+            InetAddress addr = socket.getLocalAddress();
+            if (addr instanceof Inet4Address && !addr.isLoopbackAddress() && !addr.isAnyLocalAddress()) {
+                ips.add(addr.getHostAddress());
+            }
+        } catch (Exception ignored) {
+        }
+
+        // Priority 2: iterate all network interfaces
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+                if (!iface.isUp() || iface.isLoopback() || iface.isPointToPoint()) {
+                    continue;
+                }
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (addr instanceof Inet4Address && !addr.isLoopbackAddress() && !addr.isAnyLocalAddress()) {
+                        String host = addr.getHostAddress();
+                        if (host.startsWith("192.168.") || host.startsWith("10.") || host.startsWith("172.")) {
+                            ips.add(host);
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        // Priority 3: any remaining non-loopback IPv4
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+                if (!iface.isUp() || iface.isLoopback()) continue;
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (addr instanceof Inet4Address && !addr.isLoopbackAddress() && !addr.isAnyLocalAddress()) {
+                        ips.add(addr.getHostAddress());
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        if (ips.isEmpty()) {
+            try {
+                InetAddress localHost = InetAddress.getLocalHost();
+                if (localHost instanceof Inet4Address && !localHost.isLoopbackAddress()) {
+                    ips.add(localHost.getHostAddress());
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return new ArrayList<>(ips);
     }
 
     @RequestMapping(value = "/scan", method = RequestMethod.POST)

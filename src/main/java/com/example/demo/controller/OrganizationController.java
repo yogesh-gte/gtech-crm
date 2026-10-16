@@ -36,7 +36,13 @@ public class OrganizationController {
     private ProjectRepository projectRepository;
 
     private boolean isAdminLoggedIn(HttpSession session) {
-        return session.getAttribute("user") != null;
+        if (session == null) return false;
+        Object userObj = session.getAttribute("user");
+        if (userObj instanceof com.example.demo.model.User user) {
+            return "ADMIN".equalsIgnoreCase(user.getRole());
+        }
+        Object role = session.getAttribute("userRole");
+        return role != null && "ADMIN".equalsIgnoreCase(role.toString());
     }
 
     @GetMapping

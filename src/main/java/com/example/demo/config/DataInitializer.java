@@ -20,6 +20,12 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private DepartmentRepository departmentRepository;
 
+    @Autowired
+    private com.example.demo.service.PasswordService passwordService;
+
+    @org.springframework.beans.factory.annotation.Value("${app.security.seed-demo-users:true}")
+    private boolean seedDemoUsers;
+
     @Override
     public void run(String... args) throws Exception {
         if (departmentRepository.count() == 0) {
@@ -34,20 +40,25 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("Default departments created: Engineering, Sales, HR, Support, Marketing");
         }
         if (userRepository.count() == 0) {
+            if (!seedDemoUsers) {
+                System.out.println("Demo user seeding is disabled (app.security.seed-demo-users=false). Skipping default user creation.");
+                return;
+            }
             List<User> users = Arrays.asList(
-                new User("admin@logsphere.com", "admin123", "Admin User", "ADMIN"),
-                new User("hr@logsphere.com", "hr123", "HR User", "HR"),
-                new User("manager@logsphere.com", "manager123", "Manager User", "MANAGER"),
-                new User("hr1@logsphere.com", "hr123", "Hr1", "HR"),
-                new User("manager1@logsphere.com", "admin123", "M1", "MANAGER"),
-                new User("hr2@logsphere.com", "hr123", "Hr2", "HR"),
-                new User("manager2@logsphere.com", "manager123", "M2", "MANAGER"),
-                new User("admin1@logsphere.com", "admin123", "admin1", "ADMIN")
+                new User("admin@logsphere.com", passwordService.encode("admin123"), "Admin User", "ADMIN"),
+                new User("hr@logsphere.com", passwordService.encode("hr123"), "HR User", "HR"),
+                new User("manager@logsphere.com", passwordService.encode("manager123"), "Manager User", "MANAGER"),
+                new User("hr1@logsphere.com", passwordService.encode("hr123"), "Hr1", "HR"),
+                new User("manager1@logsphere.com", passwordService.encode("admin123"), "M1", "MANAGER"),
+                new User("hr2@logsphere.com", passwordService.encode("hr123"), "Hr2", "HR"),
+                new User("manager2@logsphere.com", passwordService.encode("manager123"), "M2", "MANAGER"),
+                new User("admin1@logsphere.com", passwordService.encode("admin123"), "admin1", "ADMIN")
             );
             
             userRepository.saveAll(users);
-            System.out.println("Default credentials synchronized with screenshot: 8 users created.");
+            System.out.println("Default credentials synchronized with screenshot: 8 users created (hashed with BCrypt).");
         } else {
+
             System.out.println("Users already exist. Skipping synchronization.");
         }
     }

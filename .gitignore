@@ -4,7 +4,8 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### STS ###
+### STS / Eclipse Build Outputs ###
+bin/
 .apt_generated
 .classpath
 .factorypath
@@ -31,7 +32,32 @@ build/
 
 ### VS Code ###
 .vscode/
-uploads/
-src/main/resources/application.properties
 
+### Uploads & Storage ###
+uploads/
+
+### Sensitive Environment & Secret Files ###
+.env
+.env.*
+*.env
+!.env.example
+*.pem
+*.key
+*.pkcs12
+*.p12
+*.pfx
+*.jks
+
+### Local Application Overrides ###
+src/main/resources/application.properties
+application-local.properties
+application-secret.properties
+*-local.properties
+
+### Logs ###
+*.log
+logs/
+
+### OS Metadata ###
 .DS_Store
+Thumbs.db

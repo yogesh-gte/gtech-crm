@@ -39,6 +39,9 @@ public class EmployeeController {
     @Autowired
     private EmailService emailService;
 
+    @Autowired(required = false)
+    private com.example.demo.service.AuthorizationService authorizationService;
+
     @Autowired
     private FaceRecognitionService faceRecognitionService;
 
@@ -809,7 +812,9 @@ public class EmployeeController {
 
     @RequestMapping(value = "/list", method = RequestMethod.GET)
     public String listEmployees(Model model, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        Object userObj = (session != null) ? session.getAttribute("user") : null;
+        String role = (userObj instanceof com.example.demo.model.User u) ? u.getRole() : (String) (session != null ? session.getAttribute("userRole") : null);
+        if (userObj == null || (!"ADMIN".equalsIgnoreCase(role) && !"HR".equalsIgnoreCase(role) && !"MANAGER".equalsIgnoreCase(role))) {
             return "redirect:/login";
         }
 
@@ -822,7 +827,9 @@ public class EmployeeController {
             @RequestParam(required = false) String employeeId,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (session.getAttribute("user") == null) {
+        Object userObj = (session != null) ? session.getAttribute("user") : null;
+        String role = (userObj instanceof com.example.demo.model.User u) ? u.getRole() : (String) (session != null ? session.getAttribute("userRole") : null);
+        if (userObj == null || (!"ADMIN".equalsIgnoreCase(role) && !"HR".equalsIgnoreCase(role) && !"MANAGER".equalsIgnoreCase(role))) {
             return "redirect:/login";
         }
 
@@ -873,7 +880,9 @@ public class EmployeeController {
         model.addAttribute("endDate", endDate);
 
         // Determine dashboard link based on role
-        String role = (String) session.getAttribute("userRole");
+        if (session != null && session.getAttribute("userRole") != null) {
+            role = (String) session.getAttribute("userRole");
+        }
         String dashboardLink = "/admin/dashboard"; // Default
         if ("HR".equals(role)) {
             dashboardLink = "/hr/dashboard";
@@ -1159,15 +1168,32 @@ public class EmployeeController {
     @RequestMapping(value = "/api/meetings/{id}", method = RequestMethod.GET)
     @ResponseBody
     public ResponseEntity<?> getMeetingDetails(@PathVariable Long id, HttpSession session) {
-        Employee employee = (Employee) session.getAttribute("employee");
-        if (employee == null) {
-            return ResponseEntity.badRequest().body("Unauthorized");
+        Employee employee = (session != null) ? (Employee) session.getAttribute("employee") : null;
+        com.example.demo.model.User user = (session != null && session.getAttribute("user") instanceof com.example.demo.model.User u) ? u : null;
+        if (employee == null && user == null) {
+            return ResponseEntity.status(401).body("{\"error\":\"Unauthorized\",\"message\":\"Authentication required\"}");
         }
         Optional<com.example.demo.model.Meeting> meetingOpt = meetingRepository.findById(id);
         if (meetingOpt.isPresent()) {
-            return ResponseEntity.ok(meetingOpt.get());
+            com.example.demo.model.Meeting meeting = meetingOpt.get();
+            Long empId = employee != null ? employee.getId() : null;
+            boolean isAuthorized = false;
+            if (user != null && ("ADMIN".equalsIgnoreCase(user.getRole()) || "HR".equalsIgnoreCase(user.getRole()) || "MANAGER".equalsIgnoreCase(user.getRole()))) {
+                isAuthorized = true;
+            } else if (empId != null) {
+                isAuthorized = (meeting.getOrganizer() != null && empId.equals(meeting.getOrganizer().getId()))
+                        || (meeting.getAttendees() != null && meeting.getAttendees().stream().anyMatch(a -> a != null && empId.equals(a.getId())))
+                        || (meeting.getEmployeeParticipants() != null && meeting.getEmployeeParticipants().stream().anyMatch(p -> p != null && empId.equals(p.getId())))
+                        || (meeting.getTargetEmployee() != null && empId.equals(meeting.getTargetEmployee().getId()))
+                        || Boolean.TRUE.equals(meeting.getInviteEveryone());
+            }
+
+            if (!isAuthorized) {
+                return ResponseEntity.status(403).body("{\"error\":\"Forbidden\",\"message\":\"Access denied to meeting details\"}");
+            }
+            return ResponseEntity.ok(meeting);
         }
-        return ResponseEntity.badRequest().body("Meeting not found");
+        return ResponseEntity.status(404).body("{\"error\":\"Not Found\",\"message\":\"Meeting not found\"}");
     }
 
     @RequestMapping(value = "/notifications/history", method = RequestMethod.GET)
@@ -1275,8 +1301,17 @@ public class EmployeeController {
 
         List<com.example.demo.model.LeaveRequest> leaveRequests = leaveRequestRepository.findByEmployee(employee);
 
+        List<String> approvedPaidMonths = leaveRequests.stream()
+                .filter(lr -> "PAID".equalsIgnoreCase(lr.getLeaveType()))
+                .filter(lr -> "APPROVED".equalsIgnoreCase(lr.getStatus()))
+                .filter(lr -> lr.getStartDate() != null)
+                .map(lr -> String.format("%04d-%02d", lr.getStartDate().getYear(), lr.getStartDate().getMonthValue()))
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+
         model.addAttribute("employee", employee);
         model.addAttribute("leaveRequests", leaveRequests);
+        model.addAttribute("approvedPaidMonths", approvedPaidMonths);
         model.addAttribute("leaveBalance", dynamicBal);
 
         return "employee-leave-apply";
@@ -1319,6 +1354,22 @@ public class EmployeeController {
                 return "redirect:/employee/leave/apply";
             }
 
+            List<com.example.demo.model.LeaveRequest> existingLeaves = leaveRequestRepository.findByEmployee(employee);
+
+            // Check for date overlap with any active (pending or approved) leave
+            boolean hasOverlap = existingLeaves.stream()
+                    .filter(lr -> !"REJECTED".equalsIgnoreCase(lr.getStatus()))
+                    .anyMatch(lr -> {
+                        if (lr.getStartDate() == null || lr.getEndDate() == null) return false;
+                        return !start.isAfter(lr.getEndDate()) && !end.isBefore(lr.getStartDate());
+                    });
+
+            if (hasOverlap) {
+                redirectAttributes.addFlashAttribute("error",
+                        "You already have an active leave application (Pending or Approved) overlapping the selected dates!");
+                return "redirect:/employee/leave/apply";
+            }
+
             // LOG-EMP-005: Enforce single date and 1-per-month limit for Paid Leave
             if ("PAID".equalsIgnoreCase(leaveType)) {
                 if (!start.isEqual(end)) {
@@ -1326,7 +1377,6 @@ public class EmployeeController {
                     return "redirect:/employee/leave/apply";
                 }
 
-                List<com.example.demo.model.LeaveRequest> existingLeaves = leaveRequestRepository.findByEmployee(employee);
                 boolean alreadyUsedThisMonth = existingLeaves.stream()
                         .filter(lr -> "PAID".equalsIgnoreCase(lr.getLeaveType()))
                         .filter(lr -> !"REJECTED".equalsIgnoreCase(lr.getStatus()))
@@ -1337,6 +1387,28 @@ public class EmployeeController {
                 if (alreadyUsedThisMonth) {
                     redirectAttributes.addFlashAttribute("error", "You have already applied for or used your 1 Paid Leave for " 
                             + start.getMonth().name() + " " + start.getYear() + "!");
+                    return "redirect:/employee/leave/apply";
+                }
+            }
+
+            // Restrict Sick or Casual leave if employee has an approved Paid Leave in the same month
+            if ("SICK".equalsIgnoreCase(leaveType) || "CASUAL".equalsIgnoreCase(leaveType)) {
+                boolean hasApprovedPaidLeaveThisMonth = existingLeaves.stream()
+                        .filter(lr -> "PAID".equalsIgnoreCase(lr.getLeaveType()))
+                        .filter(lr -> "APPROVED".equalsIgnoreCase(lr.getStatus()))
+                        .anyMatch(lr -> {
+                            if (lr.getStartDate() == null) return false;
+                            boolean sameStartMonth = lr.getStartDate().getYear() == start.getYear() &&
+                                    lr.getStartDate().getMonthValue() == start.getMonthValue();
+                            boolean sameEndMonth = lr.getStartDate().getYear() == end.getYear() &&
+                                    lr.getStartDate().getMonthValue() == end.getMonthValue();
+                            return sameStartMonth || sameEndMonth;
+                        });
+
+                if (hasApprovedPaidLeaveThisMonth) {
+                    redirectAttributes.addFlashAttribute("error",
+                            "You have already taken an approved Paid Leave for " + start.getMonth().name() + " " + start.getYear()
+                                    + ". Additional Sick or Casual leave cannot be submitted for approval!");
                     return "redirect:/employee/leave/apply";
                 }
             }

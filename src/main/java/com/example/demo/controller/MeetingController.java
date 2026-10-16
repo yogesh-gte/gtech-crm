@@ -43,6 +43,9 @@ public class MeetingController {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    @Autowired(required = false)
+    private com.example.demo.service.AuthorizationService authorizationService;
+
     @RequestMapping(value = "/create", method = RequestMethod.GET)
     public String showCreateForm(Model model, HttpSession session, @RequestParam(required = false) String type) {
         // Allow both admin and employee access
@@ -126,9 +129,9 @@ public class MeetingController {
             return "redirect:/login";
         }
 
-        // If employee is creating meeting, set them as organizer
+        // If employee is creating meeting, force organizer to be the logged-in employee (prevent organizer spoofing)
         Employee employee = (Employee) session.getAttribute("employee");
-        if (employee != null && organizerId == null) {
+        if (employee != null) {
             organizerId = employee.getId();
         }
 
@@ -286,25 +289,50 @@ public class MeetingController {
 
     @RequestMapping(value = "/end/{id}", method = RequestMethod.POST)
     public String endMeeting(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
-        if (session.getAttribute("user") == null) {
+        Object userObj = session.getAttribute("user");
+        Employee employee = (Employee) session.getAttribute("employee");
+        if (userObj == null && employee == null) {
             return "redirect:/login";
         }
 
         Optional<Meeting> meetingOpt = meetingRepository.findById(id);
         if (meetingOpt.isPresent()) {
             Meeting meeting = meetingOpt.get();
+            boolean canModify = false;
+            if (authorizationService != null) {
+                canModify = authorizationService.canModifyMeeting(session, meeting);
+            } else {
+                com.example.demo.model.User user = (userObj instanceof com.example.demo.model.User u) ? u : null;
+                canModify = (user != null && "ADMIN".equalsIgnoreCase(user.getRole())) ||
+                        (employee != null && meeting.getOrganizer() != null && employee.getId() != null && employee.getId().equals(meeting.getOrganizer().getId()));
+            }
+
+            if (!canModify) {
+                redirectAttributes.addFlashAttribute("error", "Unauthorized: You can only end meetings you organized.");
+                return employee != null ? "redirect:/employee/dashboard" : "redirect:/admin/dashboard";
+            }
+
             meeting.setEndTime(LocalDateTime.now());
             meeting.setStatus("COMPLETED");
             meetingRepository.save(meeting);
             redirectAttributes.addFlashAttribute("success", "Meeting ended successfully!");
         }
 
-        return "redirect:/admin/dashboard";
+        return employee != null ? "redirect:/employee/dashboard" : "redirect:/admin/dashboard";
     }
 
     @RequestMapping(value = "/list", method = RequestMethod.GET)
     public String listMeetings(Model model, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        Object userObj = session.getAttribute("user");
+        boolean isStaff = false;
+        if (authorizationService != null) {
+            isStaff = authorizationService.isStaff(session);
+        } else if (userObj instanceof com.example.demo.model.User user) {
+            String role = user.getRole();
+            isStaff = "ADMIN".equalsIgnoreCase(role) || "HR".equalsIgnoreCase(role) || "MANAGER".equalsIgnoreCase(role);
+        }
+
+        if (!isStaff) {
             return "redirect:/login";
         }
 

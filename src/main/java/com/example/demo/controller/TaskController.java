@@ -38,6 +38,9 @@ public class TaskController {
     @Autowired
     private com.example.demo.repository.UserRepository userRepository;
 
+    @Autowired(required = false)
+    private com.example.demo.service.AuthorizationService authorizationService;
+
     @RequestMapping(method = RequestMethod.GET)
     public String myTasks(Model model, HttpSession session) {
         Employee employee = (Employee) session.getAttribute("employee");
@@ -156,7 +159,7 @@ public class TaskController {
         return "redirect:/employee/tasks";
     }
 
-    @RequestMapping(value = "/delete/{id}", method = RequestMethod.GET)
+    @RequestMapping(value = "/delete/{id}", method = {RequestMethod.GET, RequestMethod.POST})
     public String deleteTask(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
         User user = (User) session.getAttribute("user");
         Employee employee = (Employee) session.getAttribute("employee");
@@ -164,23 +167,33 @@ public class TaskController {
             return "redirect:/employee/login";
         }
 
-        // LOG-EMP-012: Regular employees are not authorized to delete assigned tasks
-        boolean isAuthorized = (user != null && ("ADMIN".equals(user.getRole()) || "MANAGER".equals(user.getRole())))
-                || (employee != null && Boolean.TRUE.equals(employee.getIsTeamLead()));
-
-        if (!isAuthorized) {
-            redirectAttributes.addFlashAttribute("error", "Unauthorized: Employees cannot delete assigned tasks. Please contact your manager or Team Lead.");
+        Optional<Task> taskOpt = taskRepository.findById(id);
+        if (taskOpt.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Task not found!");
             return "redirect:/employee/tasks";
         }
 
-        Optional<Task> taskOpt = taskRepository.findById(id);
-        if (taskOpt.isPresent()) {
-            taskRepository.deleteById(id);
-            redirectAttributes.addFlashAttribute("success", "Task deleted successfully!");
+        Task task = taskOpt.get();
+        boolean isAuthorized = false;
+        if (authorizationService != null) {
+            isAuthorized = authorizationService.canDeleteTask(session, task);
         } else {
-            redirectAttributes.addFlashAttribute("error", "Task not found!");
+            if (user != null && ("ADMIN".equalsIgnoreCase(user.getRole()) || "MANAGER".equalsIgnoreCase(user.getRole()))) {
+                isAuthorized = true;
+            } else if (employee != null && Boolean.TRUE.equals(employee.getIsTeamLead())) {
+                if (task.getEmployee() != null && task.getEmployee().getTeam() != null && employee.getTeam() != null) {
+                    isAuthorized = task.getEmployee().getTeam().getId().equals(employee.getTeam().getId());
+                }
+            }
         }
 
+        if (!isAuthorized) {
+            redirectAttributes.addFlashAttribute("error", "Unauthorized: You do not have permission to delete this task.");
+            return "redirect:/employee/tasks";
+        }
+
+        taskRepository.deleteById(id);
+        redirectAttributes.addFlashAttribute("success", "Task deleted successfully!");
         return "redirect:/employee/tasks";
     }
 

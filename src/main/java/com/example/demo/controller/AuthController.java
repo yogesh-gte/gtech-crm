@@ -21,19 +21,21 @@ public class AuthController {
     @Autowired
     private com.example.demo.service.EmailService emailService;
 
+    @Autowired
+    private com.example.demo.service.PasswordService passwordService;
+
+    @Autowired(required = false)
+    private com.example.demo.service.SessionSecurityService sessionSecurityService;
+
     @RequestMapping(value = "/admin/login", method = RequestMethod.GET)
     public String showLoginForm(Model model, HttpSession session) {
-        // If already logged in, redirect to dashboard
-        // If already logged in, redirect to dashboard
-        // if (session.getAttribute("user") != null) {
-        // return "redirect:/admin/dashboard";
-        // }
         return "login";
     }
 
     @RequestMapping(value = "/admin/login", method = RequestMethod.POST)
     public String login(@RequestParam String email,
             @RequestParam String password,
+            jakarta.servlet.http.HttpServletRequest request,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
 
@@ -41,11 +43,33 @@ public class AuthController {
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-            // Simple password check (in production, use password hashing like BCrypt)
-            if (user.getPassword().equals(password)) {
-                session.setAttribute("user", user);
-                session.setAttribute("userName", user.getName());
-                session.setAttribute("userRole", user.getRole());
+            boolean passwordMatches = passwordService.verifyAndUpgrade(password, user.getPassword(), newHash -> {
+                user.setPassword(newHash);
+                userRepository.save(user);
+            });
+
+            if (passwordMatches) {
+                HttpSession activeSession;
+                if (sessionSecurityService != null && request != null) {
+                    activeSession = sessionSecurityService.rotateSession(request);
+                } else if (request != null) {
+                    try {
+                        request.changeSessionId();
+                    } catch (Exception ignored) {
+                    }
+                    activeSession = request.getSession(true);
+                } else {
+                    activeSession = session;
+                }
+
+                User sessionUser = (sessionSecurityService != null) ? sessionSecurityService.sanitizeUserForSession(user) : user;
+                activeSession.setAttribute("user", sessionUser);
+                activeSession.setAttribute("userName", user.getName());
+                activeSession.setAttribute("userRole", user.getRole());
+
+                if (sessionSecurityService != null) {
+                    sessionSecurityService.registerUserSession(user.getEmail(), activeSession);
+                }
 
                 // Redirect based on role
                 if ("ADMIN".equals(user.getRole())) {
@@ -67,6 +91,13 @@ public class AuthController {
             return "redirect:/admin/login";
         }
     }
+
+    public String login(String email, String password, HttpSession session, RedirectAttributes redirectAttributes) {
+        return login(email, password, null, session, redirectAttributes);
+    }
+
+
+
 
     @RequestMapping(value = "/register/admin", method = RequestMethod.GET)
     public String showRegisterForm(Model model, RedirectAttributes redirectAttributes) {
@@ -106,13 +137,17 @@ public class AuthController {
             redirectAttributes.addFlashAttribute("error", "Password must be at least 6 characters long!");
             return "redirect:/register/admin";
         }
+        if (password.length() > com.example.demo.service.PasswordService.MAX_PASSWORD_LENGTH) {
+            redirectAttributes.addFlashAttribute("error", "Password exceeds maximum allowed length!");
+            return "redirect:/register/admin";
+        }
 
         if (userRepository.findByEmail(email.trim()).isPresent()) {
             redirectAttributes.addFlashAttribute("error", "Email already registered!");
             return "redirect:/register/admin";
         }
 
-        User user = new User(email, password, name, "ADMIN");
+        User user = new User(email.trim().toLowerCase(), passwordService.encode(password), name.trim(), "ADMIN");
         userRepository.save(user);
 
         redirectAttributes.addFlashAttribute("message", "Registration successful! Please login with your credentials.");
@@ -138,60 +173,47 @@ public class AuthController {
             RedirectAttributes redirectAttributes,
             jakarta.servlet.http.HttpServletRequest request) {
 
-        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (email != null && !email.trim().isEmpty()) {
+            Optional<User> userOptional = userRepository.findByEmail(email.trim().toLowerCase());
 
-        if (userOptional.isPresent()) {
-            User user = userOptional.get();
-            String token = java.util.UUID.randomUUID().toString();
-            user.setResetToken(token);
-            user.setResetTokenExpiry(java.time.LocalDateTime.now().plusMinutes(15));
-            userRepository.save(user); // Save token to DB
+            if (userOptional.isPresent()) {
+                User user = userOptional.get();
+                String rawToken = passwordService.generateResetToken();
+                String hashedToken = passwordService.hashToken(rawToken);
+                user.setResetToken(hashedToken);
+                user.setResetTokenExpiry(java.time.LocalDateTime.now().plusMinutes(15));
+                userRepository.save(user);
 
-            String appUrl = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort()
-                    + request.getContextPath();
-            String resetUrl = appUrl + "/reset-password?token=" + token;
+                String appUrl = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort()
+                        + request.getContextPath();
+                String resetUrl = appUrl + "/reset-password?token=" + rawToken;
 
-            emailService.sendPasswordResetEmail(user.getEmail(), resetUrl);
-
-            redirectAttributes.addFlashAttribute("message", "A password reset link has been sent to your email.");
-        } else {
-            // Act the same even if email doesn't exist for security (avoid enumeration)
-            // But for this project, let's look identical.
-            redirectAttributes.addFlashAttribute("message",
-                    "If an account exists for that email, we have sent a password reset link.");
+                emailService.sendPasswordResetEmail(user.getEmail(), resetUrl);
+            }
         }
 
+        // Return uniform response to prevent account enumeration
+        redirectAttributes.addFlashAttribute("message",
+                "If an account exists for that email, we have sent a password reset link.");
         return "redirect:/admin/login";
     }
 
     @RequestMapping(value = "/reset-password", method = RequestMethod.GET)
     public String showResetPasswordForm(@RequestParam String token, Model model,
             RedirectAttributes redirectAttributes) {
-        // Find user by token
-        // Since repo might not have findByResetToken, we fetch all users or use custom
-        // query.
-        // NOTE: Efficient way is to add method to repo. For now iterating or using what
-        // we have.
-        // Let's assume we can traverse. Or better, we NEED to add findByResetToken to
-        // repo properly.
-        // BUT, since we cannot edit Repo interface reliably without checking, let's do
-        // a simple scan or assume existing repo is standard JpaRepository.
-        // Let's check if we can add to repo. Waiting... NO, I'll filter in memory or
-        // add query creation if needed.
-        // ACTUALLY, simpler to scan for now as user base is small, OR add native query.
-        // Let's fetch the user list and filter stream - acceptable for small scale
-        // demo.
+        if (token == null || token.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Invalid or expired reset token!");
+            return "redirect:/admin/login";
+        }
 
-        // Wait, standard practice: add to UserRepository. I'll do that in next step if
-        // needed.
-        // For now, I will use a stream filter which is safe enough for small user
-        // count.
-
+        String hashedToken = passwordService.hashToken(token);
         Optional<User> user = userRepository.findAll().stream()
-                .filter(u -> token.equals(u.getResetToken()))
+                .filter(u -> u.getResetToken() != null && 
+                        (u.getResetToken().equals(hashedToken) || u.getResetToken().equals(token)))
                 .findFirst();
 
-        if (user.isPresent() && user.get().getResetTokenExpiry().isAfter(java.time.LocalDateTime.now())) {
+        if (user.isPresent() && user.get().getResetTokenExpiry() != null
+                && user.get().getResetTokenExpiry().isAfter(java.time.LocalDateTime.now())) {
             model.addAttribute("token", token);
             return "reset-password";
         } else {
@@ -203,19 +225,50 @@ public class AuthController {
     @RequestMapping(value = "/reset-password", method = RequestMethod.POST)
     public String processResetPassword(@RequestParam String token,
             @RequestParam String password,
+            HttpSession session,
+            jakarta.servlet.http.HttpServletResponse response,
             RedirectAttributes redirectAttributes) {
 
+        if (password == null || password.trim().length() < 6) {
+            redirectAttributes.addFlashAttribute("error", "Password must be at least 6 characters long!");
+            return "redirect:/reset-password?token=" + token;
+        }
+        if (password.length() > com.example.demo.service.PasswordService.MAX_PASSWORD_LENGTH) {
+            redirectAttributes.addFlashAttribute("error", "Password exceeds maximum allowed length!");
+            return "redirect:/reset-password?token=" + token;
+        }
+
+        if (token == null || token.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Invalid or expired reset token!");
+            return "redirect:/admin/login";
+        }
+
+        String hashedToken = passwordService.hashToken(token);
         Optional<User> userOptional = userRepository.findAll().stream()
-                .filter(u -> token.equals(u.getResetToken()))
+                .filter(u -> u.getResetToken() != null && 
+                        (u.getResetToken().equals(hashedToken) || u.getResetToken().equals(token)))
                 .findFirst();
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-            if (user.getResetTokenExpiry().isAfter(java.time.LocalDateTime.now())) {
-                user.setPassword(password); // Ideally encrypt this
+            if (user.getResetTokenExpiry() != null && user.getResetTokenExpiry().isAfter(java.time.LocalDateTime.now())) {
+                user.setPassword(passwordService.encode(password));
                 user.setResetToken(null);
                 user.setResetTokenExpiry(null);
                 userRepository.save(user);
+
+                // Invalidate all active sessions for this user upon password reset
+                if (sessionSecurityService != null) {
+                    sessionSecurityService.invalidateSessionsForUser(user.getEmail());
+                }
+                if (session != null) {
+                    try {
+                        session.invalidate();
+                    } catch (IllegalStateException ignored) {}
+                }
+                if (sessionSecurityService != null && response != null) {
+                    sessionSecurityService.expireSessionCookie(response);
+                }
 
                 redirectAttributes.addFlashAttribute("message", "You have successfully reset your password.");
                 return "redirect:/admin/login";
@@ -226,9 +279,26 @@ public class AuthController {
         return "redirect:/admin/login";
     }
 
-    @RequestMapping(value = "/logout", method = RequestMethod.GET)
-    public String logout(HttpSession session) {
-        session.invalidate();
+    public String processResetPassword(String token, String password, RedirectAttributes redirectAttributes) {
+        return processResetPassword(token, password, null, null, redirectAttributes);
+    }
+
+    @RequestMapping(value = "/logout", method = {RequestMethod.GET, RequestMethod.POST})
+    public String logout(HttpSession session, jakarta.servlet.http.HttpServletResponse response) {
+        if (sessionSecurityService != null && response != null) {
+            sessionSecurityService.expireSessionCookie(response);
+        }
+        if (session != null) {
+            try {
+                session.invalidate();
+            } catch (IllegalStateException ignored) {}
+        }
         return "redirect:/admin/login";
     }
+
+    public String logout(HttpSession session) {
+        return logout(session, null);
+    }
 }
+
+

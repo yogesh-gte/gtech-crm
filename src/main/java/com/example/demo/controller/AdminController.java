@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.Meeting;
+import com.example.demo.model.User;
 import com.example.demo.model.Visitor;
 import com.example.demo.repository.EmployeeRepository;
 import com.example.demo.repository.MeetingRepository;
@@ -21,8 +22,16 @@ import java.util.Map;
 @RequestMapping("/admin")
 public class AdminController {
 
+    @Autowired(required = false)
+    private com.example.demo.service.PasswordService passwordService;
+
+    @Autowired(required = false)
+    private com.example.demo.service.AuthorizationService authorizationService;
+
     @Autowired
     private VisitorRepository visitorRepository;
+
+
 
     @Autowired
     private EmployeeRepository employeeRepository;
@@ -41,8 +50,9 @@ public class AdminController {
 
     @RequestMapping(value = "/dashboard", method = RequestMethod.GET)
     public String adminDashboard(Model model, HttpSession session) {
-        // Check if user is logged in
-        if (session.getAttribute("user") == null) {
+        // Enforce ADMIN role authentication
+        User user = (session != null) ? (User) session.getAttribute("user") : null;
+        if (user == null || !"ADMIN".equalsIgnoreCase(user.getRole())) {
             return "redirect:/login";
         }
 
@@ -100,8 +110,8 @@ public class AdminController {
 
     @RequestMapping(value = "/payroll", method = RequestMethod.GET)
     public String adminPayroll(Model model, HttpSession session) {
-        // Check if user is logged in
-        if (session.getAttribute("user") == null) {
+        User user = (session != null) ? (User) session.getAttribute("user") : null;
+        if (user == null || !"ADMIN".equalsIgnoreCase(user.getRole())) {
             return "redirect:/login";
         }
 
@@ -110,9 +120,7 @@ public class AdminController {
                 .findByPayrollStatus(com.example.demo.model.Payroll.PayrollStatus.APPROVED);
 
         model.addAttribute("userName", session.getAttribute("userName"));
-        model.addAttribute("payrolls", allPayrolls); // Using allPayrolls for the list as per typical admin view, but
-                                                     // user image shows specific rows. The user image shows "Payroll
-                                                     // History", implying all.
+        model.addAttribute("payrolls", allPayrolls);
         model.addAttribute("processedCount", processedPayrolls.size());
 
         return "admin-payroll";
@@ -120,7 +128,14 @@ public class AdminController {
 
     @RequestMapping(value = "/api/employees", method = RequestMethod.GET)
     @org.springframework.web.bind.annotation.ResponseBody
-    public List<com.example.demo.model.Employee> getAllEmployees() {
+    public List<com.example.demo.model.Employee> getAllEmployees(HttpSession session, jakarta.servlet.http.HttpServletResponse response) {
+        User user = (session != null) ? (User) session.getAttribute("user") : null;
+        if (user == null || (!"ADMIN".equalsIgnoreCase(user.getRole()) && !"HR".equalsIgnoreCase(user.getRole()) && !"MANAGER".equalsIgnoreCase(user.getRole()))) {
+            if (response != null) {
+                response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+            }
+            return java.util.Collections.emptyList();
+        }
         // Return only active employees
         return employeeRepository.findAll()
                 .stream()
@@ -128,11 +143,28 @@ public class AdminController {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    public List<com.example.demo.model.Employee> getAllEmployees() {
+        return getAllEmployees(null, null);
+    }
+
     @RequestMapping(value = "/api/employees/{id}", method = RequestMethod.GET)
     @org.springframework.web.bind.annotation.ResponseBody
     public com.example.demo.model.Employee getEmployeeDetails(
-            @org.springframework.web.bind.annotation.PathVariable Long id) {
+            @org.springframework.web.bind.annotation.PathVariable Long id,
+            HttpSession session,
+            jakarta.servlet.http.HttpServletResponse response) {
+        User user = (session != null) ? (User) session.getAttribute("user") : null;
+        if (user == null || (!"ADMIN".equalsIgnoreCase(user.getRole()) && !"HR".equalsIgnoreCase(user.getRole()) && !"MANAGER".equalsIgnoreCase(user.getRole()))) {
+            if (response != null) {
+                response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+            }
+            return null;
+        }
         return employeeRepository.findById(id).orElse(null);
+    }
+
+    public com.example.demo.model.Employee getEmployeeDetails(Long id) {
+        return getEmployeeDetails(id, null, null);
     }
 
     @RequestMapping(value = "/api/payroll/base-salary/{employeeId}", method = RequestMethod.GET)
@@ -141,8 +173,9 @@ public class AdminController {
             @org.springframework.web.bind.annotation.PathVariable Long employeeId,
             HttpSession session) {
         java.util.Map<String, Object> response = new java.util.HashMap<>();
-        // Check if user is logged in (admin should have access)
-        if (session.getAttribute("user") == null) {
+        // Enforce ADMIN or HR role authentication
+        User user = (session != null) ? (User) session.getAttribute("user") : null;
+        if (user == null || (!"ADMIN".equalsIgnoreCase(user.getRole()) && !"HR".equalsIgnoreCase(user.getRole()))) {
             response.put("success", false);
             response.put("message", "Unauthorized");
             return response;
@@ -198,8 +231,22 @@ public class AdminController {
     @org.springframework.web.bind.annotation.ResponseBody
     public java.util.Map<String, Object> savePayroll(
             @org.springframework.web.bind.annotation.RequestParam(required = false) Long employeeId,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) Double baseSalary) {
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Double baseSalary,
+            HttpSession session,
+            jakarta.servlet.http.HttpServletResponse httpResponse) {
         java.util.Map<String, Object> response = new java.util.HashMap<>();
+        if (session != null) {
+            User user = (session.getAttribute("user") instanceof User u) ? u : null;
+            if (user == null || !"ADMIN".equalsIgnoreCase(user.getRole())) {
+                if (httpResponse != null) {
+                    httpResponse.setStatus(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN);
+                }
+                response.put("success", false);
+                response.put("message", "Forbidden: Admin privileges required to update base salary");
+                return response;
+            }
+        }
+
         try {
             if (employeeId == null) {
                 response.put("success", false);
@@ -219,8 +266,7 @@ public class AdminController {
                 return response;
             }
 
-            // Persist the admin-set base salary on the employee profile so HR can only read
-            // it
+            // Persist the admin-set base salary on the employee profile so HR can only read it
             employee.setSalary(baseSalary);
             employeeRepository.save(employee);
 
@@ -249,12 +295,17 @@ public class AdminController {
         return response;
     }
 
+    public java.util.Map<String, Object> savePayroll(Long employeeId, Double baseSalary) {
+        return savePayroll(employeeId, baseSalary, null, null);
+    }
+
     @Autowired
     private com.example.demo.repository.UserRepository userRepository;
 
     @RequestMapping(value = "/register/hr", method = RequestMethod.GET)
     public String showHrRegistrationForm(Model model, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        User user = (session != null) ? (User) session.getAttribute("user") : null;
+        if (user == null || !"ADMIN".equalsIgnoreCase(user.getRole())) {
             return "redirect:/login";
         }
         model.addAttribute("user", new com.example.demo.model.User());
@@ -266,7 +317,8 @@ public class AdminController {
     public String registerHr(@org.springframework.web.bind.annotation.ModelAttribute com.example.demo.model.User user,
             org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes,
             HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        User currentUser = (session != null) ? (User) session.getAttribute("user") : null;
+        if (currentUser == null || !"ADMIN".equalsIgnoreCase(currentUser.getRole())) {
             return "redirect:/login";
         }
 
@@ -293,6 +345,9 @@ public class AdminController {
         user.setName(user.getName().trim());
         user.setEmail(user.getEmail().trim().toLowerCase());
         user.setRole("HR");
+        if (passwordService != null) {
+            user.setPassword(passwordService.encode(user.getPassword()));
+        }
         userRepository.save(user);
 
         redirectAttributes.addFlashAttribute("success", "HR registered successfully!");
@@ -301,7 +356,8 @@ public class AdminController {
 
     @RequestMapping(value = "/register/manager", method = RequestMethod.GET)
     public String showManagerRegistrationForm(Model model, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        User user = (session != null) ? (User) session.getAttribute("user") : null;
+        if (user == null || !"ADMIN".equalsIgnoreCase(user.getRole())) {
             return "redirect:/login";
         }
         model.addAttribute("user", new com.example.demo.model.User());
@@ -314,7 +370,8 @@ public class AdminController {
             @org.springframework.web.bind.annotation.ModelAttribute com.example.demo.model.User user,
             org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes,
             HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        User currentUser = (session != null) ? (User) session.getAttribute("user") : null;
+        if (currentUser == null || !"ADMIN".equalsIgnoreCase(currentUser.getRole())) {
             return "redirect:/login";
         }
 
@@ -341,6 +398,9 @@ public class AdminController {
         user.setName(user.getName().trim());
         user.setEmail(user.getEmail().trim().toLowerCase());
         user.setRole("MANAGER");
+        if (passwordService != null) {
+            user.setPassword(passwordService.encode(user.getPassword()));
+        }
         userRepository.save(user);
 
         redirectAttributes.addFlashAttribute("success", "Manager registered successfully!");

@@ -30,7 +30,15 @@ public class HRController {
     private UserRepository userRepository;
 
     @Autowired
+    private com.example.demo.service.PasswordService passwordService;
+
+    @Autowired(required = false)
+    private com.example.demo.service.SessionSecurityService sessionSecurityService;
+
+    @Autowired
     private AttendanceRepository attendanceRepository;
+
+
 
     @Autowired
     private TaskRepository taskRepository;
@@ -83,6 +91,7 @@ public class HRController {
     @RequestMapping(value = "/login", method = RequestMethod.POST)
     public String hrLogin(@RequestParam String email,
             @RequestParam String password,
+            jakarta.servlet.http.HttpServletRequest request,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
 
@@ -94,10 +103,33 @@ public class HRController {
                 redirectAttributes.addFlashAttribute("error", "Access denied. HR login only.");
                 return "redirect:/hr/login";
             }
-            if (user.getPassword().equals(password)) {
-                session.setAttribute("user", user);
-                session.setAttribute("userName", user.getName());
-                session.setAttribute("userRole", user.getRole());
+            boolean passwordMatches = passwordService.verifyAndUpgrade(password, user.getPassword(), newHash -> {
+                user.setPassword(newHash);
+                userRepository.save(user);
+            });
+
+            if (passwordMatches) {
+                HttpSession activeSession;
+                if (sessionSecurityService != null && request != null) {
+                    activeSession = sessionSecurityService.rotateSession(request);
+                } else if (request != null) {
+                    try {
+                        request.changeSessionId();
+                    } catch (Exception ignored) {
+                    }
+                    activeSession = request.getSession(true);
+                } else {
+                    activeSession = session;
+                }
+
+                User sessionUser = (sessionSecurityService != null) ? sessionSecurityService.sanitizeUserForSession(user) : user;
+                activeSession.setAttribute("user", sessionUser);
+                activeSession.setAttribute("userName", user.getName());
+                activeSession.setAttribute("userRole", user.getRole());
+
+                if (sessionSecurityService != null) {
+                    sessionSecurityService.registerUserSession(user.getEmail(), activeSession);
+                }
                 return "redirect:/hr/dashboard";
             } else {
                 redirectAttributes.addFlashAttribute("error", "Invalid email or password!");
@@ -109,11 +141,28 @@ public class HRController {
         }
     }
 
-    @RequestMapping(value = "/logout", method = RequestMethod.GET)
-    public String hrLogout(HttpSession session) {
-        session.invalidate();
+    public String hrLogin(String email, String password, HttpSession session, RedirectAttributes redirectAttributes) {
+        return hrLogin(email, password, null, session, redirectAttributes);
+    }
+
+    @RequestMapping(value = "/logout", method = {RequestMethod.GET, RequestMethod.POST})
+    public String hrLogout(HttpSession session, jakarta.servlet.http.HttpServletResponse response) {
+        if (sessionSecurityService != null && response != null) {
+            sessionSecurityService.expireSessionCookie(response);
+        }
+        if (session != null) {
+            try {
+                session.invalidate();
+            } catch (IllegalStateException ignored) {}
+        }
         return "redirect:/hr/login";
     }
+
+    public String hrLogout(HttpSession session) {
+        return hrLogout(session, null);
+    }
+
+
 
     @RequestMapping(value = "/dashboard", method = RequestMethod.GET)
     public String hrDashboard(@RequestParam(required = false) String employeeSearch, Model model, HttpSession session) {

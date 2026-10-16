@@ -476,9 +476,16 @@
                 const params = new URLSearchParams();
                 params.append('employeeId', empId);
                 params.append('baseSalary', salary);
+                const csrfVal = /*[[${_csrf_token}]]*/ '';
+                if (csrfVal) {
+                    params.append('_csrf', csrfVal);
+                }
 
                 fetch(adminPayrollSaveUrl, {
                     method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfVal
+                    },
                     body: params
                 })
                     .then(response => response.json())

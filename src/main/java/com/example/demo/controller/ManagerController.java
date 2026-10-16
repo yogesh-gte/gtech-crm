@@ -27,10 +27,16 @@ public class ManagerController {
     @Autowired
     private EmployeeRepository employeeRepository;
 
-
-
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private com.example.demo.service.PasswordService passwordService;
+
+    @Autowired(required = false)
+    private com.example.demo.service.SessionSecurityService sessionSecurityService;
+
+
 
     @Autowired
     private TaskRepository taskRepository;
@@ -152,6 +158,7 @@ public class ManagerController {
     @RequestMapping(value = "/login", method = RequestMethod.POST)
     public String managerLogin(@RequestParam String email,
             @RequestParam String password,
+            jakarta.servlet.http.HttpServletRequest request,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
 
@@ -163,10 +170,33 @@ public class ManagerController {
                 redirectAttributes.addFlashAttribute("error", "Access denied. Manager login only.");
                 return "redirect:/manager/login";
             }
-            if (user.getPassword().equals(password)) {
-                session.setAttribute("user", user);
-                session.setAttribute("userName", user.getName());
-                session.setAttribute("userRole", user.getRole());
+            boolean passwordMatches = passwordService.verifyAndUpgrade(password, user.getPassword(), newHash -> {
+                user.setPassword(newHash);
+                userRepository.save(user);
+            });
+
+            if (passwordMatches) {
+                HttpSession activeSession;
+                if (sessionSecurityService != null && request != null) {
+                    activeSession = sessionSecurityService.rotateSession(request);
+                } else if (request != null) {
+                    try {
+                        request.changeSessionId();
+                    } catch (Exception ignored) {
+                    }
+                    activeSession = request.getSession(true);
+                } else {
+                    activeSession = session;
+                }
+
+                User sessionUser = (sessionSecurityService != null) ? sessionSecurityService.sanitizeUserForSession(user) : user;
+                activeSession.setAttribute("user", sessionUser);
+                activeSession.setAttribute("userName", user.getName());
+                activeSession.setAttribute("userRole", user.getRole());
+
+                if (sessionSecurityService != null) {
+                    sessionSecurityService.registerUserSession(user.getEmail(), activeSession);
+                }
                 return "redirect:/manager/dashboard";
             } else {
                 redirectAttributes.addFlashAttribute("error", "Invalid email or password!");
@@ -177,6 +207,30 @@ public class ManagerController {
             return "redirect:/manager/login";
         }
     }
+
+    public String managerLogin(String email, String password, HttpSession session, RedirectAttributes redirectAttributes) {
+        return managerLogin(email, password, null, session, redirectAttributes);
+    }
+
+    @RequestMapping(value = "/logout", method = {RequestMethod.GET, RequestMethod.POST})
+    public String managerLogout(HttpSession session, jakarta.servlet.http.HttpServletResponse response) {
+        if (sessionSecurityService != null && response != null) {
+            sessionSecurityService.expireSessionCookie(response);
+        }
+        if (session != null) {
+            try {
+                session.invalidate();
+            } catch (IllegalStateException ignored) {}
+        }
+        return "redirect:/manager/login";
+    }
+
+    public String managerLogout(HttpSession session) {
+        return managerLogout(session, null);
+    }
+
+
+
 
     @RequestMapping(value = "/dashboard", method = RequestMethod.GET)
     public String managerDashboard(@RequestParam(required = false, defaultValue = "planning") String tab,

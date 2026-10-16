@@ -117,23 +117,67 @@
                     </div>
 
                     <div class="card-body p-4 p-md-5">
+                        <!-- Network Status Badge -->
+                        <div class="mb-3">
+                            <span id="networkStatusBadge" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                                <i class="fas fa-wifi me-1"></i> <span id="networkStatusText">Mobile Ready (Wi-Fi IP: 192.168.0.7)</span>
+                            </span>
+                        </div>
+
+                        <!-- Dynamic & Variable Mobile Access Host Configuration -->
+                        <div class="card bg-light border p-3 mb-4 text-start shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-bold mb-0 small text-dark">
+                                    <i class="fas fa-network-wired text-primary me-1"></i> Mobile Access Host & Port
+                                </label>
+                                <span class="badge bg-primary-subtle text-primary small" id="activeModeLabel">Dynamic Wi-Fi</span>
+                            </div>
+
+                            <!-- Quick Select Host Buttons -->
+                            <div class="d-flex flex-wrap gap-2 mb-2" id="quickHostButtons">
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnLanIp"
+                                        th:each="ip : ${availableIps}"
+                                        th:data-ip="${ip}" onclick="selectHost(this.getAttribute('data-ip'))">
+                                    <i class="fas fa-wifi me-1"></i> Wi-Fi: <span th:text="${ip}">192.168.0.7</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLocalhost"
+                                        data-ip="localhost" onclick="selectHost('localhost')">
+                                    <i class="fas fa-laptop me-1"></i> localhost (PC only)
+                                </button>
+                            </div>
+
+                            <!-- Editable Custom Host/Port Inputs -->
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white text-muted">http://</span>
+                                <input type="text" id="hostInput" class="form-control fw-semibold" th:value="${activeHost}" placeholder="e.g. 192.168.0.7 or custom IP">
+                                <span class="input-group-text bg-white text-muted">:</span>
+                                <input type="number" id="portInput" class="form-control fw-semibold" style="max-width: 90px;" th:value="${activePort}" placeholder="8083">
+                                <button class="btn btn-primary px-3" type="button" onclick="applyCustomHost()">
+                                    <i class="fas fa-sync-alt me-1"></i> Update QR Code
+                                </button>
+                            </div>
+                            <small class="text-muted mt-1 d-block" style="font-size: 0.78rem;">
+                                <i class="fas fa-info-circle me-1"></i> Change the IP/port anytime. The QR code dynamically updates in real time for any Wi-Fi, hotspot, or custom IP.
+                            </small>
+                        </div>
+
                         <!-- Scannable QR Code Visual Container -->
                         <div class="qr-card-box mb-4">
                             <!-- High-resolution server-generated QR -->
                             <img id="serverQrImg" th:if="${qrCodeImage != null and !#strings.isEmpty(qrCodeImage)}"
                                  th:src="${qrCodeImage}" alt="Scannable QR Code" class="qr-code-img">
                             
-                            <!-- Fallback client-generated QR Code -->
+                            <!-- Fallback / Dynamic client-generated QR Code -->
                             <div id="clientQrContainer" style="display:none;"></div>
                         </div>
 
                         <p class="text-secondary small mb-3">
-                            <i class="fas fa-camera text-primary me-1"></i> Scan with your mobile device camera or LogSphere mobile app to clock in/out instantly.
+                            <i class="fas fa-camera text-primary me-1"></i> Scan with your mobile device camera or browser to clock in/out instantly.
                         </p>
 
                         <!-- Action Buttons -->
                         <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
-                            <a th:href="${qrData}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <a id="openMobileBtn" th:href="${qrData}" target="_blank" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-external-link-alt me-1"></i> Open Mobile Clock-In Page
                             </a>
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyLink()">
@@ -149,19 +193,23 @@
 
                         <!-- URL breakdown -->
                         <div class="p-3 bg-light rounded text-start mb-4 border">
-                            <small class="fw-bold text-secondary d-block mb-1">DIRECT ATTENDANCE URL:</small>
-                            <a id="directQrLink" th:href="${qrData}" target="_blank" class="small text-break text-decoration-none text-primary" th:text="${qrData}">
-                                http://localhost:8083/attendance/mobile?empId=...
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <small class="fw-bold text-secondary">DYNAMIC MOBILE ATTENDANCE URL:</small>
+                                <span class="badge bg-success-subtle text-success small" id="urlStatusBadge">Scannable on Mobile</span>
+                            </div>
+                            <a id="directQrLink" th:href="${qrData}" target="_blank" class="small text-break text-decoration-none text-primary fw-semibold" th:text="${qrData}">
+                                http://192.168.0.7:8083/attendance/mobile?empId=...
                             </a>
                         </div>
 
                         <!-- Instructions -->
                         <div class="alert alert-info bg-info bg-opacity-10 border border-info border-opacity-25 text-start d-inline-block w-100 mb-0">
-                            <h6 class="fw-bold text-info mb-2"><i class="fas fa-info-circle me-2"></i>How to use:</h6>
+                            <h6 class="fw-bold text-info mb-2"><i class="fas fa-info-circle me-2"></i>How to connect from mobile:</h6>
                             <ol class="mb-0 ps-3 small text-secondary">
-                                <li class="mb-1">Ensure your smartphone is on the same local network or Wi-Fi.</li>
-                                <li class="mb-1">Scan the QR code above using your camera or scan app.</li>
-                                <li>Select your work mode (Office, WFH, On-Site) and confirm your attendance.</li>
+                                <li class="mb-1">Connect your smartphone to the same Wi-Fi network as this computer.</li>
+                                <li class="mb-1">Ensure the IP selected above matches your computer's Wi-Fi IP (e.g. <code>192.168.0.7</code>).</li>
+                                <li class="mb-1">Point your phone's camera at the QR code above to open the mobile attendance clock-in page.</li>
+                                <li>Select work mode (Office, WFH, On-Site) and tap Clock In / Clock Out.</li>
                             </ol>
                         </div>
                     </div>
@@ -172,60 +220,172 @@
 
     <script th:inline="javascript">
         /*<![CDATA[*/
-        const qrDataUrl = /*[[${qrData}]]*/ '';
-        const employeeId = /*[[${employee.employeeId}]]*/ 'Employee';
+        const serverQrDataUrl = /*[[${qrData}]]*/ '';
+        const employeeId = /*[[${employee.employeeId}]]*/ 'EMP001';
+        const qrToken = /*[[${employee.qrCodeToken}]]*/ '';
+        const detectedLanIp = /*[[${detectedLanIp}]]*/ '192.168.0.7';
+        const serverActiveHost = /*[[${activeHost}]]*/ '192.168.0.7';
+        const serverActivePort = /*[[${activePort}]]*/ 8083;
 
-        window.addEventListener('DOMContentLoaded', function () {
-            const serverImg = document.getElementById('serverQrImg');
-            const clientContainer = document.getElementById('clientQrContainer');
+        let currentHost = serverActiveHost;
+        let currentPort = serverActivePort;
 
-            // If server image fails to render or is missing, render with QRCode.js
-            if (!serverImg || !serverImg.getAttribute('src') || serverImg.getAttribute('src').length < 50) {
+        const hostInput = document.getElementById('hostInput');
+        const portInput = document.getElementById('portInput');
+        const serverImg = document.getElementById('serverQrImg');
+        const clientContainer = document.getElementById('clientQrContainer');
+        const directQrLink = document.getElementById('directQrLink');
+        const openMobileBtn = document.getElementById('openMobileBtn');
+        const networkStatusBadge = document.getElementById('networkStatusBadge');
+        const networkStatusText = document.getElementById('networkStatusText');
+        const urlStatusBadge = document.getElementById('urlStatusBadge');
+        const activeModeLabel = document.getElementById('activeModeLabel');
+
+        function buildMobileUrl(host, port) {
+            const scheme = window.location.protocol ? window.location.protocol.replace(':', '') : 'http';
+            const portSuffix = (!port || (scheme === 'http' && port == 80) || (scheme === 'https' && port == 443)) ? '' : (':' + port);
+            return scheme + '://' + host + portSuffix + '/attendance/mobile?empId=' + encodeURIComponent(employeeId) + '&token=' + encodeURIComponent(qrToken);
+        }
+
+        function updateQR(host, port) {
+            currentHost = host.trim();
+            currentPort = port ? parseInt(port, 10) : 8083;
+
+            hostInput.value = currentHost;
+            portInput.value = currentPort;
+
+            const targetUrl = buildMobileUrl(currentHost, currentPort);
+
+            // Update Link display and buttons
+            if (directQrLink) {
+                directQrLink.href = targetUrl;
+                directQrLink.textContent = targetUrl;
+            }
+            if (openMobileBtn) {
+                openMobileBtn.href = targetUrl;
+            }
+
+            // Update network status indicators
+            const isLocal = (currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost === '0.0.0.0');
+            if (isLocal) {
+                networkStatusBadge.className = 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 fs-6';
+                networkStatusText.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Localhost selected (PC Only). Mobile cannot connect!';
+                urlStatusBadge.className = 'badge bg-warning-subtle text-warning-emphasis small';
+                urlStatusBadge.textContent = 'PC Only (Not Scannable on Mobile)';
+                activeModeLabel.className = 'badge bg-secondary-subtle text-secondary small';
+                activeModeLabel.textContent = 'Local PC Only';
+            } else {
+                networkStatusBadge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6';
+                networkStatusText.innerHTML = '<i class="fas fa-wifi me-1"></i> Mobile Ready (Wi-Fi IP: ' + currentHost + ')';
+                urlStatusBadge.className = 'badge bg-success-subtle text-success small';
+                urlStatusBadge.textContent = 'Scannable on Mobile';
+                activeModeLabel.className = 'badge bg-success-subtle text-success small';
+                activeModeLabel.textContent = 'Mobile Ready';
+            }
+
+            // Highlight active button
+            const buttons = document.querySelectorAll('#quickHostButtons button');
+            buttons.forEach(function (btn) {
+                if (btn.getAttribute('data-ip') === currentHost) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Regenerate client-side QR Code
+            if (typeof QRCode !== 'undefined') {
                 if (serverImg) serverImg.style.display = 'none';
                 clientContainer.style.display = 'flex';
-                if (typeof QRCode !== 'undefined' && qrDataUrl) {
-                    new QRCode(clientContainer, {
-                        text: qrDataUrl,
-                        width: 250,
-                        height: 250,
-                        colorDark: "#0f1b2d",
-                        colorLight: "#ffffff",
-                        correctLevel: QRCode.CorrectLevel.H
-                    });
+                clientContainer.innerHTML = '';
+                new QRCode(clientContainer, {
+                    text: targetUrl,
+                    width: 250,
+                    height: 250,
+                    colorDark: "#0f1b2d",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+
+            // Save to localStorage
+            try {
+                localStorage.setItem('preferredQrHost', currentHost);
+                localStorage.setItem('preferredQrPort', currentPort);
+            } catch (e) {}
+        }
+
+        function selectHost(host) {
+            updateQR(host, portInput.value || 8083);
+        }
+
+        function applyCustomHost() {
+            const h = hostInput.value.trim();
+            const p = portInput.value.trim();
+            if (!h) {
+                alert('Please enter a valid IP address or hostname.');
+                return;
+            }
+            updateQR(h, p || 8083);
+        }
+
+        window.addEventListener('DOMContentLoaded', function () {
+            // Determine best initial host
+            let initialHost = serverActiveHost;
+            let initialPort = serverActivePort;
+
+            try {
+                const savedHost = localStorage.getItem('preferredQrHost');
+                const savedPort = localStorage.getItem('preferredQrPort');
+                if (savedHost) {
+                    initialHost = savedHost;
+                }
+                if (savedPort) {
+                    initialPort = parseInt(savedPort, 10);
+                }
+            } catch (e) {}
+
+            // If browser is accessing via non-localhost IP/domain, prioritize browser's host
+            if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                initialHost = window.location.hostname;
+                initialPort = window.location.port || 8083;
+            } else if (!initialHost || initialHost === 'localhost' || initialHost === '127.0.0.1') {
+                if (detectedLanIp && detectedLanIp !== '127.0.0.1') {
+                    initialHost = detectedLanIp;
                 }
             }
+
+            updateQR(initialHost, initialPort);
         });
 
         function copyLink() {
             const linkElem = document.getElementById('directQrLink');
             if (linkElem) {
-                navigator.clipboard.writeText(linkElem.href || linkElem.textContent.trim()).then(function () {
-                    alert('Mobile attendance link copied to clipboard!');
+                const urlToCopy = linkElem.href || linkElem.textContent.trim();
+                navigator.clipboard.writeText(urlToCopy).then(function () {
+                    alert('Mobile attendance link copied to clipboard:\n' + urlToCopy);
                 }).catch(function () {
-                    alert('Please copy manually: ' + (linkElem.href || linkElem.textContent.trim()));
+                    alert('Please copy manually:\n' + urlToCopy);
                 });
             }
         }
 
         function downloadQRCode() {
-            const serverImg = document.getElementById('serverQrImg');
-            if (serverImg && serverImg.style.display !== 'none' && serverImg.src) {
+            const canvas = document.querySelector('#clientQrContainer canvas');
+            if (canvas) {
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL("image/png");
+                a.download = 'LogSphere_QR_' + employeeId + '.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else if (serverImg && serverImg.src) {
                 const a = document.createElement('a');
                 a.href = serverImg.src;
                 a.download = 'LogSphere_QR_' + employeeId + '.png';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-            } else {
-                const canvas = document.querySelector('#clientQrContainer canvas');
-                if (canvas) {
-                    const a = document.createElement('a');
-                    a.href = canvas.toDataURL("image/png");
-                    a.download = 'LogSphere_QR_' + employeeId + '.png';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                }
             }
         }
         /*]]>*/

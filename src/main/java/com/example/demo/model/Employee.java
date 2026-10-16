@@ -1,5 +1,6 @@
 package com.example.demo.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -87,8 +88,10 @@ public class Employee {
     @Column(name = "consistent_days")
     private Integer consistentDays = 0; // Days of consistent performance
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "password", nullable = true)
-    private String password; // Not used for login (employees use email + employeeId)
+    private String password;
+
 
     @Column(name = "face_image", columnDefinition = "LONGTEXT")
     private String faceImage; // Base64 encoded face image for face recognition
@@ -449,4 +452,17 @@ public class Employee {
     public void setSalary(Double salary) {
         this.salary = salary;
     }
+
+    @Override
+    public String toString() {
+        return "Employee{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", email='" + email + '\'' +
+                ", employeeId='" + employeeId + '\'' +
+                ", department='" + department + '\'' +
+                ", status='" + status + '\'' +
+                '}';
+    }
 }
+

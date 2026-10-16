@@ -24,24 +24,10 @@
   section below since they are intended for use with the examples web
   application.
 -->
-<!--
-  NOTE:  The sample user and role entries below are intended for use with the
-  examples web application. They are wrapped in a comment and thus are ignored
-  when reading this file. If you wish to configure these users for use with the
-  examples web application, do not forget to remove the <!.. ..> that surrounds
-  them. You will also need to set the passwords to something appropriate.
--->
-<!--
-  <role rolename="tomcat"/>
-  <role rolename="role1"/>
-  <user username="tomcat" password="<must-be-changed>" roles="tomcat"/>
-  <user username="both" password="<must-be-changed>" roles="tomcat,role1"/>
-  <user username="role1" password="<must-be-changed>" roles="role1"/>
--->
 
-<!-- LogSphere Deployment Configuration -->
-<!-- Default Username: admin, Password: admin123 -->
-<!-- CHANGE THESE CREDENTIALS IN PRODUCTION! -->
+<!-- LogSphere Deployment Configuration Template -->
+<!-- SECURITY WARNING: Never deploy default credentials in any environment! -->
+<!-- Configure unique, strong credentials in production. -->
 
 <role rolename="manager-gui"/>
 <role rolename="manager-script"/>
@@ -49,7 +35,9 @@
 <role rolename="manager-status"/>
 <role rolename="admin-gui"/>
 <role rolename="admin-script"/>
-<user username="admin" password="admin123" roles="manager-gui,manager-script,manager-jmx,manager-status,admin-gui,admin-script"/>
+
+<!-- Example configuration (replace placeholders before enabling):
+<user username="CHANGE_ME_ADMIN_USER" password="CHANGE_ME_STRONG_PASSWORD" roles="manager-gui,manager-script,manager-jmx,manager-status,admin-gui,admin-script"/>
+-->
 
 </tomcat-users>
-

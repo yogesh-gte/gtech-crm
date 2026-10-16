@@ -143,6 +143,10 @@
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
 
+                        <!-- Hidden data container for approved paid months -->
+                        <div id="approvedPaidMonthsData" class="d-none"
+                            th:data-months="${#strings.listJoin(approvedPaidMonths, ',')}"></div>
+
                         <form th:action="@{/employee/leave/apply}" method="post">
                             <div class="mb-4">
                                 <label for="leaveType" class="form-label">Leave Type <span
@@ -229,7 +233,11 @@
                                     <tr th:if="${leaveRequests.isEmpty()}">
                                         <td colspan="4" class="text-center text-muted py-4">No recent requests</td>
                                     </tr>
-                                    <tr th:each="leave : ${leaveRequests}">
+                                    <tr th:each="leave : ${leaveRequests}" class="leave-request-row"
+                                        th:data-type="${leave.leaveType}"
+                                        th:data-status="${leave.status}"
+                                        th:data-start="${leave.startDate}"
+                                        th:data-end="${leave.endDate}">
                                         <td class="ps-4"><span class="badge bg-light text-dark border"
                                                 th:text="${leave.leaveType}"></span></td>
                                         <td class="small text-secondary">
@@ -272,6 +280,11 @@
         const leaveDaysInfo = document.getElementById('leaveDaysInfo');
         const submitBtn = document.getElementById('submitBtn');
 
+        const approvedPaidMonthsEl = document.getElementById('approvedPaidMonthsData');
+        const approvedPaidMonths = (approvedPaidMonthsEl && approvedPaidMonthsEl.dataset.months)
+            ? approvedPaidMonthsEl.dataset.months.split(',').map(s => s.trim()).filter(Boolean)
+            : [];
+
         startDateInput.setAttribute('min', today);
         endDateInput.setAttribute('min', today);
 
@@ -283,15 +296,30 @@
                 colStartDate.className = 'col-12 mb-3';
                 startDateLabel.innerHTML = 'Leave Date <span class="text-danger">*</span> <small class="text-muted fw-normal">(1 Paid Leave allowed per month)</small>';
                 startDateHelp.textContent = 'Paid leave is strictly limited to 1 day per calendar month.';
+                startDateHelp.className = 'text-muted d-block mt-1';
                 endDateInput.required = false;
                 if (startDateInput.value) {
                     endDateInput.value = startDateInput.value;
                 }
+            } else if (selectedVal === 'SICK' || selectedVal === 'CASUAL') {
+                colEndDate.classList.remove('d-none');
+                colStartDate.className = 'col-md-6 mb-3 mb-md-0';
+                startDateLabel.innerHTML = 'Start Date <span class="text-danger">*</span>';
+                const thisMonth = today.substring(0, 7);
+                if (approvedPaidMonths.includes(thisMonth)) {
+                    startDateHelp.textContent = 'Note: You have an approved Paid Leave for this month. Sick or Casual leave cannot be submitted for this month.';
+                    startDateHelp.className = 'text-danger fw-semibold d-block mt-1';
+                } else {
+                    startDateHelp.textContent = '';
+                    startDateHelp.className = 'text-muted d-block mt-1';
+                }
+                endDateInput.required = true;
             } else {
                 colEndDate.classList.remove('d-none');
                 colStartDate.className = 'col-md-6 mb-3 mb-md-0';
                 startDateLabel.innerHTML = 'Start Date <span class="text-danger">*</span>';
                 startDateHelp.textContent = '';
+                startDateHelp.className = 'text-muted d-block mt-1';
                 endDateInput.required = true;
             }
         }
@@ -320,7 +348,9 @@
         function validateForm() {
             const bal = getSelectedBalance();
             const startVal = startDateInput.value;
+            const endVal = endDateInput.value || startVal;
             const isPaid = leaveTypeSelect.value === 'PAID';
+            const isSickOrCasual = leaveTypeSelect.value === 'SICK' || leaveTypeSelect.value === 'CASUAL';
 
             validationAlert.classList.add('d-none');
             leaveDaysInfo.classList.add('d-none');
@@ -342,6 +372,36 @@
                 validationAlert.classList.remove('d-none');
                 submitBtn.disabled = true;
                 return;
+            }
+
+            // Check if user has an approved Paid Leave in the selected month when applying for Sick or Casual leave
+            if (isSickOrCasual) {
+                const checkStartMonth = startVal ? startVal.substring(0, 7) : today.substring(0, 7);
+                const checkEndMonth = endVal ? endVal.substring(0, 7) : checkStartMonth;
+                if (approvedPaidMonths.includes(checkStartMonth) || approvedPaidMonths.includes(checkEndMonth)) {
+                    validationAlert.textContent = "You have already taken an approved Paid Leave for this month. Additional Sick or Casual leave cannot be submitted for approval.";
+                    validationAlert.classList.remove('d-none');
+                    submitBtn.disabled = true;
+                    return;
+                }
+            }
+
+            // Check for date overlap with active (Pending or Approved) leaves
+            if (startVal && endVal) {
+                const rows = document.querySelectorAll('tr.leave-request-row');
+                for (let r of rows) {
+                    const rStatus = r.dataset.status;
+                    const rStart = r.dataset.start;
+                    const rEnd = r.dataset.end;
+                    if (rStatus && rStatus !== 'REJECTED' && rStart && rEnd) {
+                        if (!(endVal < rStart || startVal > rEnd)) {
+                            validationAlert.textContent = "You already have an active leave application (" + rStatus + ") on the selected date(s)!";
+                            validationAlert.classList.remove('d-none');
+                            submitBtn.disabled = true;
+                            return;
+                        }
+                    }
+                }
             }
 
             if (isPaid) {
@@ -421,7 +481,22 @@
             }
             validateForm();
         });
+        startDateInput.addEventListener('input', function() {
+            if (leaveTypeSelect.value === 'PAID') {
+                endDateInput.value = startDateInput.value;
+            }
+            validateForm();
+        });
         endDateInput.addEventListener('change', validateForm);
+        endDateInput.addEventListener('input', validateForm);
+
+        document.querySelector('form').addEventListener('submit', function (e) {
+            validateForm();
+            if (submitBtn.disabled) {
+                e.preventDefault();
+                return false;
+            }
+        });
 
         // Initial UI setup
         updateLeaveTypeUI();

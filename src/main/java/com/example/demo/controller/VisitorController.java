@@ -189,10 +189,16 @@ public class VisitorController {
         return "redirect:/visitors/dashboard";
     }
 
-    @RequestMapping(value = "/delete/{id}", method = RequestMethod.GET)
+    @RequestMapping(value = "/delete/{id}", method = {RequestMethod.GET, RequestMethod.POST})
     public String deleteVisitor(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
-        if (session.getAttribute("user") == null) {
-            return "redirect:/login";
+        Object userObj = session.getAttribute("user");
+        boolean isAdmin = false;
+        if (userObj instanceof com.example.demo.model.User user) {
+            isAdmin = "ADMIN".equalsIgnoreCase(user.getRole());
+        }
+        if (!isAdmin) {
+            redirectAttributes.addFlashAttribute("error", "Unauthorized: Only administrators can delete visitor records.");
+            return "redirect:/visitors/dashboard";
         }
         visitorRepository.deleteById(id);
         redirectAttributes.addFlashAttribute("success", "Visitor record deleted successfully!");

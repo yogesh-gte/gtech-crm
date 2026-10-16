@@ -295,13 +295,15 @@
                                 <td class="text-end pe-4">
                                     <form th:action="@{/visitors/checkout/{id}(id=${visitor.id})}" method="post"
                                         style="display: inline;">
+                                        <input type="hidden" name="_csrf" th:value="${_csrf_token}"/>
                                         <button type="submit" class="btn btn-danger btn-sm shadow-sm" title="Check Out">
                                             <i class="fas fa-sign-out-alt"></i> Checkout
                                         </button>
                                     </form>
-                                    <form th:action="@{/visitors/delete/{id}(id=${visitor.id})}" method="get"
+                                    <form th:action="@{/visitors/delete/{id}(id=${visitor.id})}" method="post"
                                         style="display: inline;"
                                         onsubmit="return confirm('Are you sure you want to delete this visitor record?');">
+                                        <input type="hidden" name="_csrf" th:value="${_csrf_token}"/>
                                         <button type="submit" class="btn btn-light text-danger btn-sm border ms-1"
                                             title="Delete">
                                             <i class="fas fa-trash-alt"></i>

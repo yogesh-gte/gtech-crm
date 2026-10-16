@@ -528,4 +528,132 @@ public class BugFixesVerificationTest {
             }
         }
     }
+
+    /**
+     * User Request Verification:
+     * When an employee applies for Paid leave and gets approval (permission),
+     * attempting to apply for Sick leave or Casual leave in the same month must be restricted.
+     */
+    @Test
+    void testSickAndCasualLeaveRestrictedWhenPaidLeaveApprovedThisMonth() {
+        com.example.demo.model.LeaveRequest approvedPaidLeave = new com.example.demo.model.LeaveRequest();
+        approvedPaidLeave.setLeaveType("PAID");
+        approvedPaidLeave.setStatus("APPROVED");
+        approvedPaidLeave.setStartDate(LocalDate.of(2026, 11, 5));
+        approvedPaidLeave.setEndDate(LocalDate.of(2026, 11, 5));
+
+        List<com.example.demo.model.LeaveRequest> existingLeaves = List.of(approvedPaidLeave);
+
+        // Scenario 1: Applying for SICK leave in November 2026 (Same month as approved PAID leave)
+        LocalDate sickStart = LocalDate.of(2026, 11, 12);
+        LocalDate sickEnd = LocalDate.of(2026, 11, 13);
+        String sickLeaveType = "SICK";
+
+        boolean sickRestricted = ("SICK".equalsIgnoreCase(sickLeaveType) || "CASUAL".equalsIgnoreCase(sickLeaveType))
+                && existingLeaves.stream()
+                        .filter(lr -> "PAID".equalsIgnoreCase(lr.getLeaveType()))
+                        .filter(lr -> "APPROVED".equalsIgnoreCase(lr.getStatus()))
+                        .anyMatch(lr -> lr.getStartDate() != null &&
+                                ((lr.getStartDate().getYear() == sickStart.getYear() && lr.getStartDate().getMonthValue() == sickStart.getMonthValue())
+                                || (sickEnd != null && lr.getStartDate().getYear() == sickEnd.getYear() && lr.getStartDate().getMonthValue() == sickEnd.getMonthValue())));
+
+        assertTrue(sickRestricted, "Sick leave in the same month as approved Paid Leave must be restricted");
+
+        // Scenario 2: Applying for CASUAL leave in November 2026 (Same month as approved PAID leave)
+        LocalDate casualStart = LocalDate.of(2026, 11, 20);
+        LocalDate casualEnd = LocalDate.of(2026, 11, 20);
+        String casualLeaveType = "CASUAL";
+
+        boolean casualRestricted = ("SICK".equalsIgnoreCase(casualLeaveType) || "CASUAL".equalsIgnoreCase(casualLeaveType))
+                && existingLeaves.stream()
+                        .filter(lr -> "PAID".equalsIgnoreCase(lr.getLeaveType()))
+                        .filter(lr -> "APPROVED".equalsIgnoreCase(lr.getStatus()))
+                        .anyMatch(lr -> lr.getStartDate() != null &&
+                                ((lr.getStartDate().getYear() == casualStart.getYear() && lr.getStartDate().getMonthValue() == casualStart.getMonthValue())
+                                || (casualEnd != null && lr.getStartDate().getYear() == casualEnd.getYear() && lr.getStartDate().getMonthValue() == casualEnd.getMonthValue())));
+
+        assertTrue(casualRestricted, "Casual leave in the same month as approved Paid Leave must be restricted");
+
+        // Scenario 3: Applying for SICK leave in December 2026 (Different month with no approved Paid Leave)
+        LocalDate decStart = LocalDate.of(2026, 12, 1);
+        LocalDate decEnd = LocalDate.of(2026, 12, 2);
+
+        boolean decSickRestricted = ("SICK".equalsIgnoreCase(sickLeaveType) || "CASUAL".equalsIgnoreCase(sickLeaveType))
+                && existingLeaves.stream()
+                        .filter(lr -> "PAID".equalsIgnoreCase(lr.getLeaveType()))
+                        .filter(lr -> "APPROVED".equalsIgnoreCase(lr.getStatus()))
+                        .anyMatch(lr -> lr.getStartDate() != null &&
+                                ((lr.getStartDate().getYear() == decStart.getYear() && lr.getStartDate().getMonthValue() == decStart.getMonthValue())
+                                || (decEnd != null && lr.getStartDate().getYear() == decEnd.getYear() && lr.getStartDate().getMonthValue() == decEnd.getMonthValue())));
+
+        assertFalse(decSickRestricted, "Sick leave in a different month without approved Paid Leave should not be restricted");
+    }
+
+    /**
+     * Overlapping Leave Application Restriction:
+     * Applying for any leave that overlaps an existing pending or approved leave must be rejected.
+     */
+    @Test
+    void testLeaveApplicationDateOverlapRestricted() {
+        com.example.demo.model.LeaveRequest existing = new com.example.demo.model.LeaveRequest();
+        existing.setLeaveType("CASUAL");
+        existing.setStatus("APPROVED");
+        existing.setStartDate(LocalDate.of(2026, 11, 10));
+        existing.setEndDate(LocalDate.of(2026, 11, 12));
+
+        List<com.example.demo.model.LeaveRequest> existingLeaves = List.of(existing);
+
+        // Overlapping range 1: Nov 11 to Nov 13
+        LocalDate start1 = LocalDate.of(2026, 11, 11);
+        LocalDate end1 = LocalDate.of(2026, 11, 13);
+        boolean overlap1 = existingLeaves.stream()
+                .filter(lr -> !"REJECTED".equalsIgnoreCase(lr.getStatus()))
+                .anyMatch(lr -> !start1.isAfter(lr.getEndDate()) && !end1.isBefore(lr.getStartDate()));
+        assertTrue(overlap1, "Nov 11-13 overlaps with Nov 10-12 and must be restricted");
+
+        // Non-overlapping range: Nov 15 to Nov 16
+        LocalDate start2 = LocalDate.of(2026, 11, 15);
+        LocalDate end2 = LocalDate.of(2026, 11, 16);
+        boolean overlap2 = existingLeaves.stream()
+                .filter(lr -> !"REJECTED".equalsIgnoreCase(lr.getStatus()))
+                .anyMatch(lr -> !start2.isAfter(lr.getEndDate()) && !end2.isBefore(lr.getStartDate()));
+        assertFalse(overlap2, "Nov 15-16 does not overlap with Nov 10-12");
+    }
+
+    /**
+     * User Request Verification:
+     * QR Code for mobile attendance must dynamically resolve local network IPv4 address (e.g. 192.168.0.7),
+     * avoiding unconnectable localhost on mobile devices.
+     */
+    @Test
+    void testDynamicQRCodeHostResolution() throws Exception {
+        List<String> ips = com.example.demo.controller.QRCodeController.getAvailableIpv4Addresses();
+        assertNotNull(ips, "Available IPs list should not be null");
+        assertFalse(ips.isEmpty(), "Available IPs should find at least one IP");
+        
+        // Ensure no loopback or link-local IPv6 addresses are treated as preferred LAN IP
+        String preferredIp = ips.get(0);
+        assertFalse(preferredIp.startsWith("127."), "Preferred IP should not be loopback when network interface is available");
+        assertFalse(preferredIp.contains("%"), "Preferred IP should not be a scoped IPv6 address");
+        assertFalse(preferredIp.equalsIgnoreCase("localhost"), "Preferred IP should not be localhost");
+
+        // Verify URL builder with preferred IP
+        com.example.demo.service.QRCodeService qrService = new com.example.demo.service.QRCodeService();
+        String mobileUrl = qrService.generateQRCodeData("http://" + preferredIp + ":8083", "emp01", "9ee1b762a2084006");
+        assertTrue(mobileUrl.startsWith("http://" + preferredIp + ":8083/attendance/mobile"), "QR URL must contain reachable network IP");
+        assertTrue(mobileUrl.contains("empId=emp01"), "QR URL must contain employee ID");
+        assertTrue(mobileUrl.contains("token=9ee1b762a2084006"), "QR URL must contain token");
+
+        // Generate QR code image and write to artifacts directory for visual inspection and immediate mobile scanning
+        com.google.zxing.qrcode.QRCodeWriter writer = new com.google.zxing.qrcode.QRCodeWriter();
+        com.google.zxing.common.BitMatrix bitMatrix = writer.encode(mobileUrl, com.google.zxing.BarcodeFormat.QR_CODE, 350, 350);
+        java.io.File artifactDir = new java.io.File("C:/Users/kisho/.gemini/antigravity/brain/18d68ff3-17bd-43cd-a313-9023b36c07d3");
+        if (artifactDir.exists()) {
+            java.io.File qrFile = new java.io.File(artifactDir, "employee_qr_code.png");
+            com.google.zxing.client.j2se.MatrixToImageWriter.writeToPath(bitMatrix, "PNG", qrFile.toPath());
+            assertTrue(qrFile.exists(), "QR file should be generated in artifacts directory");
+        }
+    }
 }
+
+

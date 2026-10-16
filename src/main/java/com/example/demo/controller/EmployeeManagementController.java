@@ -26,8 +26,19 @@ public class EmployeeManagementController {
     @Autowired
     private EmployeeRepository employeeRepository;
 
+    @Autowired(required = false)
+    private com.example.demo.service.PasswordService passwordService;
+
+    @Autowired(required = false)
+    private com.example.demo.service.SessionSecurityService sessionSecurityService;
+
+    @Autowired(required = false)
+    private com.example.demo.service.AuthorizationService authorizationService;
+
     @Autowired
     private QRCodeService qrCodeService;
+
+
 
     @Autowired
     private AttendanceRepository attendanceRepository;
@@ -130,6 +141,17 @@ public class EmployeeManagementController {
             "Payroll Executive",
             "Office Administrator");
 
+    private boolean isAuthorizedStaff(HttpSession session) {
+        if (session == null) return false;
+        Object userObj = session.getAttribute("user");
+        if (userObj instanceof com.example.demo.model.User user) {
+            String role = user.getRole();
+            return "ADMIN".equalsIgnoreCase(role) || "HR".equalsIgnoreCase(role);
+        }
+        Object role = session.getAttribute("userRole");
+        return role != null && ("ADMIN".equalsIgnoreCase(role.toString()) || "HR".equalsIgnoreCase(role.toString()));
+    }
+
     private String getEmployeesRedirect(HttpSession session) {
         String role = (String) session.getAttribute("userRole");
         return "HR".equals(role) ? "redirect:/hr/employees" : "redirect:/admin/employees";
@@ -137,7 +159,7 @@ public class EmployeeManagementController {
 
     @RequestMapping(method = RequestMethod.GET)
     public String listEmployees(Model model, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        if (!isAuthorizedStaff(session)) {
             return "redirect:/login";
         }
 
@@ -171,7 +193,7 @@ public class EmployeeManagementController {
             @RequestParam(required = false) List<Integer> customLeaveDays,
             RedirectAttributes redirectAttributes,
             HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        if (!isAuthorizedStaff(session)) {
             return "redirect:/login";
         }
 
@@ -232,8 +254,12 @@ public class EmployeeManagementController {
             redirectAttributes.addFlashAttribute("error", "Password is required for employee login!");
             return getEmployeesRedirect(session);
         }
+        if (passwordService != null) {
+            employee.setPassword(passwordService.encode(employee.getPassword()));
+        }
         // Generate QR code token for new employee
         String qrToken = qrCodeService.generateQRCodeToken();
+
         employee.setQrCodeToken(qrToken);
 
         employee.setIsTeamLead(Boolean.TRUE.equals(isTeamLead));
@@ -265,7 +291,7 @@ public class EmployeeManagementController {
 
     @RequestMapping(value = "/edit/{id}", method = RequestMethod.GET)
     public String showEditForm(@PathVariable Long id, Model model, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        if (!isAuthorizedStaff(session)) {
             return "redirect:/login";
         }
 
@@ -290,7 +316,7 @@ public class EmployeeManagementController {
             @RequestParam(required = false) List<String> customLeaveNames,
             @RequestParam(required = false) List<Integer> customLeaveDays,
             RedirectAttributes redirectAttributes, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        if (!isAuthorizedStaff(session)) {
             return "redirect:/login";
         }
 
@@ -334,17 +360,31 @@ public class EmployeeManagementController {
             emp.setTeam(null);
         }
         emp.setPhone(employee.getPhone());
-        emp.setSalary(employee.getSalary());
+        // Non-admin staff cannot modify admin-set base salary
+        Object userObj = session.getAttribute("user");
+        String callerRole = (userObj instanceof com.example.demo.model.User u) ? u.getRole() : (String) session.getAttribute("userRole");
+        if ("ADMIN".equalsIgnoreCase(callerRole) || emp.getSalary() == null) {
+            emp.setSalary(employee.getSalary());
+        }
         emp.setPaidLeave(employee.getPaidLeave());
         emp.setSickLeave(employee.getSickLeave());
         emp.setCasualLeave(employee.getCasualLeave());
         // Update password only if a new one was provided
         if (newPassword != null && !newPassword.trim().isEmpty()) {
-            emp.setPassword(newPassword);
+            if (passwordService != null) {
+                emp.setPassword(passwordService.encode(newPassword.trim()));
+            } else {
+                emp.setPassword(newPassword.trim());
+            }
+            if (sessionSecurityService != null) {
+                sessionSecurityService.invalidateSessionsForUser(emp.getEmail());
+            }
         }
 
+
+
         // Only update employee ID if it's different and doesn't exist
-        if (!emp.getEmployeeId().equals(employee.getEmployeeId())) {
+        if (employee.getEmployeeId() != null && !employee.getEmployeeId().equals(emp.getEmployeeId())) {
             Optional<Employee> existingById = employeeRepository.findByEmployeeId(employee.getEmployeeId());
             if (existingById.isPresent() && !existingById.get().getId().equals(id)) {
                 redirectAttributes.addFlashAttribute("error", "Employee ID already exists!");
@@ -385,9 +425,9 @@ public class EmployeeManagementController {
         return getEmployeesRedirect(session);
     }
 
-    @RequestMapping(value = "/delete/{id}", method = RequestMethod.GET)
+    @RequestMapping(value = "/delete/{id}", method = {RequestMethod.GET, RequestMethod.POST})
     public String deleteEmployee(@PathVariable Long id, RedirectAttributes redirectAttributes, HttpSession session) {
-        if (session.getAttribute("user") == null) {
+        if (!isAuthorizedStaff(session)) {
             return "redirect:/login";
         }
 
@@ -399,12 +439,15 @@ public class EmployeeManagementController {
 
         Employee employee = employeeOpt.get();
 
+        // Invalidate all active sessions for this deleted employee
+        if (sessionSecurityService != null) {
+            sessionSecurityService.invalidateSessionsForUser(employee.getEmail());
+        }
+
         try {
             // 1. Delete all related attendance records
             List<com.example.demo.model.Attendance> attendances = attendanceRepository.findByEmployee(employee);
             attendanceRepository.deleteAll(attendances);
-
-            // 2. Delete all related tasks
             List<com.example.demo.model.Task> tasks = taskRepository.findByEmployee(employee);
             taskRepository.deleteAll(tasks);
 
@@ -536,6 +579,7 @@ public class EmployeeManagementController {
             // Now delete the employee
             employeeRepository.deleteById(id);
 
+
             redirectAttributes.addFlashAttribute("success",
                     "Employee deleted successfully! All related records have been removed.");
         } catch (Exception e) {
@@ -555,7 +599,7 @@ public class EmployeeManagementController {
             RedirectAttributes redirectAttributes,
             HttpSession session) {
 
-        if (session.getAttribute("user") == null) {
+        if (!isAuthorizedStaff(session)) {
             return "redirect:/login";
         }
 
