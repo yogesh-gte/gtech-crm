@@ -88,7 +88,7 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
 
         // Mobile QR token-authenticated attendance endpoints
         if (uri.startsWith("/attendance/mobile") || uri.startsWith("/attendance/qr")
-                || "/employee/qrcode/scan".equals(uri)) {
+                || uri.startsWith("/employee/qrcode/scan") || uri.startsWith("/employee/qrcode/decode-image")) {
             return true;
         }
 

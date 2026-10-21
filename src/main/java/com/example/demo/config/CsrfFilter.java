@@ -47,9 +47,20 @@ public class CsrfFilter extends OncePerRequestFilter {
 
         String uri = getNormalizedUri(request);
         String method = request.getMethod();
+        boolean isSafeMethod = SAFE_METHODS.contains(method.toUpperCase());
 
-        // 1. If an active session exists (or request needs token), expose token in request attributes and cookie
+        // 1. Session and CSRF token initialization
         HttpSession session = request.getSession(false);
+
+        // Record whether this session ALREADY possessed a valid CSRF token prior to this request
+        boolean sessionHadCsrfToken = (session != null && session.getAttribute(CsrfTokenService.CSRF_SESSION_ATTRIBUTE) != null);
+
+        // For safe requests to login routes or non-API web pages, ensure a session is initialized eagerly
+        // so that form templates (Thymeleaf) and cookies (XSRF-TOKEN) receive a valid CSRF token on first render.
+        if (session == null && isSafeMethod && (isLoginRoute(uri) || !isApiRequest(request))) {
+            session = request.getSession(true);
+        }
+
         if (session != null) {
             String token = csrfTokenService.getOrCreateToken(session);
             request.setAttribute("_csrf_token", token);
@@ -69,7 +80,7 @@ public class CsrfFilter extends OncePerRequestFilter {
         }
 
         // 2. Safe HTTP methods (GET, HEAD, OPTIONS, TRACE) are exempt from CSRF mutation checks
-        if (SAFE_METHODS.contains(method.toUpperCase())) {
+        if (isSafeMethod) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -80,10 +91,11 @@ public class CsrfFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 4. Login routes: If session exists with pre-generated token, validate token.
-        // If unauthenticated client submits credentials without a prior session, allow login to establish session.
+        // 4. Login routes: If session already had a CSRF token prior to this request, validate token.
+        // If unauthenticated client submits credentials without a prior session token
+        // (e.g. server restart, first submission, or direct credentials POST), allow login to establish session.
         if (isLoginRoute(uri)) {
-            if (session != null && session.getAttribute(CsrfTokenService.CSRF_SESSION_ATTRIBUTE) != null) {
+            if (sessionHadCsrfToken) {
                 String candidateToken = csrfTokenService.extractToken(request);
                 if (!csrfTokenService.validateToken(candidateToken, session)) {
                     rejectCsrf(request, response, "Invalid or missing CSRF token for login");
@@ -153,8 +165,10 @@ public class CsrfFilter extends OncePerRequestFilter {
     }
 
     private boolean isLoginRoute(String uri) {
-        return "/login".equals(uri) || "/admin/login".equals(uri) || "/hr/login".equals(uri)
-                || "/manager/login".equals(uri) || "/employee/login".equals(uri);
+        if (uri == null) return false;
+        String cleanUri = (uri.length() > 1 && uri.endsWith("/")) ? uri.substring(0, uri.length() - 1) : uri;
+        return "/login".equals(cleanUri) || "/admin/login".equals(cleanUri) || "/hr/login".equals(cleanUri)
+                || "/manager/login".equals(cleanUri) || "/employee/login".equals(cleanUri);
     }
 
     private boolean isApiRequest(HttpServletRequest request) {

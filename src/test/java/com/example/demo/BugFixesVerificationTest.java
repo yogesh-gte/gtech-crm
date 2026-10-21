@@ -47,6 +47,24 @@ public class BugFixesVerificationTest {
     @Mock
     private LeaveRequestRepository leaveRequestRepository;
 
+    @Mock
+    private VisitorRepository visitorRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private com.example.demo.service.EmailService emailService;
+
+    @Mock
+    private com.example.demo.service.QRCodeService qrCodeService;
+
+    @InjectMocks
+    private com.example.demo.controller.QRCodeController qrCodeController;
+
+    @InjectMocks
+    private com.example.demo.controller.VisitorApprovalController visitorApprovalController;
+
     @InjectMocks
     private PerformanceScoreService performanceScoreService;
 
@@ -654,6 +672,304 @@ public class BugFixesVerificationTest {
             assertTrue(qrFile.exists(), "QR file should be generated in artifacts directory");
         }
     }
+
+    /**
+     * User Request Verification:
+     * http://localhost:8083/employee/approvals must display employee's approved leaves,
+     * pending leaves, leave balances, and preserve visitor approvals.
+     */
+    @Test
+    void testEmployeeApprovalsIncludesApprovedLeaves() {
+        Employee emp = new Employee();
+        emp.setId(101L);
+        emp.setName("Jane Doe");
+        emp.setEmail("jane@example.com");
+        emp.setPaidLeave(12);
+        emp.setSickLeave(6);
+        emp.setCasualLeave(4);
+
+        when(employeeRepository.findById(101L)).thenReturn(Optional.of(emp));
+
+        com.example.demo.model.LeaveRequest approvedLeave1 = new com.example.demo.model.LeaveRequest();
+        approvedLeave1.setId(1L);
+        approvedLeave1.setEmployee(emp);
+        approvedLeave1.setLeaveType("CASUAL");
+        approvedLeave1.setStartDate(LocalDate.now().plusDays(2));
+        approvedLeave1.setEndDate(LocalDate.now().plusDays(4));
+        approvedLeave1.setNumberOfDays(3);
+        approvedLeave1.setStatus("APPROVED");
+        approvedLeave1.setApprovedBy("HR Admin");
+        approvedLeave1.setApprovalDate(java.time.LocalDateTime.now());
+
+        com.example.demo.model.LeaveRequest pendingLeave1 = new com.example.demo.model.LeaveRequest();
+        pendingLeave1.setId(2L);
+        pendingLeave1.setEmployee(emp);
+        pendingLeave1.setLeaveType("SICK");
+        pendingLeave1.setStartDate(LocalDate.now().plusDays(10));
+        pendingLeave1.setEndDate(LocalDate.now().plusDays(11));
+        pendingLeave1.setNumberOfDays(2);
+        pendingLeave1.setStatus("PENDING");
+
+        when(leaveRequestRepository.findByEmployee(emp)).thenReturn(List.of(approvedLeave1, pendingLeave1));
+        when(visitorRepository.findAll()).thenReturn(Collections.emptyList());
+
+        org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
+        session.setAttribute("employee", emp);
+
+        org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
+
+        String viewName = visitorApprovalController.pendingApprovals(model, session, null);
+
+        assertEquals("employee-approvals", viewName);
+        assertTrue(model.containsAttribute("approvedLeaves"), "Model should contain approvedLeaves");
+        List<?> approvedList = (List<?>) model.getAttribute("approvedLeaves");
+        assertEquals(1, approvedList.size(), "Should have 1 approved leave");
+        assertEquals("APPROVED", ((com.example.demo.model.LeaveRequest) approvedList.get(0)).getStatus());
+
+        assertTrue(model.containsAttribute("pendingLeaves"), "Model should contain pendingLeaves");
+        List<?> pendingList = (List<?>) model.getAttribute("pendingLeaves");
+        assertEquals(1, pendingList.size(), "Should have 1 pending leave");
+
+        assertTrue(model.containsAttribute("leaveBalance"), "Model should contain leaveBalance");
+        assertEquals(22, model.getAttribute("leaveBalance"));
+        assertEquals("leaves", model.getAttribute("activeTab"));
+        assertEquals(emp, model.getAttribute("emp"));
+        assertEquals(emp, model.getAttribute("employee"));
+    }
+
+    @Test
+    void testEmployeeApprovalsTabParamSwitch() {
+        Employee emp = new Employee();
+        emp.setId(102L);
+        emp.setEmail("emp@example.com");
+        when(employeeRepository.findById(102L)).thenReturn(Optional.of(emp));
+        when(leaveRequestRepository.findByEmployee(emp)).thenReturn(Collections.emptyList());
+        when(visitorRepository.findAll()).thenReturn(Collections.emptyList());
+
+        org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
+        session.setAttribute("employee", emp);
+        org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
+
+        visitorApprovalController.pendingApprovals(model, session, "visitors");
+        assertEquals("visitors", model.getAttribute("activeTab"));
+    }
+
+    /**
+     * User Request Verification:
+     * http://localhost:8083/employee/qrcode real-time scanner & QR pass
+     */
+    @Test
+    void testRealTimeScannerQRCodeEndpoints() {
+        Employee emp = new Employee();
+        emp.setId(201L);
+        emp.setEmployeeId("EMP201");
+        emp.setName("Alice Smith");
+        emp.setDepartment("DevOps");
+        emp.setQrCodeToken("tok201xyz");
+        emp.setStatus("OUT");
+
+        when(employeeRepository.findByEmployeeId("EMP201")).thenReturn(Optional.of(emp));
+        when(employeeRepository.findById(201L)).thenReturn(Optional.of(emp));
+        when(employeeRepository.save(any(Employee.class))).thenAnswer(i -> i.getArgument(0));
+        when(attendanceRepository.findByEmployeeAndAttendanceDate(eq(emp), any(LocalDate.class)))
+                .thenReturn(Collections.emptyList());
+        when(attendanceRepository.save(any(Attendance.class))).thenAnswer(i -> i.getArgument(0));
+        when(qrCodeService.generateQRCodeData(anyString(), anyString(), anyString()))
+                .thenReturn("http://192.168.0.7:8083/attendance/mobile?empId=EMP201&token=tok201xyz");
+        when(qrCodeService.generateQRCodeImage(anyString())).thenReturn("data:image/png;base64,sample");
+
+        // 1. Verify showQRCode view & attributes
+        org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
+        session.setAttribute("employee", emp);
+        org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
+        org.springframework.mock.web.MockHttpServletRequest request = new org.springframework.mock.web.MockHttpServletRequest();
+        request.setServerName("localhost");
+        request.setServerPort(8083);
+
+        String view = qrCodeController.showQRCode(null, null, "scanner", session, model, request);
+        assertEquals("employee-qrcode", view);
+        assertEquals(emp, model.getAttribute("emp"));
+        assertEquals("scanner", model.getAttribute("activeTab"));
+        assertFalse((Boolean) model.getAttribute("isClockedIn"));
+        assertEquals("https", model.getAttribute("activeScheme"));
+
+        // Verify HTTPS scheme with custom server domain
+        org.springframework.ui.ExtendedModelMap httpsModel = new org.springframework.ui.ExtendedModelMap();
+        qrCodeController.showQRCode("https", "logsphere.example.com", null, "myqr", session, httpsModel, request);
+        assertEquals("https", httpsModel.getAttribute("activeScheme"));
+        assertEquals("logsphere.example.com", httpsModel.getAttribute("activeHost"));
+        assertEquals("", httpsModel.getAttribute("activePort"));
+
+        // 2. Real-Time Scan: Verify / Read employee info
+        String qrUrl = "http://192.168.0.7:8083/attendance/mobile?empId=EMP201&token=tok201xyz";
+        org.springframework.http.ResponseEntity<?> verifyResp = qrCodeController.scanQRCode(qrUrl, "OFFICE", null);
+        assertEquals(200, verifyResp.getStatusCode().value());
+        assertTrue(verifyResp.getBody().toString().contains("Alice Smith"));
+        assertTrue(verifyResp.getBody().toString().contains("OUT"));
+
+        // 3. Real-Time Scan: Clock In
+        org.springframework.http.ResponseEntity<?> clockInResp = qrCodeController.scanQRCode(qrUrl, "REMOTE", "clockin");
+        assertEquals(200, clockInResp.getStatusCode().value());
+        assertTrue(clockInResp.getBody().toString().contains("clockin"));
+        assertTrue(clockInResp.getBody().toString().contains("IN"));
+        assertEquals("IN", emp.getStatus());
+        assertEquals("REMOTE", emp.getWorkMode());
+
+        // 4. Real-Time Scan: Clock Out
+        org.springframework.http.ResponseEntity<?> clockOutResp = qrCodeController.scanQRCode(qrUrl, "REMOTE", "clockout");
+        assertEquals(200, clockOutResp.getStatusCode().value());
+        assertTrue(clockOutResp.getBody().toString().contains("clockout"));
+        assertTrue(clockOutResp.getBody().toString().contains("OUT"));
+        assertEquals("OUT", emp.getStatus());
+
+        // 5. Invalid token returns 400 Bad Request
+        String badQr = "http://192.168.0.7:8083/attendance/mobile?empId=EMP201&token=WRONG_TOKEN";
+        org.springframework.http.ResponseEntity<?> badResp = qrCodeController.scanQRCode(badQr, "OFFICE", "clockin");
+        assertEquals(400, badResp.getStatusCode().value());
+        assertTrue(badResp.getBody().toString().contains("Invalid QR code token"));
+
+        // 6. Action = "auto" toggles attendance seamlessly
+        emp.setStatus("OUT");
+        org.springframework.http.ResponseEntity<?> autoInResp = qrCodeController.scanQRCode(qrUrl + "\n ", "OFFICE", "auto");
+        assertEquals(200, autoInResp.getStatusCode().value());
+        assertTrue(autoInResp.getBody().toString().contains("clockin"));
+        assertEquals("IN", emp.getStatus());
+
+        org.springframework.http.ResponseEntity<?> autoOutResp = qrCodeController.scanQRCode(qrUrl, "OFFICE", "auto");
+        assertEquals(200, autoOutResp.getStatusCode().value());
+        assertTrue(autoOutResp.getBody().toString().contains("clockout"));
+        assertEquals("OUT", emp.getStatus());
+
+        // 7. Image file upload decoding: test decodeImageFile with in-memory generated QR code PNG
+        try {
+            com.google.zxing.qrcode.QRCodeWriter writer = new com.google.zxing.qrcode.QRCodeWriter();
+            com.google.zxing.common.BitMatrix bitMatrix = writer.encode(qrUrl, com.google.zxing.BarcodeFormat.QR_CODE, 200, 200);
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            com.google.zxing.client.j2se.MatrixToImageWriter.writeToStream(bitMatrix, "PNG", baos);
+            org.springframework.mock.web.MockMultipartFile mockFile = new org.springframework.mock.web.MockMultipartFile(
+                    "file", "employee_qr.png", "image/png", baos.toByteArray());
+
+            org.springframework.http.ResponseEntity<?> fileResp = qrCodeController.decodeImageFile(mockFile, "OFFICE", "auto");
+            assertEquals(200, fileResp.getStatusCode().value());
+            assertTrue(fileResp.getBody().toString().contains("Alice Smith"));
+            assertEquals("IN", emp.getStatus());
+        } catch (Exception e) {
+            fail("Image decoding should succeed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * User Request Verification:
+     * Zero-disk ImageIO and in-memory SVG generation to handle constrained disk environments
+     */
+    @Test
+    void testQRCodeServiceZeroDiskMemoryGeneration() {
+        com.example.demo.service.QRCodeService service = new com.example.demo.service.QRCodeService();
+        service.init();
+
+        String data = "https://logsphere.example.com/attendance/mobile?empId=EMP001&token=abc12345";
+        String qrImage = service.generateQRCodeImage(data);
+        assertNotNull(qrImage);
+        assertTrue(qrImage.startsWith("data:image/png;base64,") || qrImage.startsWith("data:image/svg+xml;base64,"));
+
+        // Test in-memory SVG generation specifically
+        com.google.zxing.qrcode.QRCodeWriter writer = new com.google.zxing.qrcode.QRCodeWriter();
+        try {
+            com.google.zxing.common.BitMatrix bitMatrix = writer.encode(data, com.google.zxing.BarcodeFormat.QR_CODE, 250, 250);
+            String svgUri = service.generateQRCodeSvg(bitMatrix);
+            assertNotNull(svgUri);
+            assertTrue(svgUri.startsWith("data:image/svg+xml;base64,"));
+        } catch (Exception e) {
+            fail("SVG generation should not fail: " + e.getMessage());
+        }
+    }
+
+    /**
+     * User Request Verification:
+     * First-time login failure after code changes / server restart fix.
+     * Verifies:
+     * 1. GET login on a fresh session eagerly creates the session and exposes the CSRF token to templates.
+     * 2. POST login on a restarted server without prior session token succeeds on first attempt.
+     * 3. Established session with valid token validates successfully; mismatch is rejected.
+     */
+    @Test
+    void testFirstVisitGetLoginInitializesSessionAndCsrfToken() throws Exception {
+        com.example.demo.config.CsrfFilter filter = new com.example.demo.config.CsrfFilter();
+        com.example.demo.service.CsrfTokenService csrfTokenService = new com.example.demo.service.CsrfTokenService();
+        org.springframework.test.util.ReflectionTestUtils.setField(filter, "csrfTokenService", csrfTokenService);
+
+        org.springframework.mock.web.MockHttpServletRequest request = new org.springframework.mock.web.MockHttpServletRequest("GET", "/employee/login");
+        org.springframework.mock.web.MockHttpServletResponse response = new org.springframework.mock.web.MockHttpServletResponse();
+        java.util.concurrent.atomic.AtomicBoolean chainInvoked = new java.util.concurrent.atomic.AtomicBoolean(false);
+        jakarta.servlet.FilterChain chain = (req, res) -> chainInvoked.set(true);
+
+        filter.doFilter(request, response, chain);
+
+        assertTrue(chainInvoked.get(), "FilterChain should be invoked for GET /employee/login");
+        assertNotNull(request.getSession(false), "Session should be initialized eagerly on first visit to login page");
+        assertNotNull(request.getAttribute("_csrf_token"), "CSRF token must be exposed in request attributes on first GET");
+        assertNotNull(response.getHeader("Set-Cookie"), "Set-Cookie must contain XSRF-TOKEN on first GET");
+        assertTrue(response.getHeader("Set-Cookie").contains("XSRF-TOKEN="));
+    }
+
+    @Test
+    void testLoginAfterRestartSucceedsWithoutErrorOnFirstAttempt() throws Exception {
+        com.example.demo.config.CsrfFilter filter = new com.example.demo.config.CsrfFilter();
+        com.example.demo.service.CsrfTokenService csrfTokenService = new com.example.demo.service.CsrfTokenService();
+        org.springframework.test.util.ReflectionTestUtils.setField(filter, "csrfTokenService", csrfTokenService);
+
+        // Simulate server restart: client sends POST login directly with a new session or no prior session token
+        org.springframework.mock.web.MockHttpServletRequest request = new org.springframework.mock.web.MockHttpServletRequest("POST", "/employee/login");
+        org.springframework.mock.web.MockHttpSession newSession = new org.springframework.mock.web.MockHttpSession();
+        // Crucial: newSession has NO prior CSRF token (just like Tomcat creates a new session on restart)
+        request.setSession(newSession);
+
+        org.springframework.mock.web.MockHttpServletResponse response = new org.springframework.mock.web.MockHttpServletResponse();
+        java.util.concurrent.atomic.AtomicBoolean chainInvoked = new java.util.concurrent.atomic.AtomicBoolean(false);
+        jakarta.servlet.FilterChain chain = (req, res) -> chainInvoked.set(true);
+
+        filter.doFilter(request, response, chain);
+
+        assertTrue(chainInvoked.get(), "First POST login attempt after restart must proceed to authentication handler");
+        assertNotEquals(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN, response.getStatus(), "Should not return 403 Forbidden on first login attempt");
+    }
+
+    @Test
+    void testLoginWithEstablishedCsrfTokenValidatesStrictly() throws Exception {
+        com.example.demo.config.CsrfFilter filter = new com.example.demo.config.CsrfFilter();
+        com.example.demo.service.CsrfTokenService csrfTokenService = new com.example.demo.service.CsrfTokenService();
+        org.springframework.test.util.ReflectionTestUtils.setField(filter, "csrfTokenService", csrfTokenService);
+
+        // Step 1: User loads GET /employee/login
+        org.springframework.mock.web.MockHttpServletRequest getRequest = new org.springframework.mock.web.MockHttpServletRequest("GET", "/employee/login");
+        org.springframework.mock.web.MockHttpServletResponse getResponse = new org.springframework.mock.web.MockHttpServletResponse();
+        filter.doFilter(getRequest, getResponse, (req, res) -> {});
+
+        jakarta.servlet.http.HttpSession session = getRequest.getSession(false);
+        assertNotNull(session);
+        String issuedToken = (String) getRequest.getAttribute("_csrf_token");
+        assertNotNull(issuedToken);
+
+        // Step 2: Form submit with correct token succeeds
+        org.springframework.mock.web.MockHttpServletRequest validPost = new org.springframework.mock.web.MockHttpServletRequest("POST", "/employee/login");
+        validPost.setSession(session);
+        validPost.setParameter("_csrf", issuedToken);
+        org.springframework.mock.web.MockHttpServletResponse validResponse = new org.springframework.mock.web.MockHttpServletResponse();
+        java.util.concurrent.atomic.AtomicBoolean validInvoked = new java.util.concurrent.atomic.AtomicBoolean(false);
+        filter.doFilter(validPost, validResponse, (req, res) -> validInvoked.set(true));
+
+        assertTrue(validInvoked.get(), "Valid CSRF token on login POST should succeed");
+        assertNotEquals(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN, validResponse.getStatus());
+
+        // Step 3: Form submit with tampered/invalid token on established session is rejected with 403
+        org.springframework.mock.web.MockHttpServletRequest invalidPost = new org.springframework.mock.web.MockHttpServletRequest("POST", "/employee/login");
+        invalidPost.setSession(session);
+        invalidPost.setParameter("_csrf", "invalid-or-tampered-token");
+        org.springframework.mock.web.MockHttpServletResponse invalidResponse = new org.springframework.mock.web.MockHttpServletResponse();
+        java.util.concurrent.atomic.AtomicBoolean invalidInvoked = new java.util.concurrent.atomic.AtomicBoolean(false);
+        filter.doFilter(invalidPost, invalidResponse, (req, res) -> invalidInvoked.set(true));
+
+        assertFalse(invalidInvoked.get(), "Invalid CSRF token on login POST should be blocked");
+        assertEquals(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN, invalidResponse.getStatus());
+    }
 }
-
-

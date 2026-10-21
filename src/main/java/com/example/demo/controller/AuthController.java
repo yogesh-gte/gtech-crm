@@ -33,12 +33,12 @@ public class AuthController {
     @Autowired(required = false)
     private com.example.demo.service.InputValidationService inputValidationService;
 
-    @RequestMapping(value = "/admin/login", method = RequestMethod.GET)
+    @RequestMapping(value = {"/admin/login", "/login"}, method = RequestMethod.GET)
     public String showLoginForm(Model model, HttpSession session) {
         return "login";
     }
 
-    @RequestMapping(value = "/admin/login", method = RequestMethod.POST)
+    @RequestMapping(value = {"/admin/login", "/login"}, method = RequestMethod.POST)
     public String login(@RequestParam String email,
             @RequestParam String password,
             jakarta.servlet.http.HttpServletRequest request,

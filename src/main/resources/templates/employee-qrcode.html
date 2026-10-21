@@ -4,20 +4,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My QR Code - LogSphere</title>
+    <title>QR Code & Real-Time Scanner - LogSphere</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" th:href="@{/css/theme.css}">
+    
+    <!-- HTML5 QR Code Scanner, jsQR & QR Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
         :root {
-            --primary-bg: #f3f7ff;
+            --primary-bg: #f8fafc;
             --card-bg: #ffffff;
-            --text-primary: #0f1b2d;
-            --brand-primary: #0d6efd;
+            --text-primary: #0f172a;
+            --brand-primary: #0284c7;
         }
 
         body {
@@ -34,17 +38,135 @@
         .card {
             border: none;
             border-radius: 16px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
             background-color: var(--card-bg);
         }
 
         .card-header {
             background-color: #ffffff;
             border-bottom: 1px solid #f1f5f9;
-            padding: 1.5rem;
+            padding: 1.25rem 1.5rem;
             border-radius: 16px 16px 0 0 !important;
         }
 
+        /* Nav Pills Styling */
+        .nav-pills .nav-link {
+            border-radius: 10px;
+            padding: 10px 22px;
+            color: #4b5563;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .nav-pills .nav-link:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: #0284c7;
+            color: #ffffff;
+            border-color: #0284c7;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        }
+
+        /* Real-Time Scanner Viewfinder */
+        .scanner-card-box {
+            position: relative;
+            background: #0f172a;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+            min-height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #reader {
+            width: 100% !important;
+            border: none !important;
+        }
+
+        #reader video {
+            border-radius: 12px;
+            object-fit: contain !important;
+            max-height: 480px;
+            width: 100% !important;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .scanner-card-box.drag-over {
+            outline: 3px dashed #38bdf8 !important;
+            outline-offset: -8px;
+            background: #1e293b !important;
+        }
+
+        /* Viewfinder Laser and Reticle */
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .scanner-frame {
+            position: relative;
+            width: min(280px, 75vw);
+            height: min(280px, 75vw);
+            border: 2px solid rgba(56, 189, 248, 0.6);
+            border-radius: 16px;
+            box-shadow: 0 0 0 4000px rgba(15, 23, 42, 0.35);
+            transition: all 0.25s ease;
+        }
+
+        .scanner-frame.detected {
+            border-color: #22c55e !important;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.8), 0 0 0 4000px rgba(15, 23, 42, 0.45) !important;
+        }
+
+        /* Corner brackets */
+        .corner {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-color: #38bdf8;
+            border-style: solid;
+        }
+
+        .corner-tl { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-top-left-radius: 14px; }
+        .corner-tr { top: -2px; right: -2px; border-width: 4px 4px 0 0; border-top-right-radius: 14px; }
+        .corner-bl { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; border-bottom-left-radius: 14px; }
+        .corner-br { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-bottom-right-radius: 14px; }
+
+        /* Animated Laser */
+        .scanner-laser {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #38bdf8, #0284c7, #38bdf8, transparent);
+            box-shadow: 0 0 10px #38bdf8, 0 0 18px #0284c7;
+            top: 10px;
+            animation: laserSweep 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes laserSweep {
+            0% { top: 15px; opacity: 0.9; }
+            50% { opacity: 1; }
+            100% { top: 235px; opacity: 0.9; }
+        }
+
+        /* Scannable QR Code Box */
         .qr-card-box {
             background: #ffffff;
             padding: 24px;
@@ -76,9 +198,21 @@
             justify-content: center;
         }
 
-        #clientQrContainer img,
-        #clientQrContainer canvas {
-            margin: 0 auto;
+        .live-pulse {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            margin-right: 6px;
+            box-shadow: 0 0 0 rgba(34, 197, 94, 0.7);
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
     </style>
 </head>
@@ -95,141 +229,847 @@
                         <i class="fas fa-bars"></i>
                     </button>
                     <span class="navbar-brand mb-0 h4 fw-bold text-primary mb-0">
-                        <i class="fas fa-qrcode me-2"></i>My QR Code
+                        <i class="fas fa-qrcode me-2"></i>QR Code & Real-Time Scanner
                     </span>
                 </div>
-                <div class="d-flex gap-2">
-                    <a th:href="@{/employee/logout}" class="btn btn-outline-danger btn-sm">
-                        <i class="fas fa-sign-out-alt me-1"></i> Logout
-                    </a>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge" 
+                          th:classappend="${isClockedIn == true} ? 'bg-success bg-opacity-10 text-success border border-success' : 'bg-secondary bg-opacity-10 text-secondary border border-secondary'">
+                        <span class="live-pulse" th:if="${isClockedIn == true}"></span>
+                        <span th:text="${isClockedIn == true ? 'CLOCKED IN' : 'CLOCKED OUT'}">CLOCKED OUT</span>
+                    </span>
                 </div>
             </div>
         </nav>
 
-        <div class="container-fluid px-0 py-3">
-        <div class="row justify-content-center">
-            <div class="col-lg-7 col-md-9">
-                <div class="card shadow-sm text-center">
-                    <div class="card-header bg-white">
-                        <h4 class="text-dark fw-bold mb-1">Employee Attendance QR Code</h4>
-                        <p class="text-muted mb-0">Employee: <span class="fw-semibold text-primary" th:text="${employee.name}">Employee Name</span></p>
-                        <span class="badge bg-light text-secondary border mt-1">ID: <span th:text="${employee.employeeId}">EMP001</span></span>
-                    </div>
+        <div class="container-fluid px-0 py-2">
+            
+            <!-- Navigation Pills: Toggle between Live Camera Scanner & My QR Code -->
+            <ul class="nav nav-pills gap-2 mb-4 justify-content-center" id="qrTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link px-4 py-2 d-flex align-items-center gap-2 active" 
+                            id="scanner-tab" onclick="switchTab('scanner')" 
+                            type="button" role="tab" aria-controls="scanner-pane" aria-selected="true">
+                        <i class="fas fa-camera text-primary"></i>
+                        <span>Real-Time Camera Scanner</span>
+                        <span class="badge bg-success rounded-pill ms-1">Live</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link px-4 py-2 d-flex align-items-center gap-2" 
+                            id="myqr-tab" onclick="switchTab('myqr')" 
+                            type="button" role="tab" aria-controls="myqr-pane" aria-selected="false">
+                        <i class="fas fa-id-badge text-info"></i>
+                        <span>My Scannable QR Pass</span>
+                    </button>
+                </li>
+            </ul>
 
-                    <div class="card-body p-4 p-md-5">
-                        <!-- Network Status Badge -->
-                        <div class="mb-3">
-                            <span id="networkStatusBadge" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
-                                <i class="fas fa-wifi me-1"></i> <span id="networkStatusText">Mobile Ready (Wi-Fi IP: 192.168.0.7)</span>
-                            </span>
-                        </div>
+            <div class="tab-content" id="qrTabContent">
 
-                        <!-- Dynamic & Variable Mobile Access Host Configuration -->
-                        <div class="card bg-light border p-3 mb-4 text-start shadow-sm">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label class="form-label fw-bold mb-0 small text-dark">
-                                    <i class="fas fa-network-wired text-primary me-1"></i> Mobile Access Host & Port
-                                </label>
-                                <span class="badge bg-primary-subtle text-primary small" id="activeModeLabel">Dynamic Wi-Fi</span>
-                            </div>
-
-                            <!-- Quick Select Host Buttons -->
-                            <div class="d-flex flex-wrap gap-2 mb-2" id="quickHostButtons">
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnLanIp"
-                                        th:each="ip : ${availableIps}"
-                                        th:data-ip="${ip}" onclick="selectHost(this.getAttribute('data-ip'))">
-                                    <i class="fas fa-wifi me-1"></i> Wi-Fi: <span th:text="${ip}">192.168.0.7</span>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLocalhost"
-                                        data-ip="localhost" onclick="selectHost('localhost')">
-                                    <i class="fas fa-laptop me-1"></i> localhost (PC only)
-                                </button>
-                            </div>
-
-                            <!-- Editable Custom Host/Port Inputs -->
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white text-muted">http://</span>
-                                <input type="text" id="hostInput" class="form-control fw-semibold" th:value="${activeHost}" placeholder="e.g. 192.168.0.7 or custom IP">
-                                <span class="input-group-text bg-white text-muted">:</span>
-                                <input type="number" id="portInput" class="form-control fw-semibold" style="max-width: 90px;" th:value="${activePort}" placeholder="8083">
-                                <button class="btn btn-primary px-3" type="button" onclick="applyCustomHost()">
-                                    <i class="fas fa-sync-alt me-1"></i> Update QR Code
-                                </button>
-                            </div>
-                            <small class="text-muted mt-1 d-block" style="font-size: 0.78rem;">
-                                <i class="fas fa-info-circle me-1"></i> Change the IP/port anytime. The QR code dynamically updates in real time for any Wi-Fi, hotspot, or custom IP.
-                            </small>
-                        </div>
-
-                        <!-- Scannable QR Code Visual Container -->
-                        <div class="qr-card-box mb-4">
-                            <!-- High-resolution server-generated QR -->
-                            <img id="serverQrImg" th:if="${qrCodeImage != null and !#strings.isEmpty(qrCodeImage)}"
-                                 th:src="${qrCodeImage}" alt="Scannable QR Code" class="qr-code-img">
+                <!-- ========================================== -->
+                <!-- TAB 1: REAL-TIME QR ATTENDANCE SCANNER    -->
+                <!-- ========================================== -->
+                <div class="tab-pane fade show active" id="scanner-pane" role="tabpanel" aria-labelledby="scanner-tab">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8 col-md-10">
                             
-                            <!-- Fallback / Dynamic client-generated QR Code -->
-                            <div id="clientQrContainer" style="display:none;"></div>
-                        </div>
+                            <!-- Main Scanner Card -->
+                            <div class="card shadow-sm mb-4">
+                                <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div>
+                                        <h5 class="fw-bold text-dark mb-0">
+                                            <i class="fas fa-video text-primary me-2"></i>Live Real-Time Scanner
+                                        </h5>
+                                        <small class="text-muted">Point any employee QR code at the camera or drop a QR image.</small>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="autoClockSwitch" checked>
+                                        <label class="form-check-label small fw-semibold text-dark" for="autoClockSwitch">
+                                            <i class="fas fa-bolt text-warning me-1"></i>Auto-Submit on Scan
+                                        </label>
+                                    </div>
+                                </div>
 
-                        <p class="text-secondary small mb-3">
-                            <i class="fas fa-camera text-primary me-1"></i> Scan with your mobile device camera or browser to clock in/out instantly.
-                        </p>
+                                <div class="card-body p-4 text-center">
 
-                        <!-- Action Buttons -->
-                        <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
-                            <a id="openMobileBtn" th:href="${qrData}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-external-link-alt me-1"></i> Open Mobile Clock-In Page
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyLink()">
-                                <i class="fas fa-copy me-1"></i> Copy Link
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-success" onclick="downloadQRCode()">
-                                <i class="fas fa-download me-1"></i> Download QR (PNG)
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-dark" onclick="window.print()">
-                                <i class="fas fa-print me-1"></i> Print QR
-                            </button>
-                        </div>
+                                    <!-- Work Mode Selector -->
+                                    <div class="mb-4 text-start">
+                                        <label class="form-label small fw-bold text-muted mb-2">
+                                            <i class="fas fa-briefcase me-1 text-primary"></i>Select Work Mode for Attendance:
+                                        </label>
+                                        <div class="btn-group w-100" role="group">
+                                            <input type="radio" class="btn-check" name="scannerWorkMode" id="wmOffice" value="OFFICE" checked>
+                                            <label class="btn btn-outline-primary py-2" for="wmOffice">
+                                                <i class="fas fa-building me-1"></i> Office
+                                            </label>
 
-                        <!-- URL breakdown -->
-                        <div class="p-3 bg-light rounded text-start mb-4 border">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <small class="fw-bold text-secondary">DYNAMIC MOBILE ATTENDANCE URL:</small>
-                                <span class="badge bg-success-subtle text-success small" id="urlStatusBadge">Scannable on Mobile</span>
+                                            <input type="radio" class="btn-check" name="scannerWorkMode" id="wmWfh" value="REMOTE">
+                                            <label class="btn btn-outline-primary py-2" for="wmWfh">
+                                                <i class="fas fa-home me-1"></i> Remote / WFH
+                                            </label>
+
+                                            <input type="radio" class="btn-check" name="scannerWorkMode" id="wmOnsite" value="ON-SITE">
+                                            <label class="btn btn-outline-primary py-2" for="wmOnsite">
+                                                <i class="fas fa-car me-1"></i> On-Site
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Scanner Action Bar (Camera Controls) -->
+                                    <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
+                                        <button type="button" id="startCameraBtn" class="btn btn-primary px-4 shadow-sm" onclick="startScanner()">
+                                            <i class="fas fa-play me-2"></i>Start Camera
+                                        </button>
+                                        <button type="button" id="stopCameraBtn" class="btn btn-danger px-4 shadow-sm" style="display:none;" onclick="stopScanner()">
+                                            <i class="fas fa-stop me-2"></i>Stop Camera
+                                        </button>
+                                        <button type="button" id="flipCameraBtn" class="btn btn-outline-secondary px-3" onclick="toggleCameraFacing()" title="Switch Front/Rear Camera">
+                                            <i class="fas fa-sync-alt me-1"></i>Flip Camera
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary px-3" onclick="triggerFileUpload()">
+                                            <i class="fas fa-file-image me-1"></i>Scan Image File
+                                        </button>
+                                        <!-- Hidden file input for drag-and-drop / file scan -->
+                                        <input type="file" id="qrFileInput" accept="image/*" style="display:none;" onchange="handleFileScan(event)">
+                                        <!-- Dedicated isolated container for file QR scanning helper -->
+                                        <div id="fileScanHelper" style="display:none;"></div>
+                                    </div>
+
+                                    <!-- Camera Viewfinder Card (with Drag & Drop support) -->
+                                    <div class="scanner-card-box mb-4" id="viewfinderWrapper"
+                                         ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                                        <!-- Inactive Placeholder -->
+                                        <div id="scannerPlaceholder" class="text-white py-5 px-3">
+                                            <i class="fas fa-camera fs-1 text-secondary mb-3 d-block"></i>
+                                            <h6 class="fw-semibold text-light mb-1">Camera is Stopped</h6>
+                                            <p class="small text-secondary mb-3">Click 'Start Camera' to open your webcam/mobile camera, or upload a QR image.</p>
+                                            <button type="button" class="btn btn-sm btn-outline-light" onclick="startScanner()">
+                                                <i class="fas fa-camera me-1"></i> Activate Camera
+                                            </button>
+                                        </div>
+
+                                        <!-- Live Camera Container -->
+                                        <div id="reader" style="display: none; width: 100%;"></div>
+
+                                        <!-- Scanning Overlay (Laser & Corner Reticle) -->
+                                        <div class="scanner-overlay" id="scannerOverlay" style="display: none;">
+                                            <div class="scanner-frame" id="scannerFrame">
+                                                <div class="corner corner-tl"></div>
+                                                <div class="corner corner-tr"></div>
+                                                <div class="corner corner-bl"></div>
+                                                <div class="corner corner-br"></div>
+                                                <div class="scanner-laser" id="scannerLaser"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Status Message Alert -->
+                                    <div id="scannerStatusAlert" class="alert shadow-sm text-start" style="display: none;" role="alert">
+                                        <div class="d-flex align-items-center">
+                                            <i id="statusIcon" class="fas fa-info-circle fs-4 me-3"></i>
+                                            <div id="statusContent"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Scanned Employee Card (Revealed upon scan) -->
+                                    <div id="scannedEmployeeCard" class="card bg-light border p-3 mb-3 text-start shadow-sm" style="display: none;">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.3rem;">
+                                                    <i class="fas fa-user-check"></i>
+                                                </div>
+                                                <div>
+                                                    <h5 class="fw-bold mb-0 text-dark" id="scannedEmpName">Employee Name</h5>
+                                                    <span class="text-muted small">ID: <strong id="scannedEmpId">EMP001</strong></span>
+                                                    <span class="badge bg-secondary ms-2" id="scannedEmpDept">General</span>
+                                                </div>
+                                            </div>
+                                            <span class="badge fs-6 px-3 py-2" id="scannedStatusBadge">CLOCKED OUT</span>
+                                        </div>
+
+                                        <!-- Immediate Action Buttons -->
+                                        <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                            <button type="button" id="btnClockInAction" class="btn btn-success px-4" onclick="executeClockAction('clockin')">
+                                                <i class="fas fa-sign-in-alt me-1"></i> Clock In
+                                            </button>
+                                            <button type="button" id="btnClockOutAction" class="btn btn-danger px-4" onclick="executeClockAction('clockout')">
+                                                <i class="fas fa-sign-out-alt me-1"></i> Clock Out
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary" onclick="resetScannerView()">
+                                                <i class="fas fa-redo me-1"></i> Scan Next
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Scanning Instructions / Tips -->
+                                    <div class="p-3 bg-light rounded text-start border small text-muted">
+                                        <i class="fas fa-lightbulb text-warning me-1"></i>
+                                        <strong>Real-Time Scanning Tips:</strong> Hold your QR code steadily in front of the lens. When detected, the scanner chimes and automatically records attendance. You can also drag-and-drop or upload a saved QR PNG image.
+                                    </div>
+
+                                </div>
                             </div>
-                            <a id="directQrLink" th:href="${qrData}" target="_blank" class="small text-break text-decoration-none text-primary fw-semibold" th:text="${qrData}">
-                                http://192.168.0.7:8083/attendance/mobile?empId=...
-                            </a>
-                        </div>
 
-                        <!-- Instructions -->
-                        <div class="alert alert-info bg-info bg-opacity-10 border border-info border-opacity-25 text-start d-inline-block w-100 mb-0">
-                            <h6 class="fw-bold text-info mb-2"><i class="fas fa-info-circle me-2"></i>How to connect from mobile:</h6>
-                            <ol class="mb-0 ps-3 small text-secondary">
-                                <li class="mb-1">Connect your smartphone to the same Wi-Fi network as this computer.</li>
-                                <li class="mb-1">Ensure the IP selected above matches your computer's Wi-Fi IP (e.g. <code>192.168.0.7</code>).</li>
-                                <li class="mb-1">Point your phone's camera at the QR code above to open the mobile attendance clock-in page.</li>
-                                <li>Select work mode (Office, WFH, On-Site) and tap Clock In / Clock Out.</li>
-                            </ol>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+
+                <!-- ========================================== -->
+                <!-- TAB 2: MY SCANNABLE QR CODE PASS          -->
+                <!-- ========================================== -->
+                <div class="tab-pane fade" id="myqr-pane" role="tabpanel" aria-labelledby="myqr-tab">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-7 col-md-9">
+                            <div class="card shadow-sm text-center">
+                                <div class="card-header bg-white">
+                                    <h4 class="text-dark fw-bold mb-1">Employee Attendance QR Pass</h4>
+                                    <p class="text-muted mb-0">Employee: <span class="fw-semibold text-primary" th:text="${employee.name}">Employee Name</span></p>
+                                    <span class="badge bg-light text-secondary border mt-1">ID: <span th:text="${employee.employeeId}">EMP001</span></span>
+                                </div>
+
+                                <div class="card-body p-4 p-md-5">
+                                    <!-- Network Status Badge -->
+                                    <div class="mb-3">
+                                        <span id="networkStatusBadge" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                                            <i class="fas fa-wifi me-1"></i> <span id="networkStatusText">Mobile Ready (Wi-Fi IP: 192.168.0.7)</span>
+                                        </span>
+                                    </div>
+
+                                    <!-- Dynamic & Variable Mobile Access Server & Protocol Configuration -->
+                                    <div class="card bg-light border p-3 mb-4 text-start shadow-sm">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label class="form-label fw-bold mb-0 small text-dark">
+                                                <i class="fas fa-server text-primary me-1"></i> Mobile Attendance Server Details
+                                            </label>
+                                            <span class="badge bg-success-subtle text-success small" id="activeModeLabel">
+                                                <i class="fas fa-shield-alt me-1"></i>Secure HTTPS
+                                            </span>
+                                        </div>
+
+                                        <!-- Quick Select Host Presets -->
+                                        <div class="d-flex flex-wrap gap-2 mb-2" id="quickHostButtons">
+                                            <button type="button" class="btn btn-sm btn-outline-success active" id="btnHttpsPreset"
+                                                    onclick="selectPreset('https', currentHost, '')">
+                                                <i class="fas fa-lock me-1"></i> HTTPS Server (Mobile Ready)
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnLanIp"
+                                                    th:each="ip : ${availableIps}"
+                                                    th:data-ip="${ip}" onclick="selectPreset('http', this.getAttribute('data-ip'), '8083')">
+                                                <i class="fas fa-wifi me-1"></i> Local Wi-Fi: <span th:text="${ip}">10.63.101.179</span>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLocalhost"
+                                                    data-ip="localhost" onclick="selectPreset('http', 'localhost', '8083')">
+                                                <i class="fas fa-laptop me-1"></i> localhost (PC only)
+                                            </button>
+                                        </div>
+
+                                        <!-- Editable Custom Protocol / Server Domain / Port Inputs -->
+                                        <div class="input-group input-group-sm">
+                                            <!-- Protocol Selector -->
+                                            <select id="schemeSelect" class="form-select fw-bold text-success border-success" style="max-width: 110px;" onchange="onSchemeChange()">
+                                                <option value="https" selected>https://</option>
+                                                <option value="http">http://</option>
+                                            </select>
+                                            <!-- Server Host / Domain Input -->
+                                            <input type="text" id="hostInput" class="form-control fw-semibold" th:value="${activeHost}" 
+                                                   placeholder="Server domain, public host, or IP (e.g. yourserver.com or ngrok URL)"
+                                                   oninput="onHostInputChanged()">
+                                            <!-- Port Suffix (Optional) -->
+                                            <span class="input-group-text bg-white text-muted">:</span>
+                                            <input type="text" id="portInput" class="form-control" style="max-width: 85px;" th:value="${activePort}" 
+                                                   placeholder="Port" title="Port number (leave blank or 443 for standard HTTPS)">
+                                            <!-- Update Button -->
+                                            <button class="btn btn-primary px-3 fw-semibold" type="button" onclick="applyCustomHost()">
+                                                <i class="fas fa-sync-alt me-1"></i> Update QR Code
+                                            </button>
+                                        </div>
+                                        <div class="mt-2 text-muted" style="font-size: 0.78rem;">
+                                            <i class="fas fa-info-circle text-primary me-1"></i>
+                                            <span>Mobile phone cameras (iOS / Android) require <strong>HTTPS</strong> to display the direct "Tap to Open" preview. Paste your server domain or tunnel URL.</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Scannable QR Code Visual Container -->
+                                    <div class="qr-card-box mb-4">
+                                        <!-- Server-generated QR Code -->
+                                        <img id="serverQrImg" th:if="${qrCodeImage != null and !#strings.isEmpty(qrCodeImage)}"
+                                             th:src="${qrCodeImage}" alt="Scannable QR Code" class="qr-code-img">
+                                        
+                                        <!-- Dynamic client-generated QR Code -->
+                                        <div id="clientQrContainer" style="display:none;"></div>
+                                    </div>
+
+                                    <p class="text-secondary small mb-3">
+                                        <i class="fas fa-camera text-primary me-1"></i> Scan with your mobile device camera to clock in/out instantly.
+                                    </p>
+
+                                    <!-- Action Buttons -->
+                                    <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
+                                        <a id="openMobileBtn" th:href="${qrData}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-external-link-alt me-1"></i> Open Mobile Clock-In Page
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyLink()">
+                                            <i class="fas fa-copy me-1"></i> Copy Link
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="downloadQRCode()">
+                                            <i class="fas fa-download me-1"></i> Download QR (PNG)
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-dark" onclick="window.print()">
+                                            <i class="fas fa-print me-1"></i> Print QR Pass
+                                        </button>
+                                    </div>
+
+                                    <!-- URL breakdown -->
+                                    <div class="p-3 bg-light rounded text-start mb-4 border">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="fw-bold text-secondary">DYNAMIC ATTENDANCE URL:</small>
+                                            <span class="badge bg-success-subtle text-success small" id="urlStatusBadge">Scannable on Mobile</span>
+                                        </div>
+                                        <a id="directQrLink" th:href="${qrData}" target="_blank" class="small text-break text-decoration-none text-primary fw-semibold" th:text="${qrData}">
+                                            http://192.168.0.7:8083/attendance/mobile?empId=...
+                                        </a>
+                                    </div>
+
+                                    <!-- Instructions -->
+                                    <div class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 text-start d-inline-block w-100 mb-0">
+                                        <h6 class="fw-bold text-success mb-2"><i class="fas fa-camera me-2"></i>How to scan from your mobile phone:</h6>
+                                        <ol class="mb-0 ps-3 small text-secondary">
+                                            <li class="mb-1">Open your smartphone's built-in <strong>Camera</strong> or <strong>Google Lens</strong> app.</li>
+                                            <li class="mb-1">Point the camera directly at the QR code above.</li>
+                                            <li class="mb-1">Your phone will immediately display a <strong>tap-to-open banner</strong> with the secure link.</li>
+                                            <li>Tap the banner to open your personalized Attendance Clock-In page and tap Clock In or Clock Out.</li>
+                                        </ol>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <!-- /tab-content -->
+
+        </div> <!-- /container-fluid -->
     </div> <!-- /main-content -->
 
     <script th:inline="javascript">
         /*<![CDATA[*/
         const serverQrDataUrl = /*[[${qrData}]]*/ '';
-        const employeeId = /*[[${employee.employeeId}]]*/ 'EMP001';
-        const qrToken = /*[[${employee.qrCodeToken}]]*/ '';
+        const currentEmployeeId = /*[[${employee.employeeId}]]*/ 'EMP001';
+        const currentQrToken = /*[[${employee.qrCodeToken}]]*/ '';
         const detectedLanIp = /*[[${detectedLanIp}]]*/ '192.168.0.7';
+        const serverActiveScheme = /*[[${activeScheme}]]*/ 'https';
         const serverActiveHost = /*[[${activeHost}]]*/ '192.168.0.7';
-        const serverActivePort = /*[[${activePort}]]*/ 8083;
+        const serverActivePort = /*[[${activePort}]]*/ '';
+        const initialTab = /*[[${activeTab}]]*/ 'scanner';
 
+        let currentScheme = serverActiveScheme || 'https';
         let currentHost = serverActiveHost;
         let currentPort = serverActivePort;
+        let currentFacingMode = "environment"; // default to rear camera on mobile, front on PC
 
+        let html5QrScanner = null;
+        let isScannerRunning = false;
+        let lastScannedData = null;
+        let scanThrottleTimer = null;
+        let audioCtx = null;
+
+        // Sound synthesizer for real-time POS barcode / QR scanner feedback
+        function playBeep(type = 'success') {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                    osc.frequency.setValueAtTime(1760, audioCtx.currentTime + 0.08); // A6
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.2);
+                } else if (type === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.3);
+                }
+            } catch (e) {
+                console.log("Audio feedback error:", e);
+            }
+        }
+
+        // ==========================================
+        // REAL-TIME CAMERA SCANNER ENGINE & MULTI-TIER FILE DECODER
+        // ==========================================
+
+        async function startScanner() {
+            const placeholder = document.getElementById('scannerPlaceholder');
+            const readerDiv = document.getElementById('reader');
+            const overlay = document.getElementById('scannerOverlay');
+            const startBtn = document.getElementById('startCameraBtn');
+            const stopBtn = document.getElementById('stopCameraBtn');
+
+            if (isScannerRunning) return;
+
+            // Ensure container is unhidden before Html5Qrcode calculates bounding boxes
+            placeholder.style.display = 'none';
+            readerDiv.style.display = 'block';
+            overlay.style.display = 'flex';
+
+            if (!html5QrScanner) {
+                html5QrScanner = new Html5Qrcode("reader");
+            }
+
+            // High-performance real-time scanning config
+            const config = {
+                fps: 20, // 20 fps for responsive, low-latency tracking
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    const edge = Math.max(Math.floor(minEdge * 0.8), 200);
+                    return { width: edge, height: edge };
+                },
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true // Native hardware acceleration in Chrome/Edge
+                }
+            };
+
+            try {
+                await html5QrScanner.start(
+                    { facingMode: currentFacingMode },
+                    config,
+                    onScanSuccess,
+                    onScanFailure
+                );
+                isScannerRunning = true;
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+                hideAlert();
+            } catch (err) {
+                console.error("Camera start failed:", err);
+                placeholder.style.display = 'block';
+                readerDiv.style.display = 'none';
+                overlay.style.display = 'none';
+                showAlert('danger', 'Camera Access Error', 'Could not access camera (' + (err.message || err) + '). Please ensure camera permissions are allowed in your browser, or use the "Scan Image File" / Drag-and-Drop option.');
+            }
+        }
+
+        async function stopScanner() {
+            const placeholder = document.getElementById('scannerPlaceholder');
+            const readerDiv = document.getElementById('reader');
+            const overlay = document.getElementById('scannerOverlay');
+            const startBtn = document.getElementById('startCameraBtn');
+            const stopBtn = document.getElementById('stopCameraBtn');
+
+            if (html5QrScanner && isScannerRunning) {
+                try {
+                    await html5QrScanner.stop();
+                } catch (err) {
+                    console.warn("Failed to stop camera scanner cleanly:", err);
+                }
+                isScannerRunning = false;
+                if (startBtn) startBtn.style.display = 'inline-block';
+                if (stopBtn) stopBtn.style.display = 'none';
+                if (placeholder) placeholder.style.display = 'block';
+                if (readerDiv) readerDiv.style.display = 'none';
+                if (overlay) overlay.style.display = 'none';
+            }
+        }
+
+        async function toggleCameraFacing() {
+            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+            if (isScannerRunning) {
+                await stopScanner();
+                setTimeout(() => {
+                    startScanner();
+                }, 300);
+            }
+        }
+
+        function triggerFileUpload() {
+            const fileInput = document.getElementById('qrFileInput');
+            if (fileInput) fileInput.click();
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const wrapper = document.getElementById('viewfinderWrapper');
+            if (wrapper) wrapper.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const wrapper = document.getElementById('viewfinderWrapper');
+            if (wrapper) wrapper.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const wrapper = document.getElementById('viewfinderWrapper');
+            if (wrapper) wrapper.classList.remove('drag-over');
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                processUploadedFile(e.dataTransfer.files[0]);
+            }
+        }
+
+        function handleFileScan(e) {
+            const file = e.target.files && e.target.files[0];
+            if (file) {
+                processUploadedFile(file);
+            }
+            e.target.value = '';
+        }
+
+        // ==========================================
+        // 4-TIER ROBUST IMAGE FILE QR DECODER
+        // ==========================================
+        async function processUploadedFile(file) {
+            if (!file) return;
+
+            showAlert('info', 'Processing Image...', '<i class="fas fa-spinner fa-spin me-2"></i>Analyzing and decoding QR code from selected image...');
+
+            // If camera is currently active, stop it cleanly to prevent device contention & show card
+            if (isScannerRunning) {
+                try {
+                    await stopScanner();
+                } catch (ignored) {}
+            }
+
+            // Tier 1: Hardware-Accelerated Native BarcodeDetector (Chrome/Edge/Android)
+            if ('BarcodeDetector' in window) {
+                try {
+                    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                    const bitmap = await createImageBitmap(file);
+                    const codes = await detector.detect(bitmap);
+                    if (codes && codes.length > 0 && codes[0].rawValue) {
+                        console.log("Tier 1 (BarcodeDetector) decoded:", codes[0].rawValue);
+                        onScanSuccess(codes[0].rawValue);
+                        return;
+                    }
+                } catch (bErr) {
+                    console.log("Tier 1 fallback:", bErr);
+                }
+            }
+
+            // Tier 2: Client-side Offscreen Canvas + jsQR (supports standard & inverted QR codes)
+            try {
+                const canvasDecoded = await decodeWithJsQR(file);
+                if (canvasDecoded) {
+                    console.log("Tier 2 (jsQR Canvas) decoded:", canvasDecoded);
+                    onScanSuccess(canvasDecoded);
+                    return;
+                }
+            } catch (cErr) {
+                console.log("Tier 2 fallback:", cErr);
+            }
+
+            // Tier 3: Isolated Html5Qrcode dedicated helper (showImage=false prevents DOM issues)
+            try {
+                const helper = new Html5Qrcode("fileScanHelper");
+                const html5Res = await helper.scanFile(file, false);
+                try { helper.clear(); } catch (ignored) {}
+                if (html5Res) {
+                    console.log("Tier 3 (Html5Qrcode file helper) decoded:", html5Res);
+                    onScanSuccess(html5Res);
+                    return;
+                }
+            } catch (hErr) {
+                console.log("Tier 3 fallback:", hErr);
+            }
+
+            // Tier 4: High-precision Server-side ZXing HybridBinarizer endpoint
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('workMode', getSelectedWorkMode());
+                const autoSubmit = document.getElementById('autoClockSwitch').checked;
+                formData.append('action', autoSubmit ? 'auto' : 'verify');
+
+                const resp = await fetch('/employee/qrcode/decode-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    playBeep('success');
+                    displayScannedEmployee(data);
+                    if (data.action === 'clockin' || data.action === 'clockout') {
+                        showAttendanceSuccessAlert(data);
+                        updateNavbarBadge(data);
+                    } else {
+                        showAlert('info', 'QR Code Recognized', 'Employee identified: <strong>' + data.employeeName + ' (' + data.employeeId + ')</strong>. Choose Clock In or Clock Out below.');
+                    }
+                    return;
+                } else {
+                    playBeep('error');
+                    showAlert('danger', 'QR Scan Failed', data.message || 'No valid QR code could be detected in this image. Please select a clearer QR image.');
+                    return;
+                }
+            } catch (sErr) {
+                console.error("Tier 4 Server decode error:", sErr);
+                playBeep('error');
+                showAlert('danger', 'QR Scan Error', 'Unable to decode QR code from the uploaded image. Please ensure the QR code is clearly visible.');
+            }
+        }
+
+        function decodeWithJsQR(file) {
+            return new Promise((resolve) => {
+                if (typeof jsQR === 'undefined') {
+                    return resolve(null);
+                }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width;
+                            let height = img.height;
+                            const maxDim = 1200;
+                            if (width > maxDim || height > maxDim) {
+                                if (width > height) {
+                                    height = Math.round((height * maxDim) / width);
+                                    width = maxDim;
+                                } else {
+                                    width = Math.round((width * maxDim) / height);
+                                    height = maxDim;
+                                }
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            const imgData = ctx.getImageData(0, 0, width, height);
+                            // Normal QR code attempt
+                            let code = jsQR(imgData.data, width, height, { inversionAttempts: "dontInvert" });
+                            if (code && code.data) return resolve(code.data);
+
+                            // Inverted QR code attempt (dark mode / white-on-black)
+                            code = jsQR(imgData.data, width, height, { inversionAttempts: "onlyInvert" });
+                            if (code && code.data) return resolve(code.data);
+                        } catch (err) {
+                            console.log("Canvas error in jsQR:", err);
+                        }
+                        resolve(null);
+                    };
+                    img.onerror = () => resolve(null);
+                    img.src = e.target.result;
+                };
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // On Successful Detection (From Live Camera or Uploaded File)
+        function onScanSuccess(decodedText, decodedResult) {
+            // Prevent rapid multi-firing
+            if (scanThrottleTimer) return;
+            scanThrottleTimer = setTimeout(() => {
+                scanThrottleTimer = null;
+            }, 2500);
+
+            // Audio & Visual detection feedback
+            playBeep('success');
+            const frame = document.getElementById('scannerFrame');
+            if (frame) {
+                frame.classList.add('detected');
+                setTimeout(() => frame.classList.remove('detected'), 800);
+            }
+
+            lastScannedData = decodedText;
+            processScannedQR(decodedText);
+        }
+
+        function onScanFailure(error) {
+            // Real-time camera frame non-match - ignore to keep scanning smoothly
+        }
+
+        function getSelectedWorkMode() {
+            const checked = document.querySelector('input[name="scannerWorkMode"]:checked');
+            return checked ? checked.value : 'OFFICE';
+        }
+
+        function processScannedQR(qrData) {
+            const workMode = getSelectedWorkMode();
+            const autoSubmit = document.getElementById('autoClockSwitch').checked;
+
+            const formData = new URLSearchParams();
+            formData.append('qrData', qrData);
+            formData.append('workMode', workMode);
+            formData.append('action', autoSubmit ? 'auto' : 'verify');
+
+            fetch('/employee/qrcode/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    playBeep('error');
+                    showAlert('danger', 'Invalid QR Code', data.message || 'The scanned QR code is invalid or unauthorized.');
+                    return;
+                }
+
+                // Display Scanned Employee Card
+                displayScannedEmployee(data);
+
+                if (data.action === 'clockin' || data.action === 'clockout') {
+                    showAttendanceSuccessAlert(data);
+                    updateNavbarBadge(data);
+                } else {
+                    showAlert('info', 'QR Code Recognized', 'Employee identified: <strong>' + data.employeeName + ' (' + data.employeeId + ')</strong>. Choose Clock In or Clock Out below.');
+                }
+            })
+            .catch(err => {
+                playBeep('error');
+                showAlert('danger', 'Connection Error', 'Error communicating with attendance server: ' + err.message);
+            });
+        }
+
+        function showAttendanceSuccessAlert(data) {
+            const actionText = data.action === 'clockin' ? 'Clocked In' : 'Clocked Out';
+            showAlert('success', '✓ ' + actionText + ' Successfully!', 
+                '<strong>' + data.employeeName + ' (' + data.employeeId + ')</strong> ' +
+                '| Work Mode: <strong>' + data.workMode + '</strong> | Time: <strong>' + data.time + '</strong>');
+        }
+
+        function updateNavbarBadge(data) {
+            if (data.employeeId === currentEmployeeId) {
+                const topBadge = document.querySelector('.navbar .badge');
+                if (topBadge) {
+                    if (data.isClockedIn) {
+                        topBadge.className = 'badge bg-success bg-opacity-10 text-success border border-success';
+                        topBadge.innerHTML = '<span class="live-pulse"></span>CLOCKED IN';
+                    } else {
+                        topBadge.className = 'badge bg-secondary bg-opacity-10 text-secondary border border-secondary';
+                        topBadge.innerHTML = 'CLOCKED OUT';
+                    }
+                }
+            }
+        }
+
+        function displayScannedEmployee(data) {
+            const card = document.getElementById('scannedEmployeeCard');
+            const nameEl = document.getElementById('scannedEmpName');
+            const idEl = document.getElementById('scannedEmpId');
+            const deptEl = document.getElementById('scannedEmpDept');
+            const statusBadge = document.getElementById('scannedStatusBadge');
+            const clockInBtn = document.getElementById('btnClockInAction');
+            const clockOutBtn = document.getElementById('btnClockOutAction');
+
+            nameEl.textContent = data.employeeName;
+            idEl.textContent = data.employeeId;
+            deptEl.textContent = data.department || 'Staff';
+
+            if (data.isClockedIn) {
+                statusBadge.className = 'badge bg-success-subtle text-success fs-6 px-3 py-2 border border-success';
+                statusBadge.innerHTML = '<i class="fas fa-check-circle me-1"></i> Currently Clocked IN';
+                clockInBtn.classList.remove('btn-success');
+                clockInBtn.classList.add('btn-outline-secondary');
+                clockOutBtn.classList.remove('btn-outline-danger');
+                clockOutBtn.classList.add('btn-danger');
+            } else {
+                statusBadge.className = 'badge bg-secondary-subtle text-secondary fs-6 px-3 py-2 border border-secondary';
+                statusBadge.innerHTML = '<i class="fas fa-sign-out-alt me-1"></i> Currently Clocked OUT';
+                clockInBtn.classList.remove('btn-outline-secondary');
+                clockInBtn.classList.add('btn-success');
+                clockOutBtn.classList.remove('btn-danger');
+                clockOutBtn.classList.add('btn-outline-danger');
+            }
+
+            card.style.display = 'block';
+        }
+
+        function executeClockAction(action) {
+            if (!lastScannedData) {
+                showAlert('warning', 'No QR Code Scanned', 'Please scan a valid employee QR code first.');
+                return;
+            }
+
+            const workMode = getSelectedWorkMode();
+            const formData = new URLSearchParams();
+            formData.append('qrData', lastScannedData);
+            formData.append('workMode', workMode);
+            formData.append('action', action);
+
+            fetch('/employee/qrcode/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    playBeep('success');
+                    showAttendanceSuccessAlert(data);
+
+                    if (data.status) {
+                        data.isClockedIn = (data.status === 'IN');
+                        displayScannedEmployee(data);
+                    }
+
+                    updateNavbarBadge(data);
+                } else {
+                    playBeep('error');
+                    showAlert('danger', 'Attendance Failed', data.message || 'Unable to record attendance.');
+                }
+            })
+            .catch(err => {
+                playBeep('error');
+                showAlert('danger', 'Error', 'Failed to submit attendance: ' + err.message);
+            });
+        }
+
+        function resetScannerView() {
+            lastScannedData = null;
+            document.getElementById('scannedEmployeeCard').style.display = 'none';
+            hideAlert();
+        }
+
+        function showAlert(type, title, message) {
+            const alertBox = document.getElementById('scannerStatusAlert');
+            const icon = document.getElementById('statusIcon');
+            const content = document.getElementById('statusContent');
+
+            alertBox.className = 'alert alert-' + type + ' shadow-sm text-start fade show';
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle fs-3 text-success me-3';
+            } else if (type === 'danger') {
+                icon.className = 'fas fa-exclamation-triangle fs-3 text-danger me-3';
+            } else {
+                icon.className = 'fas fa-info-circle fs-3 text-info me-3';
+            }
+
+            content.innerHTML = '<strong class="d-block mb-1">' + title + '</strong>' + message;
+            alertBox.style.display = 'block';
+        }
+
+        function hideAlert() {
+            const alertBox = document.getElementById('scannerStatusAlert');
+            if (alertBox) alertBox.style.display = 'none';
+        }
+
+        // ==========================================
+        // MY SCANNABLE QR PASS LOGIC (HTTPS & SERVER CONFIGURATION)
+        // ==========================================
+
+        const schemeSelect = document.getElementById('schemeSelect');
         const hostInput = document.getElementById('hostInput');
         const portInput = document.getElementById('portInput');
         const serverImg = document.getElementById('serverQrImg');
@@ -241,20 +1081,57 @@
         const urlStatusBadge = document.getElementById('urlStatusBadge');
         const activeModeLabel = document.getElementById('activeModeLabel');
 
-        function buildMobileUrl(host, port) {
-            const scheme = window.location.protocol ? window.location.protocol.replace(':', '') : 'http';
-            const portSuffix = (!port || (scheme === 'http' && port == 80) || (scheme === 'https' && port == 443)) ? '' : (':' + port);
-            return scheme + '://' + host + portSuffix + '/attendance/mobile?empId=' + encodeURIComponent(employeeId) + '&token=' + encodeURIComponent(qrToken);
+        function buildMobileUrl(scheme, host, port) {
+            const proto = (scheme || 'https').trim().toLowerCase();
+            const cleanHost = (host || '').trim();
+            const portNum = port ? parseInt(port, 10) : 0;
+
+            let portSuffix = '';
+            if (portNum > 0) {
+                if ((proto === 'http' && portNum !== 80) || (proto === 'https' && portNum !== 443)) {
+                    portSuffix = ':' + portNum;
+                }
+            }
+
+            return proto + '://' + cleanHost + portSuffix + '/attendance/mobile?empId=' + encodeURIComponent(currentEmployeeId) + '&token=' + encodeURIComponent(currentQrToken);
         }
 
-        function updateQR(host, port) {
-            currentHost = host.trim();
-            currentPort = port ? parseInt(port, 10) : 8083;
+        function updateQR(scheme, host, port) {
+            currentScheme = (scheme || 'https').trim().toLowerCase();
+            currentHost = (host || '').trim();
 
-            hostInput.value = currentHost;
-            portInput.value = currentPort;
+            // Intelligent URL unwrapping if user pasted a full URL
+            if (currentHost.startsWith('http://') || currentHost.startsWith('https://')) {
+                try {
+                    const parsed = new URL(currentHost);
+                    currentScheme = parsed.protocol.replace(':', '');
+                    currentHost = parsed.hostname;
+                    if (parsed.port) {
+                        port = parsed.port;
+                    }
+                } catch (ignored) {}
+            }
 
-            const targetUrl = buildMobileUrl(currentHost, currentPort);
+            // Clean port
+            if ((port === '443' && currentScheme === 'https') || (port === '80' && currentScheme === 'http')) {
+                currentPort = '';
+            } else {
+                currentPort = port ? port.toString().trim() : '';
+            }
+
+            // Sync input elements
+            if (schemeSelect) {
+                schemeSelect.value = currentScheme;
+                if (currentScheme === 'https') {
+                    schemeSelect.className = 'form-select fw-bold text-success border-success';
+                } else {
+                    schemeSelect.className = 'form-select fw-bold text-primary border-primary';
+                }
+            }
+            if (hostInput) hostInput.value = currentHost;
+            if (portInput) portInput.value = currentPort;
+
+            const targetUrl = buildMobileUrl(currentScheme, currentHost, currentPort);
 
             // Update Link display and buttons
             if (directQrLink) {
@@ -267,26 +1144,56 @@
 
             // Update network status indicators
             const isLocal = (currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost === '0.0.0.0');
+            const isHttps = (currentScheme === 'https');
+
             if (isLocal) {
-                networkStatusBadge.className = 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 fs-6';
-                networkStatusText.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Localhost selected (PC Only). Mobile cannot connect!';
-                urlStatusBadge.className = 'badge bg-warning-subtle text-warning-emphasis small';
-                urlStatusBadge.textContent = 'PC Only (Not Scannable on Mobile)';
-                activeModeLabel.className = 'badge bg-secondary-subtle text-secondary small';
-                activeModeLabel.textContent = 'Local PC Only';
+                if (networkStatusBadge) {
+                    networkStatusBadge.className = 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 fs-6';
+                    networkStatusText.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Localhost selected (PC Only). Mobile cannot connect!';
+                }
+                if (urlStatusBadge) {
+                    urlStatusBadge.className = 'badge bg-warning-subtle text-warning-emphasis small';
+                    urlStatusBadge.textContent = 'PC Only (Not Scannable on Mobile)';
+                }
+                if (activeModeLabel) {
+                    activeModeLabel.className = 'badge bg-secondary-subtle text-secondary small';
+                    activeModeLabel.textContent = 'Local PC Only';
+                }
+            } else if (isHttps) {
+                if (networkStatusBadge) {
+                    networkStatusBadge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6';
+                    networkStatusText.innerHTML = '<i class="fas fa-shield-alt me-1"></i> Mobile Ready (HTTPS: ' + currentHost + ')';
+                }
+                if (urlStatusBadge) {
+                    urlStatusBadge.className = 'badge bg-success-subtle text-success small';
+                    urlStatusBadge.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Secure HTTPS — Mobile Camera Scannable';
+                }
+                if (activeModeLabel) {
+                    activeModeLabel.className = 'badge bg-success-subtle text-success small';
+                    activeModeLabel.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Secure HTTPS';
+                }
             } else {
-                networkStatusBadge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6';
-                networkStatusText.innerHTML = '<i class="fas fa-wifi me-1"></i> Mobile Ready (Wi-Fi IP: ' + currentHost + ')';
-                urlStatusBadge.className = 'badge bg-success-subtle text-success small';
-                urlStatusBadge.textContent = 'Scannable on Mobile';
-                activeModeLabel.className = 'badge bg-success-subtle text-success small';
-                activeModeLabel.textContent = 'Mobile Ready';
+                if (networkStatusBadge) {
+                    networkStatusBadge.className = 'badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-2 fs-6';
+                    networkStatusText.innerHTML = '<i class="fas fa-wifi me-1"></i> Local Wi-Fi (IP: ' + currentHost + ')';
+                }
+                if (urlStatusBadge) {
+                    urlStatusBadge.className = 'badge bg-info-subtle text-info small';
+                    urlStatusBadge.textContent = 'Wi-Fi IP (Same Wi-Fi Required)';
+                }
+                if (activeModeLabel) {
+                    activeModeLabel.className = 'badge bg-info-subtle text-info small';
+                    activeModeLabel.textContent = 'Local Wi-Fi';
+                }
             }
 
             // Highlight active button
             const buttons = document.querySelectorAll('#quickHostButtons button');
             buttons.forEach(function (btn) {
-                if (btn.getAttribute('data-ip') === currentHost) {
+                const btnIp = btn.getAttribute('data-ip');
+                if (btn.id === 'btnHttpsPreset' && isHttps && !isLocal) {
+                    btn.classList.add('active');
+                } else if (btnIp === currentHost && (!isHttps || isLocal)) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
@@ -294,7 +1201,7 @@
             });
 
             // Regenerate client-side QR Code
-            if (typeof QRCode !== 'undefined') {
+            if (typeof QRCode !== 'undefined' && clientContainer) {
                 if (serverImg) serverImg.style.display = 'none';
                 clientContainer.style.display = 'flex';
                 clientContainer.innerHTML = '';
@@ -302,61 +1209,68 @@
                     text: targetUrl,
                     width: 250,
                     height: 250,
-                    colorDark: "#0f1b2d",
+                    colorDark: "#0f172a",
                     colorLight: "#ffffff",
                     correctLevel: QRCode.CorrectLevel.H
                 });
             }
 
-            // Save to localStorage
+            // Save preferences to localStorage
             try {
+                localStorage.setItem('preferredQrScheme', currentScheme);
                 localStorage.setItem('preferredQrHost', currentHost);
                 localStorage.setItem('preferredQrPort', currentPort);
             } catch (e) {}
         }
 
+        function onSchemeChange() {
+            const scheme = schemeSelect ? schemeSelect.value : 'https';
+            let port = portInput ? portInput.value.trim() : '';
+            if (scheme === 'https' && (port === '8083' || port === '80' || port === '443')) {
+                port = '';
+            } else if (scheme === 'http' && (!port || port === '443')) {
+                port = '8083';
+            }
+            updateQR(scheme, hostInput ? hostInput.value : currentHost, port);
+        }
+
+        function onHostInputChanged() {
+            const val = hostInput ? hostInput.value.trim() : '';
+            if (val.startsWith('http://') || val.startsWith('https://')) {
+                applyCustomHost();
+            }
+        }
+
+        function selectPreset(scheme, host, port) {
+            updateQR(scheme, host, port);
+        }
+
         function selectHost(host) {
-            updateQR(host, portInput.value || 8083);
+            updateQR(currentScheme, host, portInput ? portInput.value : '');
         }
 
         function applyCustomHost() {
-            const h = hostInput.value.trim();
-            const p = portInput.value.trim();
+            const s = schemeSelect ? schemeSelect.value : 'https';
+            let h = hostInput ? hostInput.value.trim() : '';
+            let p = portInput ? portInput.value.trim() : '';
+
+            if (h.startsWith('http://') || h.startsWith('https://')) {
+                try {
+                    const parsed = new URL(h);
+                    const parsedScheme = parsed.protocol.replace(':', '');
+                    h = parsed.hostname;
+                    p = (parsed.port === '443' || parsed.port === '80') ? '' : (parsed.port || '');
+                    if (schemeSelect) schemeSelect.value = parsedScheme;
+                    return updateQR(parsedScheme, h, p);
+                } catch (e) {}
+            }
+
             if (!h) {
-                alert('Please enter a valid IP address or hostname.');
+                alert('Please enter a valid server domain, hostname, or IP address.');
                 return;
             }
-            updateQR(h, p || 8083);
+            updateQR(s, h, p);
         }
-
-        window.addEventListener('DOMContentLoaded', function () {
-            // Determine best initial host
-            let initialHost = serverActiveHost;
-            let initialPort = serverActivePort;
-
-            try {
-                const savedHost = localStorage.getItem('preferredQrHost');
-                const savedPort = localStorage.getItem('preferredQrPort');
-                if (savedHost) {
-                    initialHost = savedHost;
-                }
-                if (savedPort) {
-                    initialPort = parseInt(savedPort, 10);
-                }
-            } catch (e) {}
-
-            // If browser is accessing via non-localhost IP/domain, prioritize browser's host
-            if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                initialHost = window.location.hostname;
-                initialPort = window.location.port || 8083;
-            } else if (!initialHost || initialHost === 'localhost' || initialHost === '127.0.0.1') {
-                if (detectedLanIp && detectedLanIp !== '127.0.0.1') {
-                    initialHost = detectedLanIp;
-                }
-            }
-
-            updateQR(initialHost, initialPort);
-        });
 
         function copyLink() {
             const linkElem = document.getElementById('directQrLink');
@@ -375,21 +1289,117 @@
             if (canvas) {
                 const a = document.createElement('a');
                 a.href = canvas.toDataURL("image/png");
-                a.download = 'LogSphere_QR_' + employeeId + '.png';
+                a.download = 'LogSphere_QR_' + currentEmployeeId + '.png';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
             } else if (serverImg && serverImg.src) {
                 const a = document.createElement('a');
                 a.href = serverImg.src;
-                a.download = 'LogSphere_QR_' + employeeId + '.png';
+                a.download = 'LogSphere_QR_' + currentEmployeeId + '.png';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
             }
         }
+
+        // ==========================================
+        // INITIALIZATION & TAB SWITCHING
+        // ==========================================
+
+        function switchTab(tabName) {
+            const scannerTab = document.getElementById('scanner-tab');
+            const myQrTab = document.getElementById('myqr-tab');
+            const scannerPane = document.getElementById('scanner-pane');
+            const myQrPane = document.getElementById('myqr-pane');
+
+            if (!scannerTab || !myQrTab || !scannerPane || !myQrPane) return;
+
+            if (tabName === 'myqr') {
+                scannerTab.classList.remove('active');
+                scannerTab.setAttribute('aria-selected', 'false');
+                myQrTab.classList.add('active');
+                myQrTab.setAttribute('aria-selected', 'true');
+
+                scannerPane.classList.remove('show', 'active');
+                myQrPane.classList.add('show', 'active');
+
+                // Stop camera if running to release hardware resources
+                if (typeof stopScanner === 'function') {
+                    stopScanner();
+                }
+
+                try {
+                    history.replaceState(null, null, '#myqr');
+                } catch (e) {}
+
+                // Re-render / update QR code pass
+                if (typeof updateQR === 'function') {
+                    updateQR(currentScheme, currentHost, currentPort);
+                }
+            } else {
+                myQrTab.classList.remove('active');
+                myQrTab.setAttribute('aria-selected', 'false');
+                scannerTab.classList.add('active');
+                scannerTab.setAttribute('aria-selected', 'true');
+
+                myQrPane.classList.remove('show', 'active');
+                scannerPane.classList.add('show', 'active');
+
+                try {
+                    history.replaceState(null, null, '#scanner');
+                } catch (e) {}
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', function () {
+            // Determine best initial scheme, host, and port for QR code pass
+            let initialScheme = serverActiveScheme || 'https';
+            let initialHost = serverActiveHost;
+            let initialPort = serverActivePort || '';
+
+            try {
+                const savedScheme = localStorage.getItem('preferredQrScheme');
+                const savedHost = localStorage.getItem('preferredQrHost');
+                const savedPort = localStorage.getItem('preferredQrPort');
+                if (savedScheme) initialScheme = savedScheme;
+                if (savedHost) initialHost = savedHost;
+                if (savedPort !== null && savedPort !== undefined) initialPort = savedPort;
+            } catch (e) {}
+
+            // If accessing via domain or non-local host in browser
+            if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                initialHost = window.location.hostname;
+                initialScheme = window.location.protocol.replace(':', '') || 'https';
+                initialPort = (window.location.port === '80' || window.location.port === '443') ? '' : (window.location.port || '');
+            } else if (!savedHost && detectedLanIp && detectedLanIp !== '127.0.0.1') {
+                initialHost = detectedLanIp;
+            }
+
+            // Initialize QR with HTTPS
+            updateQR(initialScheme, initialHost, initialPort);
+
+            // Check hash or query param for initial tab
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            const hash = window.location.hash;
+
+            if (tabParam === 'myqr' || hash === '#myqr') {
+                switchTab('myqr');
+            } else {
+                switchTab('scanner');
+            }
+        });
+
+        // Clean up scanner on page unload
+        window.addEventListener('beforeunload', () => {
+            if (html5QrScanner && isScannerRunning) {
+                html5QrScanner.stop();
+            }
+        });
         /*]]>*/
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>

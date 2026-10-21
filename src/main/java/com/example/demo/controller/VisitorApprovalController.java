@@ -1,8 +1,11 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.Employee;
+import com.example.demo.model.LeaveRequest;
 import com.example.demo.model.User;
 import com.example.demo.model.Visitor;
+import com.example.demo.repository.EmployeeRepository;
+import com.example.demo.repository.LeaveRequestRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.VisitorRepository;
 import com.example.demo.service.EmailService;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,22 +29,36 @@ public class VisitorApprovalController {
     private VisitorRepository visitorRepository;
 
     @Autowired
+    private LeaveRequestRepository leaveRequestRepository;
+
+    @Autowired
     private EmailService emailService;
 
     @Autowired
     private UserRepository userRepository;
     
     @Autowired
-    private com.example.demo.repository.EmployeeRepository employeeRepository;
+    private EmployeeRepository employeeRepository;
 
     @RequestMapping(method = RequestMethod.GET)
-    public String pendingApprovals(Model model, HttpSession session) {
-        Employee employee = (Employee) session.getAttribute("employee");
-        if (employee == null) {
+    public String pendingApprovals(Model model, HttpSession session,
+                                   @RequestParam(value = "tab", required = false) String activeTab) {
+        Employee sessionEmp = (Employee) session.getAttribute("employee");
+        if (sessionEmp == null) {
+            User user = (User) session.getAttribute("user");
+            if (user != null && user.getEmail() != null) {
+                sessionEmp = employeeRepository.findByEmail(user.getEmail()).orElse(null);
+            }
+        }
+        if (sessionEmp == null) {
             return "redirect:/employee/login";
         }
 
-        // Get ALL registered visitors for this employee (not just pending)
+        // Refresh employee from DB to get the latest state
+        final Employee employee = employeeRepository.findById(sessionEmp.getId()).orElse(sessionEmp);
+        session.setAttribute("employee", employee);
+
+        // 1. Get ALL registered visitors for this employee (not just pending)
         // Show visitors who want to meet this employee
         List<Visitor> allVisitors = visitorRepository.findAll().stream()
             .filter(v -> employee.getEmail().equals(v.getEmployeeEmail()))
@@ -53,7 +71,7 @@ public class VisitorApprovalController {
             })
             .toList();
         
-        // Separate by status for display
+        // Separate visitors by status for display
         List<Visitor> pendingVisitors = allVisitors.stream()
             .filter(v -> "PENDING".equals(v.getApprovalStatus()))
             .toList();
@@ -68,11 +86,57 @@ public class VisitorApprovalController {
                         !"APPROVED".equals(v.getApprovalStatus()))
             .toList();
 
+        // 2. Fetch employee's leave requests & approvals
+        List<LeaveRequest> allLeaves = leaveRequestRepository.findByEmployee(employee);
+        List<LeaveRequest> leaveRequests = (allLeaves != null ? allLeaves : Collections.<LeaveRequest>emptyList()).stream()
+            .sorted((l1, l2) -> {
+                if (l1.getStartDate() != null && l2.getStartDate() != null) {
+                    int cmp = l2.getStartDate().compareTo(l1.getStartDate());
+                    if (cmp != 0) return cmp;
+                }
+                if (l1.getCreatedAt() != null && l2.getCreatedAt() != null) {
+                    return l2.getCreatedAt().compareTo(l1.getCreatedAt());
+                }
+                return 0;
+            })
+            .toList();
+
+        List<LeaveRequest> approvedLeaves = leaveRequests.stream()
+            .filter(l -> "APPROVED".equalsIgnoreCase(l.getStatus()))
+            .toList();
+
+        List<LeaveRequest> pendingLeaves = leaveRequests.stream()
+            .filter(l -> "PENDING".equalsIgnoreCase(l.getStatus()))
+            .toList();
+
+        List<LeaveRequest> rejectedLeaves = leaveRequests.stream()
+            .filter(l -> "REJECTED".equalsIgnoreCase(l.getStatus()))
+            .toList();
+
+        // Dynamically calculate leave balance
+        int dynamicLeaveBalance = (employee.getPaidLeave() != null ? employee.getPaidLeave() : 0)
+                + (employee.getSickLeave() != null ? employee.getSickLeave() : 0)
+                + (employee.getCasualLeave() != null ? employee.getCasualLeave() : 0);
+        if (employee.getCustomLeaves() != null) {
+            for (Integer customCount : employee.getCustomLeaves().values()) {
+                if (customCount != null) dynamicLeaveBalance += customCount;
+            }
+        }
+
         model.addAttribute("employee", employee);
+        model.addAttribute("emp", employee); // for fragments/employee-sidebar.html
         model.addAttribute("allVisitors", allVisitors);
         model.addAttribute("pendingVisitors", pendingVisitors);
         model.addAttribute("approvedVisitors", approvedVisitors);
         model.addAttribute("otherStatusVisitors", otherStatusVisitors);
+
+        model.addAttribute("leaveRequests", leaveRequests);
+        model.addAttribute("approvedLeaves", approvedLeaves);
+        model.addAttribute("pendingLeaves", pendingLeaves);
+        model.addAttribute("rejectedLeaves", rejectedLeaves);
+        model.addAttribute("leaveBalance", dynamicLeaveBalance);
+        model.addAttribute("activeTab", (activeTab != null && !activeTab.isBlank()) ? activeTab : "leaves");
+
         return "employee-approvals";
     }
 
@@ -98,13 +162,13 @@ public class VisitorApprovalController {
         Optional<Visitor> visitorOpt = visitorRepository.findById(id);
         if (visitorOpt.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Visitor not found!");
-            return "redirect:/employee/approvals";
+            return "redirect:/employee/approvals?tab=visitors";
         }
 
         Visitor visitor = visitorOpt.get();
         if (!employee.getEmail().equals(visitor.getEmployeeEmail())) {
             redirectAttributes.addFlashAttribute("error", "You are not authorized to approve this visitor!");
-            return "redirect:/employee/approvals";
+            return "redirect:/employee/approvals?tab=visitors";
         }
 
         visitor.setApprovalStatus("APPROVED");
@@ -194,7 +258,7 @@ public class VisitorApprovalController {
         }
 
         redirectAttributes.addFlashAttribute("success", "Visitor approved! They can now check-in using their ID proof at the reception. Notifications sent to visitor and admin.");
-        return "redirect:/employee/approvals";
+        return "redirect:/employee/approvals?tab=visitors";
     }
 
     @RequestMapping(value = "/deny/{id}", method = RequestMethod.GET)
@@ -218,13 +282,13 @@ public class VisitorApprovalController {
         Optional<Visitor> visitorOpt = visitorRepository.findById(id);
         if (visitorOpt.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Visitor not found!");
-            return "redirect:/employee/approvals";
+            return "redirect:/employee/approvals?tab=visitors";
         }
 
         Visitor visitor = visitorOpt.get();
         if (!employee.getEmail().equals(visitor.getEmployeeEmail())) {
             redirectAttributes.addFlashAttribute("error", "You are not authorized to deny this visitor!");
-            return "redirect:/employee/approvals";
+            return "redirect:/employee/approvals?tab=visitors";
         }
 
         visitor.setApprovalStatus("DENIED");
@@ -240,7 +304,7 @@ public class VisitorApprovalController {
         );
 
         redirectAttributes.addFlashAttribute("success", "Visitor request denied. Notification sent to visitor.");
-        return "redirect:/employee/approvals";
+        return "redirect:/employee/approvals?tab=visitors";
     }
 
     @RequestMapping(value = "/reject/{id}", method = RequestMethod.GET)
@@ -264,13 +328,13 @@ public class VisitorApprovalController {
         Optional<Visitor> visitorOpt = visitorRepository.findById(id);
         if (visitorOpt.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Visitor not found!");
-            return "redirect:/employee/approvals";
+            return "redirect:/employee/approvals?tab=visitors";
         }
 
         Visitor visitor = visitorOpt.get();
         if (!employee.getEmail().equals(visitor.getEmployeeEmail())) {
             redirectAttributes.addFlashAttribute("error", "You are not authorized to reject this visitor!");
-            return "redirect:/employee/approvals";
+            return "redirect:/employee/approvals?tab=visitors";
         }
 
         visitor.setApprovalStatus("REJECTED");
@@ -286,7 +350,7 @@ public class VisitorApprovalController {
         );
 
         redirectAttributes.addFlashAttribute("success", "Visitor request rejected. Notification sent to visitor.");
-        return "redirect:/employee/approvals";
+        return "redirect:/employee/approvals?tab=visitors";
     }
 
     @RequestMapping(value = "/busy/{id}", method = RequestMethod.GET)
@@ -310,13 +374,13 @@ public class VisitorApprovalController {
         Optional<Visitor> visitorOpt = visitorRepository.findById(id);
         if (visitorOpt.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Visitor not found!");
-            return "redirect:/employee/approvals";
+            return "redirect:/employee/approvals?tab=visitors";
         }
 
         Visitor visitor = visitorOpt.get();
         if (!employee.getEmail().equals(visitor.getEmployeeEmail())) {
             redirectAttributes.addFlashAttribute("error", "You are not authorized to mark this visitor as busy!");
-            return "redirect:/employee/approvals";
+            return "redirect:/employee/approvals?tab=visitors";
         }
 
         visitor.setApprovalStatus("BUSY");
@@ -332,7 +396,7 @@ public class VisitorApprovalController {
         );
 
         redirectAttributes.addFlashAttribute("success", "Visitor marked as busy. Notification sent to visitor.");
-        return "redirect:/employee/approvals";
+        return "redirect:/employee/approvals?tab=visitors";
     }
     
     // Email-based approval endpoints (work without login, verify via employee email)
@@ -454,4 +518,3 @@ public class VisitorApprovalController {
         return "redirect:/?approved=true";
     }
 }
-

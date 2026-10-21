@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visitor Approvals</title>
+    <title>Approvals - LogSphere</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -35,7 +35,7 @@
         .card-header {
             background-color: #ffffff;
             border-bottom: 1px solid #f1f5f9;
-            padding: 1.25rem;
+            padding: 1.15rem 1.25rem;
             border-radius: 12px 12px 0 0 !important;
         }
 
@@ -53,6 +53,39 @@
             letter-spacing: 0.05em;
             border-bottom: 1px solid #e5e7eb;
         }
+
+        .nav-pills .nav-link {
+            border-radius: 10px;
+            padding: 10px 20px;
+            color: #4b5563;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .nav-pills .nav-link:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: #1a8cf0;
+            color: #ffffff;
+            border-color: #1a8cf0;
+            box-shadow: 0 4px 10px rgba(26, 140, 240, 0.25);
+        }
+
+        .nav-pills .nav-link.active .badge {
+            background-color: #ffffff !important;
+            color: #1a8cf0 !important;
+        }
+
+        .badge-type {
+            font-weight: 600;
+            font-size: 0.75rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 6px;
+        }
     </style>
 </head>
 
@@ -68,223 +101,507 @@
                         <i class="fas fa-bars"></i>
                     </button>
                     <span class="navbar-brand mb-0 h4 fw-bold text-primary mb-0">
-                        <i class="fas fa-user-check me-2"></i>Visitor Approvals
+                        <i class="fas fa-clipboard-check me-2"></i>Approvals Dashboard
                     </span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <a th:href="@{/employee/leave/apply}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus-circle me-1"></i> Apply Leave
+                    </a>
                 </div>
             </div>
         </nav>
 
         <div class="container-fluid px-0 pb-4">
+            <!-- Welcome and Status Summary Card -->
             <div class="card shadow-sm mb-4">
                 <div class="card-body text-center py-4">
-                    <h4 class="text-dark fw-bold" th:text="'Welcome, ' + ${employee != null ? employee.name : 'Employee'}"></h4>
-                    <p class="text-muted">Registered Visitors - Manage visitor approvals</p>
-                    <div class="mt-3">
-                        <span class="badge bg-warning text-dark me-2 p-2">
-                            <span th:text="${pendingVisitors != null ? pendingVisitors.size() : 0}"></span> Pending
+                    <h4 class="text-dark fw-bold mb-1" th:text="'Welcome, ' + ${employee != null ? employee.name : 'Employee'}"></h4>
+                    <p class="text-muted mb-3">Approvals Hub — Track your approved and pending leave requests, and manage visitor authorizations.</p>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 p-2 px-3">
+                            <i class="fas fa-check-circle me-1"></i>
+                            <span class="fw-bold" th:text="${approvedLeaves != null ? approvedLeaves.size() : 0}">0</span> Approved Leaves
                         </span>
-                        <span
-                            class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 me-2 p-2">
-                            <span th:text="${approvedVisitors != null ? approvedVisitors.size() : 0}"></span> Approved
+                        <span class="badge bg-warning text-dark border border-warning border-opacity-50 p-2 px-3">
+                            <i class="fas fa-hourglass-half me-1"></i>
+                            <span class="fw-bold" th:text="${pendingLeaves != null ? pendingLeaves.size() : 0}">0</span> Pending Leaves
                         </span>
-                        <span class="badge bg-secondary bg-opacity-10 text-secondary border p-2">
-                            <span th:text="${allVisitors != null ? allVisitors.size() : 0}"></span> Total
+                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 p-2 px-3">
+                            <i class="fas fa-wallet me-1"></i>
+                            <span class="fw-bold" th:text="${leaveBalance != null ? leaveBalance : 0}">0</span> Days Leave Balance
+                        </span>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 p-2 px-3">
+                            <i class="fas fa-user-friends me-1"></i>
+                            <span class="fw-bold" th:text="${approvedVisitors != null ? approvedVisitors.size() : 0}">0</span> Approved Visitors
+                        </span>
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary border p-2 px-3" th:if="${pendingVisitors != null && !pendingVisitors.isEmpty()}">
+                            <i class="fas fa-user-clock me-1"></i>
+                            <span class="fw-bold" th:text="${pendingVisitors.size()}">0</span> Pending Visitors
                         </span>
                     </div>
                 </div>
             </div>
 
-        <!-- Success/Error Messages -->
-        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
-            <span th:text="${success}"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
-            <span th:text="${error}"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-
-        <!-- Pending Visitors Section -->
-        <div class="card shadow-sm mb-4" th:if="${pendingVisitors != null && !pendingVisitors.isEmpty()}">
-            <div class="card-header bg-white">
-                <h5 class="text-dark fw-bold mb-0">⏳ Pending Approval Requests</h5>
+            <!-- Success/Error Flash Messages -->
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i><span th:text="${success}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light">
-                            <tr>
-                                <th class="ps-4">Visitor Name</th>
-                                <th>Company</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>Purpose</th>
-                                <th>Registered Time</th>
-                                <th>Status</th>
-                                <th class="pe-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="visitor : ${pendingVisitors}">
-                                <td class="ps-4 fw-medium text-dark" th:text="${visitor.name}"></td>
-                                <td th:text="${visitor.company}"></td>
-                                <td th:text="${visitor.email}"></td>
-                                <td th:text="${visitor.phone}"></td>
-                                <td><span class="badge bg-info bg-opacity-10 text-info"
-                                        th:text="${visitor.purpose}"></span></td>
-                                <td
-                                    th:text="${visitor.registeredTime != null ? #temporals.format(visitor.registeredTime, 'yyyy-MM-dd HH:mm') : 'N/A'}">
-                                </td>
-                                <td><span class="badge bg-warning text-dark">PENDING</span></td>
-                                <td class="pe-4">
-                                    <div class="d-flex gap-1 flex-wrap">
-                                        <form th:action="@{/employee/approvals/approve/{id}(id=${visitor.id})}"
-                                            method="post" class="d-inline">
-                                            <button type="submit" class="btn btn-success btn-sm">✓ Approve</button>
-                                        </form>
-                                        <form th:action="@{/employee/approvals/deny/{id}(id=${visitor.id})}"
-                                            method="post" class="d-inline">
-                                            <button type="submit" class="btn btn-outline-danger btn-sm"
-                                                onclick="return confirm('Are you sure you want to deny this visitor?')">✗
-                                                Deny</button>
-                                        </form>
-                                        <form th:action="@{/employee/approvals/reject/{id}(id=${visitor.id})}"
-                                            method="post" class="d-inline">
-                                            <button type="submit" class="btn btn-outline-secondary btn-sm"
-                                                onclick="return confirm('Are you sure you want to reject this visitor?')">⊘
-                                                Reject</button>
-                                        </form>
-                                        <form th:action="@{/employee/approvals/busy/{id}(id=${visitor.id})}"
-                                            method="post" class="d-inline">
-                                            <button type="submit" class="btn btn-outline-warning btn-sm text-dark">⏰
-                                                Busy</button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i><span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Nav Tabs -->
+            <ul class="nav nav-pills gap-2 mb-4" id="approvalsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold d-flex align-items-center gap-2" 
+                            th:classappend="${activeTab != 'visitors'} ? 'active' : ''"
+                            id="leaves-tab" data-bs-toggle="pill" data-bs-target="#leaves-pane" 
+                            type="button" role="tab" aria-controls="leaves-pane" 
+                            th:aria-selected="${activeTab != 'visitors'}">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>My Leave Approvals</span>
+                        <span class="badge bg-success rounded-pill ms-1" 
+                              th:text="${approvedLeaves != null ? approvedLeaves.size() : 0}">0</span>
+                        <span class="badge bg-warning text-dark rounded-pill ms-1" 
+                              th:if="${pendingLeaves != null && !pendingLeaves.isEmpty()}" 
+                              th:text="${pendingLeaves.size() + ' Pending'}">0 Pending</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold d-flex align-items-center gap-2" 
+                            th:classappend="${activeTab == 'visitors'} ? 'active' : ''"
+                            id="visitors-tab" data-bs-toggle="pill" data-bs-target="#visitors-pane" 
+                            type="button" role="tab" aria-controls="visitors-pane" 
+                            th:aria-selected="${activeTab == 'visitors'}">
+                        <i class="fas fa-user-shield"></i>
+                        <span>Visitor Approvals</span>
+                        <span class="badge bg-warning text-dark rounded-pill ms-1" 
+                              th:if="${pendingVisitors != null && !pendingVisitors.isEmpty()}" 
+                              th:text="${pendingVisitors.size() + ' Pending'}">0</span>
+                        <span class="badge bg-secondary rounded-pill ms-1" 
+                              th:if="${pendingVisitors == null || pendingVisitors.isEmpty()}" 
+                              th:text="${allVisitors != null ? allVisitors.size() : 0}">0</span>
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="approvalsTabContent">
+                
+                <!-- TAB 1: LEAVE APPROVALS -->
+                <div class="tab-pane fade" 
+                     th:classappend="${activeTab != 'visitors'} ? 'show active' : ''"
+                     id="leaves-pane" role="tabpanel" aria-labelledby="leaves-tab">
+                    
+                    <!-- Quick Actions Toolbar -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-dark mb-0">
+                            <i class="fas fa-calendar-alt text-primary me-2"></i>My Leave Status & Approvals
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <a th:href="@{/employee/leave/apply}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus-circle me-1"></i> Apply for Leave
+                            </a>
+                            <a th:href="@{/employee/leave/history}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-history me-1"></i> Full Leave History
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 1. APPROVED LEAVES SECTION -->
+                    <div class="card shadow-sm mb-4 border-success border-opacity-25" th:if="${approvedLeaves != null && !approvedLeaves.isEmpty()}">
+                        <div class="card-header bg-success bg-opacity-10 d-flex justify-content-between align-items-center">
+                            <h5 class="text-success fw-bold mb-0">
+                                <i class="fas fa-check-circle me-2"></i>✓ Approved Leaves
+                            </h5>
+                            <span class="badge bg-success" th:text="${approvedLeaves.size()} + ' Approved'"></span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="ps-4">Leave Type</th>
+                                            <th>From Date</th>
+                                            <th>To Date</th>
+                                            <th>Duration</th>
+                                            <th>Reason</th>
+                                            <th>Status</th>
+                                            <th>Approved By</th>
+                                            <th class="pe-4">Approved On</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="leave : ${approvedLeaves}">
+                                            <td class="ps-4">
+                                                <span class="badge bg-light text-dark border badge-type" th:text="${leave.leaveType}"></span>
+                                            </td>
+                                            <td class="fw-medium text-dark" th:text="${leave.startDate != null ? #temporals.format(leave.startDate, 'yyyy-MM-dd') : '-'}"></td>
+                                            <td class="fw-medium text-dark" th:text="${leave.endDate != null ? #temporals.format(leave.endDate, 'yyyy-MM-dd') : '-'}"></td>
+                                            <td>
+                                                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold" 
+                                                      th:text="${leave.numberOfDays != null ? leave.numberOfDays + ' day(s)' : '-'}"></span>
+                                            </td>
+                                            <td class="text-muted small text-truncate" style="max-width: 220px;" 
+                                                th:title="${leave.reason}" th:text="${leave.reason != null ? leave.reason : '-'}"></td>
+                                            <td>
+                                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">
+                                                    <i class="fas fa-check-circle me-1"></i>APPROVED
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="fw-semibold text-dark" th:text="${leave.approvedBy != null ? leave.approvedBy : 'HR Management'}"></span>
+                                            </td>
+                                            <td class="pe-4 text-muted small" 
+                                                th:text="${leave.approvalDate != null ? #temporals.format(leave.approvalDate, 'yyyy-MM-dd HH:mm') : (leave.createdAt != null ? #temporals.format(leave.createdAt, 'yyyy-MM-dd') : 'Approved')}"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. PENDING LEAVE REQUESTS SECTION -->
+                    <div class="card shadow-sm mb-4" th:if="${pendingLeaves != null && !pendingLeaves.isEmpty()}">
+                        <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                            <h5 class="text-warning-emphasis fw-bold mb-0">
+                                <i class="fas fa-hourglass-half me-2"></i>⏳ Pending Leave Requests (Awaiting HR Review)
+                            </h5>
+                            <span class="badge bg-warning text-dark" th:text="${pendingLeaves.size()} + ' Pending'"></span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="ps-4">Leave Type</th>
+                                            <th>From Date</th>
+                                            <th>To Date</th>
+                                            <th>Duration</th>
+                                            <th>Reason</th>
+                                            <th>Applied On</th>
+                                            <th class="pe-4">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="leave : ${pendingLeaves}">
+                                            <td class="ps-4">
+                                                <span class="badge bg-light text-dark border badge-type" th:text="${leave.leaveType}"></span>
+                                            </td>
+                                            <td class="fw-medium text-dark" th:text="${leave.startDate != null ? #temporals.format(leave.startDate, 'yyyy-MM-dd') : '-'}"></td>
+                                            <td class="fw-medium text-dark" th:text="${leave.endDate != null ? #temporals.format(leave.endDate, 'yyyy-MM-dd') : '-'}"></td>
+                                            <td>
+                                                <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold" 
+                                                      th:text="${leave.numberOfDays != null ? leave.numberOfDays + ' day(s)' : '-'}"></span>
+                                            </td>
+                                            <td class="text-muted small text-truncate" style="max-width: 250px;" 
+                                                th:title="${leave.reason}" th:text="${leave.reason != null ? leave.reason : '-'}"></td>
+                                            <td class="text-muted small" 
+                                                th:text="${leave.createdAt != null ? #temporals.format(leave.createdAt, 'yyyy-MM-dd HH:mm') : '-'}"></td>
+                                            <td class="pe-4">
+                                                <span class="badge bg-warning text-dark border border-warning border-opacity-50 px-2 py-1">
+                                                    <i class="fas fa-clock me-1"></i>PENDING REVIEW
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. REJECTED LEAVE REQUESTS SECTION -->
+                    <div class="card shadow-sm mb-4" th:if="${rejectedLeaves != null && !rejectedLeaves.isEmpty()}">
+                        <div class="card-header bg-danger bg-opacity-10 d-flex justify-content-between align-items-center">
+                            <h5 class="text-danger fw-bold mb-0">
+                                <i class="fas fa-times-circle me-2"></i>✗ Rejected Leave Requests
+                            </h5>
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25" 
+                                  th:text="${rejectedLeaves.size()} + ' Rejected'"></span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="ps-4">Leave Type</th>
+                                            <th>From Date</th>
+                                            <th>To Date</th>
+                                            <th>Duration</th>
+                                            <th>Reason</th>
+                                            <th>Rejection Reason</th>
+                                            <th class="pe-4">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="leave : ${rejectedLeaves}">
+                                            <td class="ps-4">
+                                                <span class="badge bg-light text-dark border badge-type" th:text="${leave.leaveType}"></span>
+                                            </td>
+                                            <td class="fw-medium text-dark" th:text="${leave.startDate != null ? #temporals.format(leave.startDate, 'yyyy-MM-dd') : '-'}"></td>
+                                            <td class="fw-medium text-dark" th:text="${leave.endDate != null ? #temporals.format(leave.endDate, 'yyyy-MM-dd') : '-'}"></td>
+                                            <td>
+                                                <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold" 
+                                                      th:text="${leave.numberOfDays != null ? leave.numberOfDays + ' day(s)' : '-'}"></span>
+                                            </td>
+                                            <td class="text-muted small text-truncate" style="max-width: 200px;" 
+                                                th:title="${leave.reason}" th:text="${leave.reason != null ? leave.reason : '-'}"></td>
+                                            <td class="text-danger small text-truncate" style="max-width: 220px;" 
+                                                th:title="${leave.rejectionReason}" th:text="${leave.rejectionReason != null ? leave.rejectionReason : 'No reason provided'}"></td>
+                                            <td class="pe-4">
+                                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1">
+                                                    <i class="fas fa-ban me-1"></i>REJECTED
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NO LEAVES MESSAGE -->
+                    <div th:if="${leaveRequests == null || leaveRequests.isEmpty()}" class="card shadow-sm border-0">
+                        <div class="card-body text-center text-secondary py-5">
+                            <i class="far fa-calendar-times fs-1 text-muted mb-3 d-block"></i>
+                            <h5 class="fw-normal text-dark">No leave records found</h5>
+                            <p class="small text-muted mb-3">You have not submitted any leave requests yet.</p>
+                            <a th:href="@{/employee/leave/apply}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus me-1"></i> Apply for Leave
+                            </a>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Approved Visitors Section -->
-        <div class="card shadow-sm mb-4" th:if="${approvedVisitors != null && !approvedVisitors.isEmpty()}">
-            <div class="card-header bg-success bg-opacity-10">
-                <h5 class="text-success mb-0">✓ Approved Visitors</h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light">
-                            <tr>
-                                <th class="ps-4">Visitor Name</th>
-                                <th>Company</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>Purpose</th>
-                                <th>Registered Time</th>
-                                <th>Approved Time</th>
-                                <th class="pe-4">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="visitor : ${approvedVisitors}">
-                                <td class="ps-4 fw-medium text-dark" th:text="${visitor.name}"></td>
-                                <td th:text="${visitor.company}"></td>
-                                <td th:text="${visitor.email}"></td>
-                                <td th:text="${visitor.phone}"></td>
-                                <td><span class="badge bg-info bg-opacity-10 text-info"
-                                        th:text="${visitor.purpose}"></span></td>
-                                <td
-                                    th:text="${visitor.registeredTime != null ? #temporals.format(visitor.registeredTime, 'yyyy-MM-dd HH:mm') : 'N/A'}">
-                                </td>
-                                <td
-                                    th:text="${visitor.approvalTime != null ? #temporals.format(visitor.approvalTime, 'yyyy-MM-dd HH:mm') : 'N/A'}">
-                                </td>
-                                <td class="pe-4"><span
-                                        class="badge bg-success bg-opacity-10 text-success">APPROVED</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- TAB 2: VISITOR APPROVALS -->
+                <div class="tab-pane fade" 
+                     th:classappend="${activeTab == 'visitors'} ? 'show active' : ''"
+                     id="visitors-pane" role="tabpanel" aria-labelledby="visitors-tab">
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-dark mb-0">
+                            <i class="fas fa-user-check text-primary me-2"></i>Visitor Access Authorizations
+                        </h5>
+                    </div>
+
+                    <!-- Pending Visitors Section -->
+                    <div class="card shadow-sm mb-4" th:if="${pendingVisitors != null && !pendingVisitors.isEmpty()}">
+                        <div class="card-header bg-white">
+                            <h5 class="text-dark fw-bold mb-0">⏳ Pending Approval Requests</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="ps-4">Visitor Name</th>
+                                            <th>Company</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>Purpose</th>
+                                            <th>Registered Time</th>
+                                            <th>Status</th>
+                                            <th class="pe-4">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="visitor : ${pendingVisitors}">
+                                            <td class="ps-4 fw-medium text-dark" th:text="${visitor.name}"></td>
+                                            <td th:text="${visitor.company}"></td>
+                                            <td th:text="${visitor.email}"></td>
+                                            <td th:text="${visitor.phone}"></td>
+                                            <td><span class="badge bg-info bg-opacity-10 text-info"
+                                                    th:text="${visitor.purpose}"></span></td>
+                                            <td
+                                                th:text="${visitor.registeredTime != null ? #temporals.format(visitor.registeredTime, 'yyyy-MM-dd HH:mm') : 'N/A'}">
+                                            </td>
+                                            <td><span class="badge bg-warning text-dark">PENDING</span></td>
+                                            <td class="pe-4">
+                                                <div class="d-flex gap-1 flex-wrap">
+                                                    <form th:action="@{/employee/approvals/approve/{id}(id=${visitor.id})}"
+                                                        method="post" class="d-inline">
+                                                        <input type="hidden" name="_csrf" th:value="${_csrf_token}"/>
+                                                        <button type="submit" class="btn btn-success btn-sm">✓ Approve</button>
+                                                    </form>
+                                                    <form th:action="@{/employee/approvals/deny/{id}(id=${visitor.id})}"
+                                                        method="post" class="d-inline">
+                                                        <input type="hidden" name="_csrf" th:value="${_csrf_token}"/>
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                            onclick="return confirm('Are you sure you want to deny this visitor?')">✗
+                                                            Deny</button>
+                                                    </form>
+                                                    <form th:action="@{/employee/approvals/reject/{id}(id=${visitor.id})}"
+                                                        method="post" class="d-inline">
+                                                        <input type="hidden" name="_csrf" th:value="${_csrf_token}"/>
+                                                        <button type="submit" class="btn btn-outline-secondary btn-sm"
+                                                            onclick="return confirm('Are you sure you want to reject this visitor?')">⊘
+                                                            Reject</button>
+                                                    </form>
+                                                    <form th:action="@{/employee/approvals/busy/{id}(id=${visitor.id})}"
+                                                        method="post" class="d-inline">
+                                                        <input type="hidden" name="_csrf" th:value="${_csrf_token}"/>
+                                                        <button type="submit" class="btn btn-outline-warning btn-sm text-dark">⏰
+                                                            Busy</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approved Visitors Section -->
+                    <div class="card shadow-sm mb-4" th:if="${approvedVisitors != null && !approvedVisitors.isEmpty()}">
+                        <div class="card-header bg-success bg-opacity-10">
+                            <h5 class="text-success mb-0 fw-bold">✓ Approved Visitors</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="ps-4">Visitor Name</th>
+                                            <th>Company</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>Purpose</th>
+                                            <th>Registered Time</th>
+                                            <th>Approved Time</th>
+                                            <th class="pe-4">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="visitor : ${approvedVisitors}">
+                                            <td class="ps-4 fw-medium text-dark" th:text="${visitor.name}"></td>
+                                            <td th:text="${visitor.company}"></td>
+                                            <td th:text="${visitor.email}"></td>
+                                            <td th:text="${visitor.phone}"></td>
+                                            <td><span class="badge bg-info bg-opacity-10 text-info"
+                                                    th:text="${visitor.purpose}"></span></td>
+                                            <td
+                                                th:text="${visitor.registeredTime != null ? #temporals.format(visitor.registeredTime, 'yyyy-MM-dd HH:mm') : 'N/A'}">
+                                            </td>
+                                            <td
+                                                th:text="${visitor.approvalTime != null ? #temporals.format(visitor.approvalTime, 'yyyy-MM-dd HH:mm') : 'N/A'}">
+                                            </td>
+                                            <td class="pe-4"><span
+                                                    class="badge bg-success bg-opacity-10 text-success">APPROVED</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Other Status Visitors Section -->
+                    <div class="card shadow-sm mb-4" th:if="${otherStatusVisitors != null && !otherStatusVisitors.isEmpty()}">
+                        <div class="card-header bg-white">
+                            <h5 class="text-secondary mb-0 fw-bold">Other Status Visitors</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="ps-4">Visitor Name</th>
+                                            <th>Company</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>Purpose</th>
+                                            <th>Registered Time</th>
+                                            <th class="pe-4">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="visitor : ${otherStatusVisitors}">
+                                            <td class="ps-4 fw-medium text-dark" th:text="${visitor.name}"></td>
+                                            <td th:text="${visitor.company}"></td>
+                                            <td th:text="${visitor.email}"></td>
+                                            <td th:text="${visitor.phone}"></td>
+                                            <td><span class="badge bg-info bg-opacity-10 text-info"
+                                                    th:text="${visitor.purpose}"></span></td>
+                                            <td
+                                                th:text="${visitor.registeredTime != null ? #temporals.format(visitor.registeredTime, 'yyyy-MM-dd HH:mm') : 'N/A'}">
+                                            </td>
+                                            <td class="pe-4">
+                                                <span class="badge bg-danger bg-opacity-10 text-danger"
+                                                    th:if="${visitor.approvalStatus == 'DENIED'}">DENIED</span>
+                                                <span class="badge bg-secondary bg-opacity-10 text-secondary"
+                                                    th:if="${visitor.approvalStatus == 'REJECTED'}">REJECTED</span>
+                                                <span class="badge bg-warning text-dark"
+                                                    th:if="${visitor.approvalStatus == 'BUSY'}">BUSY</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- No Visitors Message -->
+                    <div th:if="${allVisitors == null || allVisitors.isEmpty()}" class="card shadow-sm border-0">
+                        <div class="card-body text-center text-secondary py-5">
+                            <i class="fas fa-users-slash fs-1 text-muted mb-3 d-block"></i>
+                            <h5 class="fw-normal text-dark">No registered visitors</h5>
+                            <p class="small text-muted">No visitors have been registered to meet you yet.</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
+            </div> <!-- /tab-content -->
 
-        <!-- Other Status Visitors Section -->
-        <div class="card shadow-sm mb-4" th:if="${otherStatusVisitors != null && !otherStatusVisitors.isEmpty()}">
-            <div class="card-header bg-white">
-                <h5 class="text-secondary mb-0">Other Status Visitors</h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light">
-                            <tr>
-                                <th class="ps-4">Visitor Name</th>
-                                <th>Company</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>Purpose</th>
-                                <th>Registered Time</th>
-                                <th class="pe-4">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="visitor : ${otherStatusVisitors}">
-                                <td class="ps-4 fw-medium text-dark" th:text="${visitor.name}"></td>
-                                <td th:text="${visitor.company}"></td>
-                                <td th:text="${visitor.email}"></td>
-                                <td th:text="${visitor.phone}"></td>
-                                <td><span class="badge bg-info bg-opacity-10 text-info"
-                                        th:text="${visitor.purpose}"></span></td>
-                                <td
-                                    th:text="${visitor.registeredTime != null ? #temporals.format(visitor.registeredTime, 'yyyy-MM-dd HH:mm') : 'N/A'}">
-                                </td>
-                                <td class="pe-4">
-                                    <span class="badge bg-danger bg-opacity-10 text-danger"
-                                        th:if="${visitor.approvalStatus == 'DENIED'}">DENIED</span>
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary"
-                                        th:if="${visitor.approvalStatus == 'REJECTED'}">REJECTED</span>
-                                    <span class="badge bg-warning text-dark"
-                                        th:if="${visitor.approvalStatus == 'BUSY'}">BUSY</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- No Visitors Message -->
-        <div th:if="${allVisitors == null || allVisitors.isEmpty()}" class="card shadow-sm border-0">
-            <div class="card-body text-center text-secondary py-5">
-                <h5 class="fw-normal">No registered visitors</h5>
-                <p class="small text-muted">No visitors have been registered to meet you yet.</p>
-            </div>
-        </div>
         </div> <!-- /container-fluid -->
     </div> <!-- /main-content -->
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Ensure all forms submit properly
         document.addEventListener('DOMContentLoaded', function () {
-            // Find all approval forms
-            const forms = document.querySelectorAll('form[action*="/approve"], form[action*="/deny"], form[action*="/reject"], form[action*="/busy"]');
+            // Check URL query parameters or hash to activate the right tab
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            const hash = window.location.hash;
 
+            if (tabParam === 'visitors' || hash === '#visitors') {
+                const visitorTabBtn = document.getElementById('visitors-tab');
+                if (visitorTabBtn) {
+                    const tabInstance = bootstrap.Tab.getOrCreateInstance(visitorTabBtn);
+                    tabInstance.show();
+                }
+            } else if (tabParam === 'leaves' || hash === '#leaves') {
+                const leaveTabBtn = document.getElementById('leaves-tab');
+                if (leaveTabBtn) {
+                    const tabInstance = bootstrap.Tab.getOrCreateInstance(leaveTabBtn);
+                    tabInstance.show();
+                }
+            }
+
+            // Update URL hash when tab changes so refreshing retains the view
+            const tabElements = document.querySelectorAll('button[data-bs-toggle="pill"]');
+            tabElements.forEach(function (tabEl) {
+                tabEl.addEventListener('shown.bs.tab', function (e) {
+                    const targetId = e.target.getAttribute('data-bs-target');
+                    if (targetId === '#visitors-pane') {
+                        history.replaceState(null, null, '?tab=visitors');
+                    } else if (targetId === '#leaves-pane') {
+                        history.replaceState(null, null, '?tab=leaves');
+                    }
+                });
+            });
+
+            // Ensure all visitor approval forms submit properly
+            const forms = document.querySelectorAll('form[action*="/approve"], form[action*="/deny"], form[action*="/reject"], form[action*="/busy"]');
             forms.forEach(function (form) {
-                // Ensure form submission works
                 form.addEventListener('submit', function (e) {
-                    // Let the form submit normally
                     return true;
                 });
 
-                // Also handle button clicks as fallback
                 const submitButton = form.querySelector('button[type="submit"]');
                 if (submitButton) {
                     submitButton.addEventListener('click', function (e) {
-                        // If form doesn't submit, force it
                         if (!form.checkValidity()) {
                             e.preventDefault();
                             e.stopPropagation();
@@ -298,4 +615,3 @@
 </body>
 
 </html>
-
