@@ -60,7 +60,6 @@ public class CsrfFilter extends OncePerRequestFilter {
         if (session == null && isSafeMethod && (isLoginRoute(uri) || !isApiRequest(request))) {
             session = request.getSession(true);
         }
-
         if (session != null) {
             String token = csrfTokenService.getOrCreateToken(session);
             request.setAttribute("_csrf_token", token);
