@@ -48,8 +48,11 @@ public class CsrfFilter extends OncePerRequestFilter {
         String uri = getNormalizedUri(request);
         String method = request.getMethod();
 
-        // 1. If an active session exists (or request needs token), expose token in request attributes and cookie
-        HttpSession session = request.getSession(false);
+        // 1. If an active session exists (or request needs token), expose token in request attributes and cookie.
+        // Login pages are rendered before any session exists, so create one up front; otherwise the form's
+        // hidden _csrf field is empty and the first login POST is rejected.
+        boolean isLoginPageRender = SAFE_METHODS.contains(method.toUpperCase()) && isLoginRoute(uri);
+        HttpSession session = request.getSession(isLoginPageRender);
         if (session != null) {
             String token = csrfTokenService.getOrCreateToken(session);
             request.setAttribute("_csrf_token", token);
